@@ -1,3 +1,5 @@
+import { red } from "react-native-reanimated/lib/typescript/Colors";
+
 export const appColors = {
   primary: '#5669FF',
   white: '#ffffff',
@@ -14,4 +16,6 @@ export const appColors = {
   danger: '#e74c3c',
   danger2: '#F0635A',
   black: '#120D26',
+  red: '#FF5B37',
+  blueViolet: '#8A2BE2',
 };
