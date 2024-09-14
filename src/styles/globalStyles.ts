@@ -7,7 +7,11 @@ export const globalStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: appColors.white,
   },
-
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   text: {
     fontFamily: fontFamilies.regular,
     fontSize: 14,
@@ -22,5 +26,35 @@ export const globalStyles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 8,
+  },
+  inputContainer: {
+    backgroundColor: appColors.gray,
+    borderRadius: 12,
+    paddingHorizontal: Platform.OS === 'ios' ? 12 : 10,
+    paddingVertical: 12,
+  },
+
+  section: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
+
+  button: {
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: appColors.white,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    // minHeight: 56,
+    flexDirection: 'row',
+  },
+  iconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#3D56F0',
+    width: 30,
+    height: 30,
+    borderRadius: 100,
   },
 });
