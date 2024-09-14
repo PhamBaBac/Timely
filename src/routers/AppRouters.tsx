@@ -7,10 +7,7 @@ import auth from '@react-native-firebase/auth';
 
 const AppRouters = () => {
   const [isShowSplash, setIsShowSplash] = useState(true);
-
   const [isLogin, setIsLogin] = useState(false);
-
-  
 
   useEffect(() => {
     auth().onAuthStateChanged(user => {
@@ -22,7 +19,6 @@ const AppRouters = () => {
 
     return () => clearTimeout(timeout);
   }, []);
-
 
   return (
     <>
