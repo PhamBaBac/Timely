@@ -58,4 +58,3 @@ export const globalStyles = StyleSheet.create({
     borderRadius: 100,
   },
 });
-
