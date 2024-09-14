@@ -14,4 +14,6 @@ export const appColors = {
   danger: '#e74c3c',
   danger2: '#F0635A',
   black: '#120D26',
+  desc: '#e6e6e6',
+  bgColor: '#171719',
 };
