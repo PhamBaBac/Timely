@@ -1,22 +1,34 @@
-import React, {useEffect, useState} from 'react';
+import {useAsyncStorage} from '@react-native-async-storage/async-storage';
+import {useEffect, useState} from 'react';
 import SplashScreen from '../screens/SplashScreen';
-import MainNavigator from './MainNavigator';
 import AuthNavigator from './AuthNavigator';
+import MainNavigator from './MainNavigator';
+import auth from '@react-native-firebase/auth';
 
 const AppRouters = () => {
   const [isShowSplash, setIsShowSplash] = useState(true);
 
+  const [isLogin, setIsLogin] = useState(false);
+
+  
+
   useEffect(() => {
-    setTimeout(() => {
+    auth().onAuthStateChanged(user => {
+      user ? setIsLogin(true) : setIsLogin(false);
+    });
+    const timeout = setTimeout(() => {
       setIsShowSplash(false);
-    }, 3000);
+    }, 1000);
+
+    return () => clearTimeout(timeout);
   }, []);
+
 
   return (
     <>
       {isShowSplash ? (
         <SplashScreen />
-      ) : 1 < 2 ? (
+      ) : isLogin ? (
         <MainNavigator />
       ) : (
         <AuthNavigator />
