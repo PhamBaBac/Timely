@@ -29,9 +29,14 @@ const AddNewScreen = () => {
   const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
   const [isNewCategoryModalVisible, setNewCategoryModalVisible] = useState(false);
   const [selectedTime, setSelectedTime] = useState('');
+  console.log(selectedTime);
   const [selectedRepeat, setSelectedRepeat] = useState('');
+  console.log(selectedRepeat);
   const [selectedCategory, setSelectedCategory] = useState('');
+  console.log(selectedCategory);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const today = new Date().toISOString().split('T')[0];
+  const [date, setDate] = useState(today);
 
   const handleOutsidePress = () => {
     setModalVisible(false);
@@ -81,6 +86,7 @@ const AddNewScreen = () => {
         style={styles.input}
         placeholder="Nhập nhiệm vụ mới ở đây"
         placeholderTextColor={appColors.gray4}
+        onChangeText={text => console.log(text)}
       />
       <View style={styles.optionsContainer}>
         <TouchableOpacity style={styles.option} onPress={() => setModalVisible(true)}>
@@ -110,7 +116,9 @@ const AddNewScreen = () => {
               <View style={styles.modalContent}>
                 <RNCalendar
                   style={styles.calendar}
-                  onDayPress={(day: { dateString: string }) => console.log('Selected day:', day.dateString)}
+                  current={date}
+                  
+                  onDayPress={(day: { dateString: string }) => setDate(day.dateString)}
                 />
                 <View style={styles.modalOptions}>
                   <TouchableOpacity style={styles.modalOption} onPress={showTimePicker}>

@@ -142,3 +142,4 @@ const SignUpScreen = ({navigation}: any) => {
   );
 };
 
+export default SignUpScreen;

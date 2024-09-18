@@ -1,39 +1,109 @@
-
-import React, { useState } from 'react';
-import { View, Text, FlatList, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
+import React, {useState} from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  StatusBar,
+} from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import {ButtonComponent, SpaceComponent} from '../../components';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
 
 type Task = {
   id: string;
   title: string;
   date?: string;
-  section: string;
+  category?: string;
 };
 
-const HomeScreen = ({ navigation }: { navigation: any }) => {
+const HomeScreen = ({navigation}: {navigation: any}) => {
   const [activeFilter, setActiveFilter] = useState('Tất cả');
 
   const tasks: Task[] = [
-    { id: '1', title: 'Đi đá bóng', date: '09/05', section: 'Trước' },
-    { id: '2', title: 'Đi học', section: 'Hôm nay' },
-    { id: '3', title: 'Làm bài tập', section: 'Hôm nay' },
+    {
+      id: '1',
+      title: 'Đi đá bóng',
+      date: '2023-09-05',
+      category: 'Công việc',
+    },
+    {id: '2', title: 'Đi học', date: '2024-09-18', category: 'Công việc'},
+    {id: '3', title: 'Đi sinh nhật', date: '2023-09-04', category: 'Sinh nhật'},
   ];
 
-  const filters = ['Tất cả', 'Ngày sinh nhật', 'Công việc', 'Học tập', 'Khác'];
+  const filters = ['Tất cả', 'Sinh nhật', 'Công việc'];
 
-  const filteredTasks = activeFilter === 'Tất cả' ? tasks : tasks.filter(task => task.section === activeFilter);
+  const filteredTasks = tasks.filter(task => {
+    if (activeFilter === 'Tất cả') return true;
+    return task.category === activeFilter;
+  });
 
-  const renderTask = ({ item }: { item: Task }) => {
+  const today = new Date().toISOString().split('T')[0];
+
+  const tasksBeforeToday = filteredTasks.filter(
+    task => task.date && task.date < today,
+  );
+
+  const tasksToday = filteredTasks.filter(
+    task => task.date && task.date === today,
+  );
+
+  const renderTask = ({item}: {item: Task}) => {
     if (!item) return null;
 
     return (
       <View style={styles.taskItem}>
         <View style={styles.taskContent}>
           <Text style={styles.taskTitle}>{item.title}</Text>
-          {item.date ? <Text style={styles.taskDate}>{item.date}</Text> : null}
+          {item.date !== today ? <Text style={styles.taskDate}>{item.date}</Text> : null}
         </View>
       </View>
     );
+  };
+
+  const handleSingout = async () => {
+    const token = await AsyncStorage.getItem('fcmtoken'); // Retrieve token from AsyncStorage
+    const currentUser = auth().currentUser;
+    if (currentUser) {
+      await firestore()
+        .doc(`users/${currentUser.uid}`)
+        .get()
+        .then(snap => {
+          if (snap.exists) {
+            const data: any = snap.data();
+            if (data.tokens && data.tokens.includes(token)) {
+              firestore()
+                .doc(`users/${currentUser.uid}`)
+                .update({
+                  tokens: firestore.FieldValue.arrayRemove(token),
+                })
+                .then(() => {
+                  console.log('Token removed from Firestore');
+                })
+                .catch(error => {
+                  console.error('Error removing token from Firestore:', error);
+                });
+            } else {
+              console.log('Token not found in Firestore');
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Error getting document:', error);
+        });
+    }
+    await auth().signOut();
+
+    // Remove token from AsyncStorage
+    await AsyncStorage.removeItem('fcmtoken');
+
+    // Remove token from Firestore
+
+    // Sign out the user
   };
 
   return (
@@ -41,7 +111,9 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
       <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.openDrawer()}>
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => navigation.openDrawer()}>
           <MaterialIcons name="menu" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Home</Text>
@@ -51,7 +123,10 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
       </View>
 
       <View style={styles.filtersContainer}>
-        <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+        <ScrollView
+          horizontal={true}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filters}>
           {filters.map((filter, index) => (
             <TouchableOpacity
               key={index}
@@ -59,14 +134,12 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
                 styles.filterButton,
                 activeFilter === filter && styles.activeFilterButton,
               ]}
-              onPress={() => setActiveFilter(filter)}
-            >
+              onPress={() => setActiveFilter(filter)}>
               <Text
                 style={[
                   styles.filterButtonText,
                   activeFilter === filter && styles.activeFilterText,
-                ]}
-              >
+                ]}>
                 {filter}
               </Text>
             </TouchableOpacity>
@@ -74,24 +147,32 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
         </ScrollView>
       </View>
 
-      <FlatList
-        data={filteredTasks}
-        keyExtractor={(item) => item.id}
-        renderItem={renderTask}
-        contentContainerStyle={styles.flatListContent}
-        ListHeaderComponent={() => (
-          <View>
-            {filteredTasks.some(task => task.section === 'Trước') && (
-              <Text style={styles.sectionHeader}>Trước</Text>
-            )}
-            {filteredTasks.some(task => task.section === 'Hôm nay') && (
-              <Text style={styles.sectionHeader}>Hôm nay</Text>
-            )}
-          </View>
-        )}
+      {tasksBeforeToday.length > 0 && (
+        <>
+          <Text style={styles.sectionHeader}>Trước</Text>
+          <FlatList
+            data={tasksBeforeToday}
+            keyExtractor={item => item.id}
+            renderItem={renderTask}
+            contentContainerStyle={styles.flatListContent}
+          />
+        </>
+      )}
 
+      {tasksToday.length > 0 && (
+        <>
+          <Text style={styles.sectionHeader}>Hôm nay</Text>
+          <FlatList
+            data={tasksToday}
+            keyExtractor={item => item.id}
+            renderItem={renderTask}
+            contentContainerStyle={styles.flatListContent}
+          />
+        </>
+      )}
 
-      />
+      <ButtonComponent type="primary" text="Log out" onPress={handleSingout} />
+      <SpaceComponent height={120} />
     </View>
   );
 };
@@ -168,7 +249,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 2,
