@@ -1,6 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import React from 'react'
-import { ForgotPassword, LoginScreen, OnbroadingScreen, SignUpScreen, Verification } from '../screens'
+import { ForgotPassword, LoginScreen, SignUpScreen, Verification } from '../screens'
 
 const AuthNavigator = () => {
     const Stack = createNativeStackNavigator()
@@ -9,7 +9,6 @@ const AuthNavigator = () => {
       screenOptions={{
         headerShown: false,
       }}>
-      <Stack.Screen name="OnbroadingScreen" component={OnbroadingScreen} />
       <Stack.Screen name="LoginScreen" component={LoginScreen} />
       <Stack.Screen name="SignUpScreen" component={SignUpScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPassword} />

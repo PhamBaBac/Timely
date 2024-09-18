@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { View, Text, FlatList, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -88,6 +89,8 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
             )}
           </View>
         )}
+
+
       />
     </View>
   );

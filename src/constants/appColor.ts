@@ -18,4 +18,7 @@ export const appColors = {
   black: '#120D26',
   red: '#FF5B37',
   blueViolet: '#8A2BE2',
+  desc: '#e6e6e6',
+  bgColor: '#171719',
+
 };
