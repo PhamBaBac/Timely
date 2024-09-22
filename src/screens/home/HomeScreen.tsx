@@ -7,12 +7,15 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
+  Alert,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {ButtonComponent, SpaceComponent} from '../../components';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
+import {appColors} from './../../constants/appColor';
 
 type Task = {
   id: string;
@@ -23,6 +26,17 @@ type Task = {
 
 const HomeScreen = ({navigation}: {navigation: any}) => {
   const [activeFilter, setActiveFilter] = useState('Tất cả');
+  const [showBeforeToday, setShowBeforeToday] = useState(true);
+  const [showToday, setShowToday] = useState(true);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
 
   const tasks: Task[] = [
     {
@@ -31,18 +45,19 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
       date: '2023-09-05',
       category: 'Công việc',
     },
-    {id: '2', title: 'Đi học', date: '2024-09-18', category: 'Công việc'},
+    {id: '2', title: 'Đi học', date: '2024-09-22', category: 'Công việc'},
     {id: '3', title: 'Đi sinh nhật', date: '2023-09-04', category: 'Sinh nhật'},
   ];
 
-  const filters = tasks.reduce<string[]>((acc, task: any) => {
-    if (!acc.includes(task.category)) {
-      acc.push(task.category);
-    }
-    return acc;
-  }, ['Tất cả']);
-
-
+  const filters = tasks.reduce<string[]>(
+    (acc, task: any) => {
+      if (!acc.includes(task.category)) {
+        acc.push(task.category);
+      }
+      return acc;
+    },
+    ['Tất cả'],
+  );
   const filteredTasks = tasks.filter(task => {
     if (activeFilter === 'Tất cả') return true;
     return task.category === activeFilter;
@@ -58,21 +73,60 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     task => task.date && task.date === today,
   );
 
+  const renderRightActions = (item: Task) => (
+    <View style={styles.swipeActions}>
+      <TouchableOpacity
+        style={styles.swipeActionButton}
+        onPress={() => handleHighlight(item.id)}>
+        <MaterialIcons name="star" size={24} color={appColors.yellow} />
+        <Text style={styles.actionText}>Nổi bật</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.swipeActionButton}
+        onPress={() => handleDelete(item.id)}>
+        <MaterialIcons name="delete" size={24} color={appColors.red} />
+        <Text style={styles.actionText}>Xóa</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const handleHighlight = (taskId: string) => {
+    Alert.alert(
+      'Nhiệm vụ nổi bật',
+      `Nhiệm vụ ${taskId} đã được đánh dấu nổi bật!`,
+    );
+  };
+
+  const handleDelete = (taskId: string) => {
+    Alert.alert('Xác nhận xóa', 'Bạn có chắc chắn muốn xóa nhiệm vụ này?', [
+      {text: 'Hủy', style: 'cancel'},
+      {
+        text: 'Xóa',
+        style: 'destructive',
+        onPress: () => {
+          console.log(`Deleted task with id: ${taskId}`);
+        },
+      },
+    ]);
+  };
+
   const renderTask = ({item}: {item: Task}) => {
     if (!item) return null;
 
     return (
-      <View style={styles.taskItem}>
-        <View style={styles.taskContent}>
-          <Text style={styles.taskTitle}>{item.title}</Text>
-          {item.date !== today ? <Text style={styles.taskDate}>{item.date}</Text> : null}
+      <Swipeable renderRightActions={() => renderRightActions(item)}>
+        <View style={styles.taskItem}>
+          <View style={styles.taskContent}>
+            <Text style={styles.taskTitle}>{item.title}</Text>
+            <Text style={styles.taskDate}>{formatDate(item.date || '')}</Text>
+          </View>
         </View>
-      </View>
+      </Swipeable>
     );
   };
 
   const handleSingout = async () => {
-    const token = await AsyncStorage.getItem('fcmtoken'); // Retrieve token from AsyncStorage
+    const token = await AsyncStorage.getItem('fcmtoken');
     const currentUser = auth().currentUser;
     if (currentUser) {
       await firestore()
@@ -104,17 +158,15 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     }
     await auth().signOut();
 
-    // Remove token from AsyncStorage
     await AsyncStorage.removeItem('fcmtoken');
-
-    // Remove token from Firestore
-
-    // Sign out the user
   };
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor={appColors.whitesmoke}
+      />
 
       <View style={styles.header}>
         <TouchableOpacity
@@ -124,7 +176,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Home</Text>
         <TouchableOpacity style={styles.iconButton}>
-          <MaterialIcons name="search" size={24} color="#000" />
+          <MaterialIcons name="search" size={24} color={appColors.black} />
         </TouchableOpacity>
       </View>
 
@@ -153,29 +205,55 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
         </ScrollView>
       </View>
 
-      {tasksBeforeToday.length > 0 && (
-        <>
-          <Text style={styles.sectionHeader}>Trước</Text>
-          <FlatList
-            data={tasksBeforeToday}
-            keyExtractor={item => item.id}
-            renderItem={renderTask}
-            contentContainerStyle={styles.flatListContent}
-          />
-        </>
-      )}
+      <View style={styles.tasksContainer}>
+        {tasksBeforeToday.length > 0 && (
+          <View style={styles.section}>
+            <TouchableOpacity
+              onPress={() => setShowBeforeToday(!showBeforeToday)}
+              style={styles.sectionHeaderContainer}>
+              <Text style={styles.sectionHeader}>Trước</Text>
+              <MaterialIcons
+                name={showBeforeToday ? 'expand-less' : 'expand-more'}
+                size={24}
+                color={appColors.black}
+              />
+            </TouchableOpacity>
+            {showBeforeToday && (
+              <FlatList
+                data={tasksBeforeToday}
+                keyExtractor={item => item.id}
+                renderItem={renderTask}
+                contentContainerStyle={styles.flatListContent}
+              />
+            )}
+          </View>
+        )}
 
-      {tasksToday.length > 0 && (
-        <>
-          <Text style={styles.sectionHeader}>Hôm nay</Text>
-          <FlatList
-            data={tasksToday}
-            keyExtractor={item => item.id}
-            renderItem={renderTask}
-            contentContainerStyle={styles.flatListContent}
-          />
-        </>
-      )}
+        {tasksToday.length > 0 && (
+          <View style={styles.section}>
+            <TouchableOpacity
+              onPress={() => setShowToday(!showToday)}
+              style={styles.sectionHeaderContainer}>
+              <Text style={styles.sectionHeader}>
+                Hôm nay ({formatDate(today)})
+              </Text>
+              <MaterialIcons
+                name={showToday ? 'expand-less' : 'expand-more'}
+                size={24}
+                color={appColors.black}
+              />
+            </TouchableOpacity>
+            {showToday && (
+              <FlatList
+                data={tasksToday}
+                keyExtractor={item => item.id}
+                renderItem={renderTask}
+                contentContainerStyle={styles.flatListContent}
+              />
+            )}
+          </View>
+        )}
+      </View>
 
       <ButtonComponent type="primary" text="Log out" onPress={handleSingout} />
       <SpaceComponent height={120} />
@@ -188,7 +266,7 @@ export default HomeScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: appColors.whitesmoke,
     paddingHorizontal: 10,
   },
   header: {
@@ -197,14 +275,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 10,
-    backgroundColor: '#fff',
+    backgroundColor: appColors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#eaeaea',
+    borderBottomColor: appColors.lightGray,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#000',
+    color: appColors.black,
   },
   iconButton: {
     padding: 8,
@@ -217,44 +295,57 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   filterButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#eaeaea',
-    borderRadius: 12,
-    marginRight: 6,
-    height: 32,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    backgroundColor: appColors.lightGray,
+    borderRadius: 14,
+    marginRight: 8,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
   activeFilterButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: appColors.primary,
   },
   filterButtonText: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 15,
+    color: appColors.gray,
   },
   activeFilterText: {
-    color: '#fff',
+    color: appColors.white,
   },
-  flatListContent: {
-    paddingTop: 4,
+  tasksContainer: {
+    flex: 1,
+  },
+  section: {
+    marginVertical: 4,
+  },
+  sectionHeaderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: appColors.white,
+    borderRadius: 8,
   },
   sectionHeader: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#666',
-    marginTop: 8,
-    marginBottom: 8,
+    color: appColors.gray,
+  },
+  flatListContent: {
+    paddingTop: 4,
   },
   taskItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: appColors.white,
     padding: 16,
     borderRadius: 10,
     marginBottom: 8,
-    shadowColor: '#000',
+    shadowColor: appColors.black,
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 5,
@@ -265,11 +356,26 @@ const styles = StyleSheet.create({
   },
   taskTitle: {
     fontSize: 16,
-    color: '#000',
+    color: appColors.black,
   },
   taskDate: {
     fontSize: 14,
-    color: '#f00',
+    color: appColors.red,
+    marginTop: 4,
+  },
+  swipeActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  swipeActionButton: {
+    padding: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionText: {
+    color: appColors.black,
+    fontSize: 14,
     marginTop: 4,
   },
 });

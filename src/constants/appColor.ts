@@ -1,4 +1,5 @@
-import { red } from "react-native-reanimated/lib/typescript/Colors";
+import { yearsToDays } from "date-fns";
+import { blue, green, red } from "react-native-reanimated/lib/typescript/Colors";
 
 export const appColors = {
   primary: '#5669FF',
@@ -20,5 +21,10 @@ export const appColors = {
   blueViolet: '#8A2BE2',
   desc: '#e6e6e6',
   bgColor: '#171719',
+  whitesmoke: '#f5f5f5',
+  yellow: '#FFC107',
+  green: '#4CAF50',
+  lightGray: '#F5F5F5',
+  blue: '#2196F3',
 
 };
