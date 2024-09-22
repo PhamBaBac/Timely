@@ -32,7 +32,7 @@ import {
 import {appColors} from '../constants';
 import LoadingModal from '../modal/LoadingModal';
 import {TaskModel} from '../models/taskModel';
-import { CategoryModel } from '../models/categoryModel';
+import {CategoryModel} from '../models/categoryModel';
 const now = new Date();
 const initValue: TaskModel = {
   id: '',
@@ -48,7 +48,6 @@ const initValue: TaskModel = {
   createdAt: Date.now(),
   updatedAt: Date.now(),
 };
-
 
 const availableIcons = [
   'work',
@@ -201,7 +200,9 @@ const AddNewScreen = () => {
       .collection('categories') // Change the collection to 'categories'
       .where('uid', '==', user?.uid)
       .onSnapshot(snapshot => {
-        const categoriesList = snapshot.docs.map(doc => doc.data() as CategoryModel); // Update the type to 'Category'
+        const categoriesList = snapshot.docs.map(
+          doc => doc.data() as CategoryModel,
+        ); // Update the type to 'Category'
         setCategories(categoriesList); // Update the state setter to 'setCategories'
       });
 
