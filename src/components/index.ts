@@ -7,6 +7,7 @@ import Container from "./Container";
 import SectionComponent from "./SectionComponent";
 import TitleComponent from "./TitleComponent";
 import DrawerCustom from "./DrawerCustom";
+import CategoryOption from "./CategoryOption";
 
 export {
   TextComponent,
@@ -18,5 +19,6 @@ export {
   SectionComponent,
   TitleComponent,
   DrawerCustom,
+  CategoryOption,
 };
 

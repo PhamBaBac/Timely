@@ -91,7 +91,6 @@ const Verification = ({route}: any) => {
             const user = userCredential.user;
             if (user) {
               HandleUser.SaveToDatabase(user);
-              console.log(user);
               setIsLoading(false);
             }
             setIsLoading(false);
