@@ -35,7 +35,13 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     {id: '3', title: 'Đi sinh nhật', date: '2023-09-04', category: 'Sinh nhật'},
   ];
 
-  const filters = ['Tất cả', 'Sinh nhật', 'Công việc'];
+  const filters = tasks.reduce<string[]>((acc, task: any) => {
+    if (!acc.includes(task.category)) {
+      acc.push(task.category);
+    }
+    return acc;
+  }, ['Tất cả']);
+
 
   const filteredTasks = tasks.filter(task => {
     if (activeFilter === 'Tất cả') return true;
