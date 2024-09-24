@@ -12,21 +12,16 @@ import {
 } from 'date-fns';
 import {appColors} from '../../constants';
 import auth from '@react-native-firebase/auth';
+import { TaskModel } from '../../models/taskModel';
 
-interface Task {
-  id: string;
-  description: string;
-  repeat: 'day' | 'week' | 'month';
-  startDate: string;
-}
 
 const CalendarScreen = () => {
   const user = auth().currentUser;
   const [selected, setSelected] = useState(
     new Date().toISOString().split('T')[0],
   );
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<TaskModel[]>([]);
+  const [filteredTasks, setFilteredTasks] = useState<TaskModel[]>([]);
   const [markedDates, setMarkedDates] = useState<{[key: string]: any}>({});
 
   useEffect(() => {
@@ -34,7 +29,7 @@ const CalendarScreen = () => {
       .collection('tasks')
       .where('uid', '==', user?.uid)
       .onSnapshot(snapshot => {
-        const tasksList = snapshot.docs.map(doc => doc.data() as Task);
+        const tasksList = snapshot.docs.map(doc => doc.data() as TaskModel);
         setTasks(tasksList);
       });
 
@@ -45,7 +40,7 @@ const CalendarScreen = () => {
   useEffect(() => {
     const filtered = tasks.filter(task => {
       const repeatedDates = calculateRepeatedDates(
-        task.startDate,
+        task.startDate || "",
         task.repeat,
         365,
       );
@@ -60,7 +55,7 @@ const CalendarScreen = () => {
     const newMarkedDates: {[key: string]: any} = {};
     tasks.forEach(task => {
       const repeatedDates = calculateRepeatedDates(
-        task.startDate,
+        task.startDate ||"",
         task.repeat,
         365,
       );

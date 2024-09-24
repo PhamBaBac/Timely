@@ -41,7 +41,7 @@ const initValue: TaskModel = {
   dueDate: new Date(),
   startTime: new Date(),
   remind: '',
-  repeat: '',
+  repeat: 'day' || 'week' || 'month',
   category: '',
   isCompleted: false,
   isImportant: false,

@@ -3,10 +3,11 @@ export interface TaskModel {
   id: string;
   uid: string;
   description: string;
-  dueDate?: Date,
-  startTime?: Date,
+  dueDate?: Date;
+  startDate?: string;
+  startTime?: Date;
   remind: string;
-  repeat: string;
+  repeat: "day" | "week" | "month";
   category: string;
   isCompleted: boolean;
   isImportant: boolean;
