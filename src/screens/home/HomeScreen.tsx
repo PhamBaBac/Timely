@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -16,69 +16,86 @@ import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import {appColors} from './../../constants/appColor';
-
-type Task = {
-  id: string;
-  title: string;
-  date?: string;
-  category?: string;
-};
+import {TaskModel} from '../../models/taskModel';
+import {CategoryModel} from '../../models/categoryModel';
+import {DateTime} from '../../utils/DateTime';
 
 const HomeScreen = ({navigation}: {navigation: any}) => {
+  const user = auth().currentUser;
   const [activeFilter, setActiveFilter] = useState('Tất cả');
   const [showBeforeToday, setShowBeforeToday] = useState(true);
   const [showToday, setShowToday] = useState(true);
+  const [tasks, setTasks] = useState<TaskModel[]>([]);
+  const [categories, setCategories] = useState<CategoryModel[]>([]);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  };
+  useEffect(() => {
+    const unsubscribe = firestore()
+      .collection('tasks')
+      .where('uid', '==', user?.uid)
+      .onSnapshot(snapshot => {
+        const tasksList = snapshot.docs.map(
+          doc => ({id: doc.id, ...doc.data()} as TaskModel),
+        );
+        setTasks(tasksList);
+      });
 
-  const tasks: Task[] = [
-    {
-      id: '1',
-      title: 'Đi đá bóng',
-      date: '2023-09-05',
-      category: 'Công việc',
-    },
-    {id: '2', title: 'Đi học', date: '2024-09-22', category: 'Công việc'},
-    {id: '3', title: 'Đi sinh nhật', date: '2023-09-04', category: 'Sinh nhật'},
-  ];
+    return () => unsubscribe();
+  }, []);
 
-  const filters = tasks.reduce<string[]>(
-    (acc, task: any) => {
-      if (!acc.includes(task.category)) {
-        acc.push(task.category);
+  useEffect(() => {
+    const unsubscribe = firestore()
+      .collection('categories')
+      .where('uid', '==', user?.uid)
+      .onSnapshot(snapshot => {
+        const categoriesList = snapshot.docs.map(
+          doc => doc.data() as CategoryModel,
+        );
+        setCategories(categoriesList);
+      });
+    return () => unsubscribe();
+  }, []);
+
+  const filters = categories.reduce<string[]>(
+    (acc, categories: any) => {
+      if (!acc.includes(categories.name)) {
+        acc.push(categories.name);
       }
       return acc;
     },
-    ['Tất cả'],
+    ['Tất cả', 'Công việc', 'Sinh nhật'],
   );
+
   const filteredTasks = tasks.filter(task => {
     if (activeFilter === 'Tất cả') return true;
     return task.category === activeFilter;
   });
 
-  const today = new Date().toISOString().split('T')[0];
-
+  const today = DateTime.GetDate(new Date());
   const tasksBeforeToday = filteredTasks.filter(
-    task => task.date && task.date < today,
+    task =>
+      task.startDate && DateTime.GetDate(new Date(task.startDate)) < today,
   );
 
   const tasksToday = filteredTasks.filter(
-    task => task.date && task.date === today,
+    task =>
+      task.startDate && DateTime.GetDate(new Date(task.startDate)) == today,
   );
 
-  const renderRightActions = (item: Task) => (
+  const tasksAfterToday = filteredTasks.filter(
+    task =>
+      task.startDate && DateTime.GetDate(new Date(task.startDate)) > today,
+  );
+
+  const renderRightActions = (item: TaskModel) => (
     <View style={styles.swipeActions}>
       <TouchableOpacity
         style={styles.swipeActionButton}
         onPress={() => handleHighlight(item.id)}>
-        <MaterialIcons name="star" size={24} color={appColors.yellow} />
+        <MaterialIcons
+          name="star"
+          size={24}
+          color={item.isImportant ? appColors.yellow : appColors.gray}
+        />
         <Text style={styles.actionText}>Nổi bật</Text>
       </TouchableOpacity>
       <TouchableOpacity
@@ -90,11 +107,20 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     </View>
   );
 
-  const handleHighlight = (taskId: string) => {
-    Alert.alert(
-      'Nhiệm vụ nổi bật',
-      `Nhiệm vụ ${taskId} đã được đánh dấu nổi bật!`,
-    );
+  const handleHighlight = async (taskId: string) => {
+    try {
+      const taskRef = firestore().collection('tasks').doc(taskId);
+      const taskDoc = await taskRef.get();
+
+      if (taskDoc.exists) {
+        const currentIsImportant = taskDoc.data()?.isImportant;
+        await taskRef.update({
+          isImportant: !currentIsImportant,
+        });
+      }
+    } catch (error) {
+      console.error('Error updating task: ', error);
+    }
   };
 
   const handleDelete = (taskId: string) => {
@@ -103,63 +129,36 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
       {
         text: 'Xóa',
         style: 'destructive',
-        onPress: () => {
-          console.log(`Deleted task with id: ${taskId}`);
+        onPress: async () => {
+          try {
+            await firestore().collection('tasks').doc(taskId).delete();
+            console.log(`Deleted task with id: ${taskId}`);
+          } catch (error) {
+            console.error('Error deleting task: ', error);
+          }
         },
       },
     ]);
   };
 
-  const renderTask = ({item}: {item: Task}) => {
+  const renderTask = ({item}: {item: TaskModel}) => {
     if (!item) return null;
 
     return (
       <Swipeable renderRightActions={() => renderRightActions(item)}>
         <View style={styles.taskItem}>
           <View style={styles.taskContent}>
-            <Text style={styles.taskTitle}>{item.title}</Text>
-            <Text style={styles.taskDate}>{formatDate(item.date || '')}</Text>
+            <Text style={styles.taskTitle}>{item.description}</Text>
+            <Text style={styles.taskDate}>
+              {DateTime.GetDate(new Date(item.startDate || ''))}
+            </Text>
           </View>
         </View>
       </Swipeable>
     );
   };
 
-  const handleSingout = async () => {
-    const token = await AsyncStorage.getItem('fcmtoken');
-    const currentUser = auth().currentUser;
-    if (currentUser) {
-      await firestore()
-        .doc(`users/${currentUser.uid}`)
-        .get()
-        .then(snap => {
-          if (snap.exists) {
-            const data: any = snap.data();
-            if (data.tokens && data.tokens.includes(token)) {
-              firestore()
-                .doc(`users/${currentUser.uid}`)
-                .update({
-                  tokens: firestore.FieldValue.arrayRemove(token),
-                })
-                .then(() => {
-                  console.log('Token removed from Firestore');
-                })
-                .catch(error => {
-                  console.error('Error removing token from Firestore:', error);
-                });
-            } else {
-              console.log('Token not found in Firestore');
-            }
-          }
-        })
-        .catch(error => {
-          console.error('Error getting document:', error);
-        });
-    }
-    await auth().signOut();
-
-    await AsyncStorage.removeItem('fcmtoken');
-  };
+ 
 
   return (
     <View style={styles.container}>
@@ -234,9 +233,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
             <TouchableOpacity
               onPress={() => setShowToday(!showToday)}
               style={styles.sectionHeaderContainer}>
-              <Text style={styles.sectionHeader}>
-                Hôm nay ({formatDate(today)})
-              </Text>
+              <Text style={styles.sectionHeader}>Hôm nay {today}</Text>
               <MaterialIcons
                 name={showToday ? 'expand-less' : 'expand-more'}
                 size={24}
@@ -253,9 +250,29 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
             )}
           </View>
         )}
+        {tasksAfterToday.length > 0 && (
+          <View style={styles.section}>
+            <TouchableOpacity
+              onPress={() => setShowBeforeToday(!showBeforeToday)}
+              style={styles.sectionHeaderContainer}>
+              <Text style={styles.sectionHeader}>Tương lai</Text>
+              <MaterialIcons
+                name={showBeforeToday ? 'expand-less' : 'expand-more'}
+                size={24}
+                color={appColors.black}
+              />
+            </TouchableOpacity>
+            {showBeforeToday && (
+              <FlatList
+                data={tasksAfterToday}
+                keyExtractor={item => item.id}
+                renderItem={renderTask}
+                contentContainerStyle={styles.flatListContent}
+              />
+            )}
+          </View>
+        )}
       </View>
-
-      <ButtonComponent type="primary" text="Log out" onPress={handleSingout} />
       <SpaceComponent height={120} />
     </View>
   );
