@@ -41,7 +41,7 @@ const initValue: TaskModel = {
   dueDate: new Date(),
   startTime: new Date(),
   remind: '',
-  repeat: 'day' || 'week' || 'month',
+  repeat: 'no' || 'day' || 'week' || 'month',
   category: '',
   isCompleted: false,
   isImportant: false,
@@ -81,10 +81,10 @@ const AddNewScreen = () => {
   const [isNewCategoryModalVisible, setNewCategoryModalVisible] =
     useState(false);
   const [selectedTime, setSelectedTime] = useState('');
-  const [selectedRepeat, setSelectedRepeat] = useState('');
+  const [selectedRepeat, setSelectedRepeat] = useState('Không');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [taskDetail, setTaskDetail] = useState<TaskModel>(initValue);
-  console.log(taskDetail);
+  console.log('selectedRepeat', selectedRepeat);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
@@ -97,44 +97,45 @@ const AddNewScreen = () => {
     user && setTaskDetail({...taskDetail, uid: user.uid});
   }, [user]);
 
-  const handleAddNewTask = async () => {
-    if (!taskDetail.description) {
-      setErrorText('Description is required');
-      return;
-    }
+ const handleAddNewTask = async () => {
+   if (!taskDetail.description) {
+     setErrorText('Description is required');
+     return;
+   }
 
-    const data = {
-      ...taskDetail,
-    };
+   const data = {
+     ...taskDetail,
+     repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat, // Set to undefined if no repeat selected
+   };
 
-    const repeat = taskDetail.repeat;
-    const startDate = taskDetail.dueDate
-      ? new Date(taskDetail.dueDate)
-      : new Date();
+   const startDate = taskDetail.dueDate
+     ? new Date(taskDetail.dueDate)
+     : new Date();
 
-    const taskRef = firestore().collection('tasks').doc();
-    const task = {
-      ...data,
-      id: taskRef.id,
-      category: taskDetail.category,
-      repeat,
-      startDate: startDate.toISOString(),
-      startTime: taskDetail.startTime?.getTime(),
-    };
-    setIsLoading(true);
-    await taskRef
-      .set(task)
-      .then(() => {
-        console.log('New task added with repeat information!!');
-        setIsLoading(false);
-        setTaskDetail(initValue);
-        setErrorText('');
-      })
-      .catch(error => {
-        console.log(error);
-        setIsLoading(false);
-      });
-  };
+   const taskRef = firestore().collection('tasks').doc();
+   const task = {
+     ...data,
+     id: taskRef.id,
+     category: taskDetail.category,
+     startDate: startDate.toISOString(),
+     startTime: taskDetail.startTime?.getTime(),
+   };
+
+   setIsLoading(true);
+   await taskRef
+     .set(task)
+     .then(() => {
+       console.log('New task added with repeat information!!');
+       setIsLoading(false);
+       setTaskDetail(initValue);
+       setErrorText('');
+     })
+     .catch(error => {
+       console.log(error);
+       setIsLoading(false);
+     });
+ };
+
 
   const handleOutsidePress = () => {
     setModalVisible(false);
@@ -357,6 +358,15 @@ const AddNewScreen = () => {
           <View style={styles.modalContainer}>
             <TouchableWithoutFeedback>
               <View style={styles.repeatModalContent}>
+                <Text
+                  style={styles.repeatOptionText}
+                  onPress={() => {
+                    handleChangeValue('repeat', 'no');
+                    setRepeatModalVisible(false);
+                    setSelectedRepeat('Không');
+                  }}>
+                  Không lặp lại
+                </Text>
                 <Text
                   style={styles.repeatOptionText}
                   onPress={() => {

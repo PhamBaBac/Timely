@@ -40,8 +40,8 @@ const CalendarScreen = () => {
   useEffect(() => {
     const filtered = tasks.filter(task => {
       const repeatedDates = calculateRepeatedDates(
-        task.startDate || "",
-        task.repeat,
+        task.startDate || '',
+        task.repeat as 'day' | 'week' | 'month',
         365,
       );
       return repeatedDates.some(date =>
@@ -55,8 +55,8 @@ const CalendarScreen = () => {
     const newMarkedDates: {[key: string]: any} = {};
     tasks.forEach(task => {
       const repeatedDates = calculateRepeatedDates(
-        task.startDate ||"",
-        task.repeat,
+        task.startDate || '',
+        task.repeat as 'day' | 'week' | 'month',
         365,
       );
       repeatedDates.forEach(date => {
