@@ -7,31 +7,52 @@ import {
   FlatList,
   SafeAreaView,
 } from 'react-native';
+import {appInfo} from '../../constants';
+import {DateTime} from '../../utils/DateTime';
 
 const Teamwork = () => {
-  const [selectedDay, setSelectedDay] = useState('23');
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
-  const weekDays = [
-    {day: 'Th 2', date: '23', isSelected: true},
-    {day: 'Th 3', date: '24'},
-    {day: 'Th 4', date: '25'},
-    {day: 'Th 5', date: '26'},
-    {day: 'Th 6', date: '27'},
-    {day: 'Th 7', date: '28', isSaturday: true},
-    {day: 'CN', date: '29', isSunday: true},
-  ];
+  const generateWeekDays = () => {
+    const current = new Date();
+    const weekDays = [];
+
+    const monday = new Date(current);
+    monday.setDate(
+      current.getDate() - current.getDay() + (current.getDay() === 0 ? -6 : 1),
+    );
+
+    for (let i = 0; i < 7; i++) {
+      const dateOffset = new Date(monday);
+      dateOffset.setDate(monday.getDate() + i);
+
+      const dayName = DateTime.GetWeekday(dateOffset.getTime());
+      const dayDate = DateTime.GetDayOfWeek(dateOffset.getTime());
+
+      weekDays.push({
+        day: dayName,
+        date: dayDate,
+        isSaturday: dateOffset.getDay() === 6,
+        isSunday: dateOffset.getDay() === 0,
+      });
+    }
+
+    return weekDays;
+  };
+
+  const weekDays = generateWeekDays();
 
   const scheduleItems = [
     {
       date: 'Th 2, 23/09',
       items: [
         {
-          title: 'aAAAAAg',
+          title: 'Lesson 1',
           details: [
-            {label: 'Tiết :', value: '7 - 9'},
-            {label: 'Nhóm :', value: '2'},
-            {label: 'Phòng :', value: 'A'},
-            {label: 'Giảng viên :', value: 'AAAAAAAAAAAAA'},
+            {label: 'Period :', value: '7 - 9'},
+            {label: 'Group :', value: '2'},
+            {label: 'Room :', value: 'A'},
+            {label: 'Instructor :', value: 'John Doe'},
           ],
         },
       ],
@@ -40,36 +61,26 @@ const Teamwork = () => {
       date: 'Th 3, 24/09',
       items: [
         {
-          title: 'AAAAAAAAAAAAA',
+          title: 'Lesson 2',
           details: [
-            {label: 'Tiết :', value: '1 - 3'},
-            {label: 'Nhóm :', value: '1'},
-            {label: 'Phòng :', value: 'A'},
-            {label: 'Giảng viên :', value: 'AAAAAAAAAAAAA'},
-          ],
-        },
-        {
-          title: 'AAAAAAAAAAAAAAAAAAAAA',
-          details: [
-            {label: 'Tiết :', value: '7 - 9'},
-            {label: 'Phòng :', value: 'A'},
-            {label: 'Giảng viên :', value: 'AAAAAAAAAAAAA'},
+            {label: 'Period :', value: '1 - 3'},
+            {label: 'Group :', value: '1'},
+            {label: 'Room :', value: 'B'},
+            {label: 'Instructor :', value: 'Jane Doe'},
           ],
         },
       ],
     },
   ];
 
+  const filteredScheduleItems = selectedDay
+    ? scheduleItems.filter(item => item.date.includes(selectedDay))
+    : scheduleItems;
+
   const renderDayItem = ({
     item,
   }: {
-    item: {
-      day: string;
-      date: string;
-      isSelected?: boolean;
-      isSaturday?: boolean;
-      isSunday?: boolean;
-    };
+    item: {day: string; date: string; isSaturday: boolean; isSunday: boolean};
   }) => (
     <TouchableOpacity
       style={[
@@ -77,7 +88,9 @@ const Teamwork = () => {
         item.date === selectedDay && styles.selectedDayButton,
         (item.isSaturday || item.isSunday) && styles.weekendDayButton,
       ]}
-      onPress={() => setSelectedDay(item.date)}>
+      onPress={() =>
+        setSelectedDay(item.date === selectedDay ? null : item.date)
+      }>
       <View style={styles.dayContent}>
         <Text
           style={[
@@ -110,34 +123,24 @@ const Teamwork = () => {
   }) => (
     <View style={styles.scheduleItem}>
       <Text style={styles.scheduleDate}>{item.date}</Text>
-      {item.items.map(
-        (
-          scheduleItem: {
-            title: string;
-            details: {label: string; value: string}[];
-          },
-          itemIndex,
-        ) => (
-          <View key={itemIndex} style={styles.scheduleItemContent}>
-            <Text style={styles.scheduleItemTitle}>{scheduleItem.title}</Text>
-            {scheduleItem.details.map(
-              (detail: {label: string; value: string}, detailIndex: number) => (
-                <View key={detailIndex} style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>{detail.label}</Text>
-                  <Text style={styles.detailValue}>{detail.value}</Text>
-                </View>
-              ),
-            )}
-          </View>
-        ),
-      )}
+      {item.items.map((scheduleItem, itemIndex) => (
+        <View key={itemIndex} style={styles.scheduleItemContent}>
+          <Text style={styles.scheduleItemTitle}>{scheduleItem.title}</Text>
+          {scheduleItem.details.map((detail, detailIndex) => (
+            <View key={detailIndex} style={styles.detailRow}>
+              <Text style={styles.detailLabel}>{detail.label}</Text>
+              <Text style={styles.detailValue}>{detail.value}</Text>
+            </View>
+          ))}
+        </View>
+      ))}
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Lịch học/ lịch thi</Text>
+        <Text style={styles.headerTitle}>Lịch học/ Lịch</Text>
       </View>
 
       <View style={styles.weekDaysWrapper}>
@@ -152,7 +155,7 @@ const Teamwork = () => {
       </View>
 
       <FlatList
-        data={scheduleItems}
+        data={filteredScheduleItems}
         renderItem={renderScheduleItem}
         keyExtractor={item => item.date}
         style={styles.scheduleContainer}
@@ -170,7 +173,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#1e88e5',
+    backgroundColor: '#8e24aa', // Thay đổi từ '#1e88e5' (xanh) sang '#8e24aa' (tím)
     padding: 16,
   },
   headerTitle: {
@@ -198,7 +201,7 @@ const styles = StyleSheet.create({
     height: 60,
   },
   selectedDayButton: {
-    backgroundColor: '#1e88e5',
+    backgroundColor: '#8e24aa',
   },
   weekendDayButton: {},
   dayContent: {
@@ -244,7 +247,7 @@ const styles = StyleSheet.create({
   scheduleDate: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1e88e5',
+    color: '#8e24aa', // Thay đổi từ '#1e88e5' (xanh) sang '#8e24aa' (tím)
     marginBottom: 8,
   },
   scheduleItemContent: {
@@ -252,7 +255,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 16,
     borderLeftWidth: 4,
-    borderLeftColor: '#4caf50',
+    borderLeftColor: '#8e24aa', // Thay đổi từ '#4caf50' (xanh lá) sang '#8e24aa' (tím)
   },
   scheduleItemTitle: {
     fontSize: 16,
