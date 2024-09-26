@@ -12,8 +12,7 @@ import {
 } from 'date-fns';
 import {appColors} from '../../constants';
 import auth from '@react-native-firebase/auth';
-import { TaskModel } from '../../models/taskModel';
-
+import {TaskModel} from '../../models/taskModel';
 
 const CalendarScreen = () => {
   const user = auth().currentUser;
@@ -40,7 +39,7 @@ const CalendarScreen = () => {
   useEffect(() => {
     const filtered = tasks.filter(task => {
       const repeatedDates = calculateRepeatedDates(
-        task.startDate || "",
+        task.startDate || '',
         task.repeat,
         365,
       );
@@ -55,7 +54,7 @@ const CalendarScreen = () => {
     const newMarkedDates: {[key: string]: any} = {};
     tasks.forEach(task => {
       const repeatedDates = calculateRepeatedDates(
-        task.startDate ||"",
+        task.startDate || '',
         task.repeat,
         365,
       );
