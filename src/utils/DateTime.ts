@@ -23,4 +23,17 @@ export class DateTime {
       appInfo.monthNames[date.getMonth()]
     } ${numberToString(date.getDate())}`;
   };
+
+
+  static GetDayOfWeek = (num: number) => {
+    const date = new Date(num);
+    return `${numberToString(date.getDate())}-${
+      appInfo.monthNames[date.getMonth()]}`;
+  };
+
+  static GetWeekday = (num: number) => {
+    const date = new Date(num);
+    return appInfo.dayNames[date.getDay()];
+  };
+
 }
