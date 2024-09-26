@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {act, useState} from 'react';
 import {
   View,
   FlatList,
@@ -10,6 +10,9 @@ import {
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {appColors} from '../constants';
 import {RowComponent, TextComponent} from '.';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
 
 const DrawerCustom = ({navigation}: any) => {
   const size = 24;
@@ -44,6 +47,7 @@ const DrawerCustom = ({navigation}: any) => {
       icon: (
         <MaterialIcons name="play-circle-outline" size={size} color={color} />
       ),
+      action: () => navigation.navigate('StartTaskScreen'),
     },
     {
       key: 'Habits',
@@ -58,6 +62,12 @@ const DrawerCustom = ({navigation}: any) => {
         setExpandedCategory(
           expandedCategory === 'Categories' ? null : 'Categories',
         ),
+    },
+    {
+      key: 'Logout',
+      title: 'Logout',
+      icon: <MaterialIcons name="logout" size={size} color={color} />,
+      action: () => handleSingout(),
     },
   ];
 
@@ -91,6 +101,41 @@ const DrawerCustom = ({navigation}: any) => {
       )}
     </>
   );
+  const handleSingout = async () => {
+    const token = await AsyncStorage.getItem('fcmtoken');
+    const currentUser = auth().currentUser;
+    if (currentUser) {
+      await firestore()
+        .doc(`users/${currentUser.uid}`)
+        .get()
+        .then(snap => {
+          if (snap.exists) {
+            const data: any = snap.data();
+            if (data.tokens && data.tokens.includes(token)) {
+              firestore()
+                .doc(`users/${currentUser.uid}`)
+                .update({
+                  tokens: firestore.FieldValue.arrayRemove(token),
+                })
+                .then(() => {
+                  console.log('Token removed from Firestore');
+                })
+                .catch(error => {
+                  console.error('Error removing token from Firestore:', error);
+                });
+            } else {
+              console.log('Token not found in Firestore');
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Error getting document:', error);
+        });
+    }
+    await auth().signOut();
+
+    await AsyncStorage.removeItem('fcmtoken');
+  };
 
   return (
     <View style={localStyles.container}>
