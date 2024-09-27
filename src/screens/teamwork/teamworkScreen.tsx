@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#8e24aa', // Thay đổi từ '#1e88e5' (xanh) sang '#8e24aa' (tím)
+    backgroundColor: '#8A2BE2', // Thay đổi từ '#1e88e5' (xanh) sang '#8e24aa' (tím)
     padding: 16,
   },
   headerTitle: {
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     height: 60,
   },
   selectedDayButton: {
-    backgroundColor: '#8e24aa',
+    backgroundColor: '#8A2BE2',
   },
   weekendDayButton: {},
   dayContent: {
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   scheduleDate: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#8e24aa', // Thay đổi từ '#1e88e5' (xanh) sang '#8e24aa' (tím)
+    color: '#8A2BE2', // Thay đổi từ '#1e88e5' (xanh) sang '#8e24aa' (tím)
     marginBottom: 8,
   },
   scheduleItemContent: {
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 16,
     borderLeftWidth: 4,
-    borderLeftColor: '#8e24aa', // Thay đổi từ '#4caf50' (xanh lá) sang '#8e24aa' (tím)
+    borderLeftColor: '#8A2BE2', // Thay đổi từ '#4caf50' (xanh lá) sang '#8e24aa' (tím)
   },
   scheduleItemTitle: {
     fontSize: 16,
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     flex: 1,
-    color: '#757575',
+    color: '#8A2BE2',
   },
   detailValue: {
     flex: 2,
