@@ -275,7 +275,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
             <TouchableOpacity
               onPress={() => setShowToday(!showToday)}
               style={styles.sectionHeaderContainer}>
-              <Text style={styles.sectionHeader}>Hôm nay {today}</Text>
+              <Text style={styles.sectionHeader}>Hôm nay </Text>
               <MaterialIcons
                 name={showToday ? 'expand-less' : 'expand-more'}
                 size={24}
