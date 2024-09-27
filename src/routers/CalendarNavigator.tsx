@@ -1,6 +1,7 @@
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import React from 'react';
 import {CalendarScreen} from '../screens';
+import TaskDetailsScreen from '../screens/TaskDetailScreen';
 
 const CalendarNavigator = () => {
   const Stack = createNativeStackNavigator();
@@ -10,8 +11,9 @@ const CalendarNavigator = () => {
         headerShown: false,
       }}>
       <Stack.Screen name="CalendarScreen" component={CalendarScreen} />
+      <Stack.Screen name="TaskDetailsScreen" component={TaskDetailsScreen} />
     </Stack.Navigator>
   );
-}
+};
 
-export default CalendarNavigator
+export default CalendarNavigator;
