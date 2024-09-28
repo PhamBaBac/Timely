@@ -33,6 +33,7 @@ import {appColors} from '../constants';
 import LoadingModal from '../modal/LoadingModal';
 import {TaskModel} from '../models/taskModel';
 import {CategoryModel} from '../models/categoryModel';
+
 const now = new Date();
 const initValue: TaskModel = {
   id: '',
@@ -47,6 +48,7 @@ const initValue: TaskModel = {
   isImportant: false,
   createdAt: Date.now(),
   updatedAt: Date.now(),
+  subtasks: [],
 };
 
 const availableIcons = [
@@ -63,6 +65,7 @@ const availableIcons = [
   'flight',
   'beach-access',
 ];
+
 const rainbowColors = [
   '#E57373',
   '#FFB74D',
@@ -72,6 +75,7 @@ const rainbowColors = [
   '#9575CD',
   '#BA68C8',
 ];
+
 const AddNewScreen = () => {
   const user = auth().currentUser;
   const [modalVisible, setModalVisible] = useState(false);
@@ -84,14 +88,14 @@ const AddNewScreen = () => {
   const [selectedRepeat, setSelectedRepeat] = useState('Không');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [taskDetail, setTaskDetail] = useState<TaskModel>(initValue);
-  console.log('selectedRepeat', selectedRepeat);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
-  const [selectedIcon, setSelectedIcon] = useState(availableIcons[0]); // Default to the first icon
+  const [selectedIcon, setSelectedIcon] = useState(availableIcons[0]);
   const [selectedColor, setSelectedColor] = useState(appColors.primary);
   const [categories, setCategories] = useState<CategoryModel[]>([]);
   const [tempCategory, setTempCategory] = useState('');
+  const [subtasks, setSubtasks] = useState<string[]>([]); // New state for subtasks
 
   useEffect(() => {
     user && setTaskDetail({...taskDetail, uid: user.uid});
@@ -106,18 +110,43 @@ const handleAddNewTask = async () => {
     ? new Date(taskDetail.dueDate)
     : new Date();
 
-  // Check if dueDate is before the current date
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Set time to 00:00:00 for comparison
+    const data = {
+      ...taskDetail,
+      subtasks, // Include subtasks in the task data
+    };
 
   if (startDate < today) {
     setErrorText('Due date cannot be in the past');
     return;
   }
-
   const data = {
     ...taskDetail,
     repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat, // Set to 'no' if no repeat selected
+    const taskRef = firestore().collection('tasks').doc();
+    const task = {
+      ...data,
+      id: taskRef.id,
+      category: taskDetail.category,
+      repeat,
+      startDate: startDate.toISOString(),
+      startTime: taskDetail.startTime?.getTime(),
+    };
+    setIsLoading(true);
+    await taskRef
+      .set(task)
+      .then(() => {
+        console.log('New task added with repeat information!!');
+        setIsLoading(false);
+        setTaskDetail(initValue);
+        setSubtasks([]); // Reset subtasks
+        setErrorText('');
+      })
+      .catch(error => {
+        console.log(error);
+        setIsLoading(false);
+      });
   };
 
   const taskRef = firestore().collection('tasks').doc();
@@ -204,50 +233,41 @@ const handleAddNewTask = async () => {
     }));
   };
 
+  const handleAddSubtask = () => {
+    setSubtasks([...subtasks, '']);
+  };
+
+  const handleSubtaskChange = (index: number, value: string) => {
+    const updatedSubtasks = [...subtasks];
+    updatedSubtasks[index] = value;
+    setSubtasks(updatedSubtasks);
+  };
+
   useEffect(() => {
     const unsubscribe = firestore()
-      .collection('categories') // Change the collection to 'categories'
+      .collection('categories')
       .where('uid', '==', user?.uid)
       .onSnapshot(snapshot => {
         const categoriesList = snapshot.docs.map(
           doc => doc.data() as CategoryModel,
-        ); // Update the type to 'Category'
-        setCategories(categoriesList); // Update the state setter to 'setCategories'
+        );
+        setCategories(categoriesList);
       });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
 
   return (
     <View style={styles.container}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          marginBottom: 20,
-        }}>
+      <View style={styles.inputContainer}>
         <TextInput
-          style={{
-            flex: 1,
-            borderBottomWidth: 1,
-            borderBottomColor: '#ccc',
-            padding: 10,
-          }}
+          style={styles.input}
           placeholder="Nhập tên công việc"
           value={taskDetail.description}
           onChangeText={val => handleChangeValue('description', val)}
         />
         <TouchableOpacity
-          style={{
-            backgroundColor: appColors.primary,
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginLeft: 10,
-          }}
+          style={styles.addButton}
           onPress={() => {
             handleAddNewTask();
             setSelectedCategory('');
@@ -255,7 +275,19 @@ const handleAddNewTask = async () => {
           <MaterialIcons name="check" size={24} color="#ffffff" />
         </TouchableOpacity>
       </View>
-      {errorText ? <Text style={{color: 'red'}}>{errorText}</Text> : null}
+      {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
+
+      {/* Subtasks Section */}
+      {subtasks.map((subtask, index) => (
+        <TextInput
+          key={index}
+          style={styles.subtaskInput}
+          placeholder={`Nhiệm vụ phụ ${index + 1}`}
+          value={subtask}
+          onChangeText={value => handleSubtaskChange(index, value)}
+        />
+      ))}
+
       <SpaceComponent height={20} />
 
       <View style={styles.optionsContainer}>
@@ -277,9 +309,13 @@ const handleAddNewTask = async () => {
           <Text style={styles.optionText}>Danh mục</Text>
           <Text style={styles.selectedCategoryText}>{selectedCategory}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.option}>
-          <Share size={24} color={appColors.primary} />
-          <Text style={styles.optionText}>Chia sẻ</Text>
+        <TouchableOpacity style={styles.option} onPress={handleAddSubtask}>
+          <MaterialIcons
+            name="playlist-add"
+            size={24}
+            color={appColors.primary}
+          />
+          <Text style={styles.optionText}>Thêm nhiệm vụ phụ</Text>
         </TouchableOpacity>
       </View>
 
@@ -493,48 +529,18 @@ const handleAddNewTask = async () => {
         onRequestClose={() => setNewCategoryModalVisible(false)}>
         <TouchableWithoutFeedback
           onPress={() => setNewCategoryModalVisible(false)}>
-          <View
-            style={{
-              flex: 1,
-              justifyContent: 'center',
-              alignItems: 'center',
-              backgroundColor: 'rgba(0,0,0,0.5)',
-            }}>
+          <View style={styles.modalContainer}>
             <TouchableWithoutFeedback>
-              <View
-                style={{
-                  width: '80%',
-                  backgroundColor: 'white',
-                  padding: 20,
-                  borderRadius: 10,
-                }}>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    marginBottom: 20,
-                  }}>
+              <View style={styles.newCategoryModalContent}>
+                <View style={styles.newCategoryInputContainer}>
                   <TextInput
-                    style={{
-                      flex: 1,
-                      borderBottomWidth: 1,
-                      borderBottomColor: '#ccc',
-                      padding: 10,
-                    }}
+                    style={styles.newCategoryInput}
                     placeholder="Nhập tên danh mục mới"
                     value={tempCategory}
                     onChangeText={val => setTempCategory(val)}
                   />
                   <TouchableOpacity
-                    style={{
-                      backgroundColor: appColors.primary,
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      marginLeft: 10,
-                    }}
+                    style={styles.newCategoryAddButton}
                     onPress={() => {
                       handleNewCategoryCreate();
                       setNewCategoryModalVisible(false);
@@ -549,26 +555,13 @@ const handleAddNewTask = async () => {
                   keyExtractor={(item, index) => index.toString()}
                   horizontal
                   renderItem={({item}) => (
-                    <View
-                      style={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: 24,
-                        backgroundColor:
-                          selectedColor === item ? item : 'transparent',
-                        margin: 5,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                      }}>
+                    <View style={styles.colorOption}>
                       <TouchableOpacity
-                        style={{
-                          width: 20,
-                          height: 20,
-                          borderRadius: 20,
-                          backgroundColor: item,
-                          borderWidth: selectedColor === item ? 2 : 0,
-                          borderColor: 'white',
-                        }}
+                        style={[
+                          styles.colorButton,
+                          {backgroundColor: item},
+                          selectedColor === item && styles.selectedColorButton,
+                        ]}
                         onPress={() => setSelectedColor(item)}
                       />
                     </View>
@@ -580,24 +573,13 @@ const handleAddNewTask = async () => {
                 <FlatList
                   data={availableIcons}
                   keyExtractor={item => item}
-                  numColumns={6} // Set the number of columns to 6
-                  key={`flatlist-${6}`} // Add a dynamic key prop
+                  numColumns={6}
                   renderItem={({item}) => (
                     <TouchableOpacity
-                      style={{
-                        width: 32,
-                        height: 32,
-                        margin: 4,
-                        padding: 4,
-                        borderRadius: 20,
-                        borderWidth: 1,
-                        borderColor:
-                          selectedIcon === item
-                            ? selectedColor
-                            : appColors.gray,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
+                      style={[
+                        styles.iconOption,
+                        selectedIcon === item && styles.selectedIconOption,
+                      ]}
                       onPress={() => setSelectedIcon(item)}>
                       <MaterialIcons
                         name={item}
@@ -640,16 +622,42 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
     padding: 16,
-    justifyContent: 'center',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   input: {
+    flex: 1,
     height: 50,
     borderColor: appColors.gray2,
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 16,
-    marginBottom: 20,
     fontSize: 16,
+  },
+  addButton: {
+    backgroundColor: appColors.primary,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 10,
+  },
+  errorText: {
+    color: 'red',
+    marginBottom: 10,
+  },
+  subtaskInput: {
+    height: 40,
+    borderColor: appColors.gray2,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    marginBottom: 10,
+    fontSize: 14,
   },
   optionsContainer: {
     flex: 1,
@@ -701,7 +709,7 @@ const styles = StyleSheet.create({
     color: appColors.primary,
   },
   selectedTimeText: {
-    marginLeft: 100,
+    marginLeft: 'auto',
     fontSize: 16,
     color: appColors.gray,
   },
@@ -718,7 +726,7 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   selectedRepeatText: {
-    marginLeft: 100,
+    marginLeft: 'auto',
     fontSize: 16,
     color: appColors.gray,
   },
@@ -738,28 +746,60 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: appColors.black,
   },
-  button: {
-    backgroundColor: appColors.primary,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginTop: 10,
+  newCategoryModalContent: {
+    width: '80%',
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    padding: 20,
   },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 16,
+  newCategoryInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  newCategoryInput: {
+    flex: 1,
+    height: 40,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+    marginRight: 10,
+  },
+  newCategoryAddButton: {
+    backgroundColor: appColors.primary,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  colorOption: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 5,
+  },
+  colorButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+  },
+  selectedColorButton: {
+    borderWidth: 2,
+    borderColor: 'white',
   },
   iconOption: {
-    flex: 1, // Make the icon option take up equal space
-    margin: 5,
-    padding: 10,
-    borderRadius: 5,
+    width: '16.66%',
+    aspectRatio: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ccc',
-    alignItems: 'center', // Center the icon horizontally
+    borderColor: 'transparent',
+    borderRadius: 8,
   },
   selectedIconOption: {
-    borderColor: 'blue',
+    borderColor: appColors.primary,
   },
 });
 

@@ -13,4 +13,5 @@ export interface TaskModel {
   isImportant: boolean;
   createdAt: number;
   updatedAt: number;
+  subtasks: string[];
 }

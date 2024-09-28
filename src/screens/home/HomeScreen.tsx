@@ -10,12 +10,11 @@ import {
   Alert,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {ButtonComponent, SpaceComponent} from '../../components';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {SpaceComponent} from '../../components';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
-import {appColors} from './../../constants/appColor';
+import {appColors} from '../../constants/appColor';
 import {TaskModel} from '../../models/taskModel';
 import {CategoryModel} from '../../models/categoryModel';
 import {DateTime} from '../../utils/DateTime';
@@ -52,9 +51,9 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
   }, []);
 
   const filters = categories.reduce<string[]>(
-    (acc, categories: any) => {
-      if (!acc.includes(categories.name)) {
-        acc.push(categories.name);
+    (acc, category: CategoryModel) => {
+      if (!acc.includes(category.name)) {
+        acc.push(category.name);
       }
       return acc;
     },
@@ -234,6 +233,26 @@ const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
     ]);
   };
 
+  const handleToggleComplete = async (taskId: string) => {
+    try {
+      const taskRef = firestore().collection('tasks').doc(taskId);
+      const taskDoc = await taskRef.get();
+
+      if (taskDoc.exists) {
+        const currentCompleted = taskDoc.data()?.isCompleted || false;
+        await taskRef.update({
+          isCompleted: !currentCompleted,
+        });
+      }
+    } catch (error) {
+      console.error('Error updating task completion status: ', error);
+    }
+  };
+
+  const handleTaskPress = (task: TaskModel) => {
+    navigation.navigate('TaskDetailScreen', {task: task});
+  };
+
   const renderTask = ({item}: {item: TaskModel}) => {
     if (!item) return null;
     const renderRightActions = (item: TaskModel) => (
@@ -260,14 +279,39 @@ const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
 
     return (
       <Swipeable renderRightActions={() => renderRightActions(item)}>
-        <View style={styles.taskItem}>
-          <View style={styles.taskContent}>
-            <Text style={styles.taskTitle}>{item.description}</Text>
-            <Text style={styles.taskDate}>
-              {DateTime.GetDate(new Date(item.startDate || ''))}
-            </Text>
+        <TouchableOpacity onPress={() => handleTaskPress(item)}>
+          <View style={styles.taskItem}>
+            <TouchableOpacity
+              style={styles.roundButton}
+              onPress={() => handleToggleComplete(item.id)}>
+              {item.isCompleted ? (
+                <MaterialIcons
+                  name="check-circle"
+                  size={24}
+                  color={appColors.primary}
+                />
+              ) : (
+                <MaterialIcons
+                  name="radio-button-unchecked"
+                  size={24}
+                  color={appColors.gray}
+                />
+              )}
+            </TouchableOpacity>
+            <View style={styles.taskContent}>
+              <Text
+                style={[
+                  styles.taskTitle,
+                  item.isCompleted && styles.completedTaskTitle,
+                ]}>
+                {item.description}
+              </Text>
+              <Text style={styles.taskDate}>
+                {DateTime.GetDate(new Date(item.startDate || ''))}
+              </Text>
+            </View>
           </View>
-        </View>
+        </TouchableOpacity>
       </Swipeable>
     );
   };
@@ -390,8 +434,6 @@ const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
   );
 };
 
-export default HomeScreen;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -468,7 +510,7 @@ const styles = StyleSheet.create({
   },
   taskItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     backgroundColor: appColors.white,
     padding: 16,
@@ -480,12 +522,20 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 2,
   },
+  roundButton: {
+    marginRight: 10,
+  },
   taskContent: {
+    flex: 1,
     flexDirection: 'column',
   },
   taskTitle: {
     fontSize: 16,
     color: appColors.black,
+  },
+  completedTaskTitle: {
+    textDecorationLine: 'line-through',
+    color: appColors.gray,
   },
   taskDate: {
     fontSize: 14,
@@ -508,3 +558,5 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 });
+
+export default HomeScreen;
