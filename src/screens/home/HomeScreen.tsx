@@ -27,7 +27,6 @@ import {
   format,
 } from 'date-fns';
 
-
 const HomeScreen = ({navigation}: {navigation: any}) => {
   const user = auth().currentUser;
   const [activeFilter, setActiveFilter] = useState('Tất cả');
@@ -65,95 +64,93 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     return task.category === activeFilter;
   });
 
- 
-useEffect(() => {
-  const unsubscribe = firestore()
-    .collection('tasks')
-    .where('uid', '==', user?.uid)
-    .onSnapshot(snapshot => {
-       console.log('Number of tasks from Firebase:', snapshot.docs.length);
-      const tasksList = snapshot.docs.map(
-        doc => ({id: doc.id, ...doc.data()} as TaskModel),
-      );
-  
-      const allTasksWithRepeats = tasksList.flatMap(task => {
-        if (task.repeat === 'no' || !task.repeat || !task.startDate) {
-          return [task]; // Nếu task có repeat là 'no' hoặc không có repeat, giữ nguyên
-        }
-
-        const repeatedDates = calculateRepeatedDates(
-          task.startDate,
-          task.repeat as 'day' | 'week' | 'month',
-          365, // Generate dates up to today
+  useEffect(() => {
+    const unsubscribe = firestore()
+      .collection('tasks')
+      .where('uid', '==', user?.uid)
+      .onSnapshot(snapshot => {
+        console.log('Number of tasks from Firebase:', snapshot.docs.length);
+        const tasksList = snapshot.docs.map(
+          doc => ({id: doc.id, ...doc.data()} as TaskModel),
         );
-        // console.log('repeatedDates for task', task.id, repeatedDates);
 
-        return repeatedDates.map(date => ({
-          ...task,
-          id: `${task.id}-${date}`,
-          startDate: date,
-        }));
+        const allTasksWithRepeats = tasksList.flatMap(task => {
+          if (task.repeat === 'no' || !task.repeat || !task.startDate) {
+            return [task]; // Nếu task có repeat là 'no' hoặc không có repeat, giữ nguyên
+          }
+
+          const repeatedDates = calculateRepeatedDates(
+            task.startDate,
+            task.repeat as 'day' | 'week' | 'month',
+            365, // Generate dates up to today
+          );
+          // console.log('repeatedDates for task', task.id, repeatedDates);
+
+          return repeatedDates.map(date => ({
+            ...task,
+            id: `${task.id}-${date}`,
+            startDate: date,
+          }));
+        });
+
+        console.log('allTasksWithRepeats', allTasksWithRepeats);
+        setTasks(allTasksWithRepeats);
       });
 
-      console.log('allTasksWithRepeats', allTasksWithRepeats);
-      setTasks(allTasksWithRepeats);
-    });
+    return () => unsubscribe();
+  }, [user]);
 
-  return () => unsubscribe();
-}, [user]);
+  const calculateRepeatedDates = (
+    startDate: string,
+    repeat: 'day' | 'week' | 'month',
+    count: number,
+  ) => {
+    const dates = [];
+    let currentDate = new Date(startDate);
 
-const calculateRepeatedDates = (
-  startDate: string,
-  repeat: 'day' | 'week' | 'month',
-  count: number,
-) => {
-  const dates = [];
-  let currentDate = new Date(startDate);
+    for (let i = 0; i < count; i++) {
+      dates.push(currentDate.toISOString());
 
-  for (let i = 0; i < count; i++) {
-    dates.push(currentDate.toISOString());
-
-    if (repeat === 'day') {
-      currentDate = addDays(currentDate, 1);
-    } else if (repeat === 'week') {
-      currentDate = addWeeks(currentDate, 1);
-    } else if (repeat === 'month') {
-      currentDate = addMonths(currentDate, 1);
+      if (repeat === 'day') {
+        currentDate = addDays(currentDate, 1);
+      } else if (repeat === 'week') {
+        currentDate = addWeeks(currentDate, 1);
+      } else if (repeat === 'month') {
+        currentDate = addMonths(currentDate, 1);
+      }
     }
-  }
 
-  return dates;
-};
+    return dates;
+  };
 
   // Get today's date in a comparable format
   const today = new Date();
-  today.setHours(0, 0, 0, 0); 
+  today.setHours(0, 0, 0, 0);
 
-const tasksBeforeToday = filteredTasks.filter(task => {
-  const taskStartDate = new Date(task.startDate || '');
-  taskStartDate.setHours(0, 0, 0, 0); // Đặt giờ của taskStartDate về 00:00:00
-  return taskStartDate < today; // Task is before today
-});
+  const tasksBeforeToday = filteredTasks.filter(task => {
+    const taskStartDate = new Date(task.startDate || '');
+    taskStartDate.setHours(0, 0, 0, 0); // Đặt giờ của taskStartDate về 00:00:00
+    return taskStartDate < today; // Task is before today
+  });
 
-// Sort tasks by start date
-const sortedTasksBeforeToday = tasksBeforeToday.sort((a, b) => {
-  const dateA = new Date(a.startDate || '').getTime();
-  const dateB = new Date(b.startDate || '').getTime();
-  return dateB - dateA;
-});
+  // Sort tasks by start date
+  const sortedTasksBeforeToday = tasksBeforeToday.sort((a, b) => {
+    const dateA = new Date(a.startDate || '').getTime();
+    const dateB = new Date(b.startDate || '').getTime();
+    return dateB - dateA;
+  });
 
-// Use a Map to keep track of the closest task for each unique description
-const uniqueTasksBeforeTodayMap = new Map<string, TaskModel>();
+  // Use a Map to keep track of the closest task for each unique description
+  const uniqueTasksBeforeTodayMap = new Map<string, TaskModel>();
 
-sortedTasksBeforeToday.forEach(task => {
-  if (!uniqueTasksBeforeTodayMap.has(task.description)) {
-    uniqueTasksBeforeTodayMap.set(task.description, task);
-  }
-});
+  sortedTasksBeforeToday.forEach(task => {
+    if (!uniqueTasksBeforeTodayMap.has(task.description)) {
+      uniqueTasksBeforeTodayMap.set(task.description, task);
+    }
+  });
 
-// Convert the Map values to an array
-const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
-
+  // Convert the Map values to an array
+  const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
 
   const tasksToday = filteredTasks.filter(task => {
     const taskStartDate = new Date(task.startDate || '');
@@ -161,33 +158,30 @@ const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
     return taskStartDate.getTime() === today.getTime();
   });
 
- const tasksAfterToday = filteredTasks.filter(task => {
-   const taskStartDate = new Date(task.startDate || '');
-   taskStartDate.setHours(0, 0, 0, 0); // Đặt giờ của taskStartDate về 00:00:00
-   return taskStartDate > today; // Task is after today
- });
+  const tasksAfterToday = filteredTasks.filter(task => {
+    const taskStartDate = new Date(task.startDate || '');
+    taskStartDate.setHours(0, 0, 0, 0); // Đặt giờ của taskStartDate về 00:00:00
+    return taskStartDate > today; // Task is after today
+  });
 
- // Sort tasks by start date
- const sortedTasks = tasksAfterToday.sort((a, b) => {
-   const dateA = new Date(a.startDate || '').getTime();
-   const dateB = new Date(b.startDate || '').getTime();
-   return dateA - dateB;
- });
+  // Sort tasks by start date
+  const sortedTasks = tasksAfterToday.sort((a, b) => {
+    const dateA = new Date(a.startDate || '').getTime();
+    const dateB = new Date(b.startDate || '').getTime();
+    return dateA - dateB;
+  });
 
- // Use a Map to keep track of the closest task for each unique description
- const uniqueTasksMap = new Map<string, TaskModel>();
+  // Use a Map to keep track of the closest task for each unique description
+  const uniqueTasksMap = new Map<string, TaskModel>();
 
- sortedTasks.forEach(task => {
-   if (!uniqueTasksMap.has(task.description)) {
-     uniqueTasksMap.set(task.description, task);
-   }
- });
+  sortedTasks.forEach(task => {
+    if (!uniqueTasksMap.has(task.description)) {
+      uniqueTasksMap.set(task.description, task);
+    }
+  });
 
- 
- const uniqueTasks = Array.from(uniqueTasksMap.values());
+  const uniqueTasks = Array.from(uniqueTasksMap.values());
 
-
-  
   const handleHighlight = async (taskId: string) => {
     try {
       const originalTaskId = taskId.split('-')[0];
@@ -277,7 +271,6 @@ const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
         </TouchableOpacity>
       </View>
     );
-
 
     return (
       <Swipeable renderRightActions={() => renderRightActions(item)}>
