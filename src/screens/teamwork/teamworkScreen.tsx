@@ -1,10 +1,7 @@
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
 import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   FlatList,
   SafeAreaView,
@@ -12,16 +9,19 @@ import {
   TextInput,
   Switch,
   Platform,
+  StyleSheet,
 } from 'react-native';
+import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {appInfo} from '../../constants';
 import {DateTime} from '../../utils/DateTime';
-import LoadingModal from './../../modal/LoadingModal';
+import LoadingModal from '../../modal/LoadingModal';
 
 interface ScheduleModel {
   id: string;
-  day: Date;
+  startDate: Date;
+  endDate: Date;
   course: string;
   period: string;
   group: string;
@@ -34,10 +34,12 @@ const Teamwork = () => {
   const user = auth().currentUser;
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [newSchedule, setNewSchedule] = useState<ScheduleModel>({
     id: '',
-    day: new Date(),
+    startDate: new Date(),
+    endDate: new Date(),
     course: '',
     period: '',
     group: '',
@@ -47,10 +49,19 @@ const Teamwork = () => {
   });
   const [schedules, setSchedules] = useState<ScheduleModel[]>([]);
   const [loading, setLoading] = useState(false);
+  const [currentWeekStart, setCurrentWeekStart] = useState(new Date());
 
   useEffect(() => {
     fetchSchedules();
+    setCurrentWeekStart(getMonday(new Date()));
   }, []);
+
+  const getMonday = (d: Date) => {
+    d = new Date(d);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(d.setDate(diff));
+  };
 
   const fetchSchedules = async () => {
     setLoading(true);
@@ -64,9 +75,14 @@ const Teamwork = () => {
         return {
           ...data,
           id: doc.id,
-          day: data.day ? data.day.toDate() : new Date(), // Convert Firestore Timestamp to Date
+          startDate: data.startDate ? data.startDate.toDate() : new Date(),
+          endDate: data.endDate ? data.endDate.toDate() : new Date(),
         } as ScheduleModel;
       });
+
+      schedulesList.sort(
+        (a, b) => a.startDate.getTime() - b.startDate.getTime(),
+      );
       setSchedules(schedulesList);
     } catch (error) {
       console.error('Error fetching schedules:', error);
@@ -75,49 +91,57 @@ const Teamwork = () => {
     }
   };
 
-  const generateWeekDays = () => {
-    const current = new Date();
+  const generateWeekDays = (startDate: Date) => {
     const weekDays = [];
-
-    const monday = new Date(current);
-    monday.setDate(
-      current.getDate() - current.getDay() + (current.getDay() === 0 ? -6 : 1),
-    );
-
     for (let i = 0; i < 7; i++) {
-      const dateOffset = new Date(monday);
-      dateOffset.setDate(monday.getDate() + i);
+      const dateOffset = new Date(startDate);
+      dateOffset.setDate(startDate.getDate() + i);
 
       const dayName = DateTime.GetWeekday(dateOffset.getTime());
-      const dayDate = DateTime.GetDayOfWeek(dateOffset.getTime());
+      const dayDate = dateOffset.toISOString().split('T')[0];
 
       weekDays.push({
         day: dayName,
         date: dayDate,
+        fullDate: dateOffset,
         isSaturday: dateOffset.getDay() === 6,
         isSunday: dateOffset.getDay() === 0,
       });
     }
-
     return weekDays;
   };
 
-  const weekDays = generateWeekDays();
+  const weekDays = generateWeekDays(currentWeekStart);
 
-  const filteredScheduleItems = selectedDay
-    ? schedules.filter(item => {
-        if (item.day instanceof Date) {
-          const itemDate = DateTime.GetDayOfWeek(item.day.getTime());
-          return itemDate === selectedDay;
-        }
-        return false;
-      })
-    : schedules;
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    const newWeekStart = new Date(currentWeekStart);
+    newWeekStart.setDate(
+      newWeekStart.getDate() + (direction === 'next' ? 7 : -7),
+    );
+    setCurrentWeekStart(newWeekStart);
+    setSelectedDay(null);
+  };
+
+  const filteredScheduleItems = schedules.filter(item => {
+    const itemStartDate = item.startDate.toISOString().split('T')[0];
+    const itemEndDate = item.endDate.toISOString().split('T')[0];
+    return selectedDay
+      ? itemStartDate <= selectedDay && itemEndDate >= selectedDay
+      : weekDays.some(
+          day => itemStartDate <= day.date && itemEndDate >= day.date,
+        );
+  });
 
   const renderDayItem = ({
     item,
   }: {
-    item: {day: string; date: string; isSaturday: boolean; isSunday: boolean};
+    item: {
+      day: string;
+      date: string;
+      fullDate: Date;
+      isSaturday: boolean;
+      isSunday: boolean;
+    };
   }) => (
     <TouchableOpacity
       style={[
@@ -143,7 +167,7 @@ const Teamwork = () => {
             item.date === selectedDay && styles.selectedDateText,
             (item.isSaturday || item.isSunday) && styles.weekendDateText,
           ]}>
-          {item.date}
+          {item.fullDate.getDate()}
         </Text>
         {item.date === selectedDay && <View style={styles.selectedDot} />}
       </View>
@@ -151,16 +175,18 @@ const Teamwork = () => {
   );
 
   const renderScheduleItem = ({item}: {item: ScheduleModel}) => (
-    <View style={styles.scheduleItem}>
+    <TouchableOpacity
+      onPress={() => handleEditSchedule(item)}
+      style={styles.scheduleItem}>
       <Text style={styles.scheduleDate}>
-        {item.day instanceof Date
-          ? item.day.toLocaleDateString('en-GB')
-          : 'Invalid Date'}
+        {`${item.startDate.toLocaleDateString(
+          'en-GB',
+        )} - ${item.endDate.toLocaleDateString('en-GB')}`}
       </Text>
       <View
         style={[
           styles.scheduleItemContent,
-          item.isExam && styles.examScheduleItemContent, // Chỉ áp dụng kiểu cho nội dung lịch thi
+          item.isExam && styles.examScheduleItemContent,
         ]}>
         <Text style={styles.scheduleItemTitle}>{item.course}</Text>
         <View style={styles.detailRow}>
@@ -180,18 +206,19 @@ const Teamwork = () => {
           <Text style={styles.detailValue}>{item.instructor}</Text>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
-  const handleAddSchedule = () => {
+  const handleEditSchedule = (schedule: ScheduleModel) => {
+    setNewSchedule(schedule);
     setModalVisible(true);
   };
 
-  const handleCloseModal = () => {
-    setModalVisible(false);
+  const handleAddSchedule = () => {
     setNewSchedule({
       id: '',
-      day: new Date(),
+      startDate: new Date(),
+      endDate: new Date(),
       course: '',
       period: '',
       group: '',
@@ -199,19 +226,25 @@ const Teamwork = () => {
       instructor: '',
       isExam: false,
     });
+    setModalVisible(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalVisible(false);
   };
 
   const handleSaveSchedule = async () => {
     setLoading(true);
     try {
-      const scheduleRef = firestore().collection('schedules').doc();
+      const scheduleRef = newSchedule.id
+        ? firestore().collection('schedules').doc(newSchedule.id)
+        : firestore().collection('schedules').doc();
       const schedule = {
         ...newSchedule,
-        id: scheduleRef.id,
         uid: user?.uid,
       };
       await scheduleRef.set(schedule);
-      console.log('New schedule added:', schedule);
+      console.log('Schedule saved/updated:', schedule);
       fetchSchedules();
     } catch (error) {
       console.error('Error saving schedule:', error);
@@ -221,10 +254,16 @@ const Teamwork = () => {
     }
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    const currentDate = selectedDate || newSchedule.day;
-    setShowDatePicker(Platform.OS === 'ios');
-    setNewSchedule({...newSchedule, day: currentDate});
+  const handleStartDateChange = (event: any, selectedDate?: Date) => {
+    const currentDate = selectedDate || newSchedule.startDate;
+    setShowStartDatePicker(Platform.OS === 'ios');
+    setNewSchedule({...newSchedule, startDate: currentDate});
+  };
+
+  const handleEndDateChange = (event: any, selectedDate?: Date) => {
+    const currentDate = selectedDate || newSchedule.endDate;
+    setShowEndDatePicker(Platform.OS === 'ios');
+    setNewSchedule({...newSchedule, endDate: currentDate});
   };
 
   return (
@@ -233,6 +272,22 @@ const Teamwork = () => {
         <Text style={styles.headerTitle}>Lịch học/ Lịch</Text>
         <TouchableOpacity onPress={handleAddSchedule} style={styles.addButton}>
           <Text style={styles.addButtonText}>+</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.weekNavigation}>
+        <TouchableOpacity
+          onPress={() => navigateWeek('prev')}
+          style={styles.navButton}>
+          <MaterialIcons name="chevron-left" size={24} color="#8A2BE2" />
+        </TouchableOpacity>
+        <Text style={styles.weekLabel}>
+          {`${weekDays[0].fullDate.toLocaleDateString()} - ${weekDays[6].fullDate.toLocaleDateString()}`}
+        </Text>
+        <TouchableOpacity
+          onPress={() => navigateWeek('next')}
+          style={styles.navButton}>
+          <MaterialIcons name="chevron-right" size={24} color="#8A2BE2" />
         </TouchableOpacity>
       </View>
 
@@ -261,20 +316,42 @@ const Teamwork = () => {
         onRequestClose={handleCloseModal}>
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
-            <Text style={styles.modalTitle}>Thêm lịch mới</Text>
+            <Text style={styles.modalTitle}>
+              {newSchedule.id ? 'Chỉnh sửa lịch học' : 'Thêm lịch học mới'}
+            </Text>
 
             <TouchableOpacity
               style={styles.datePickerButton}
-              onPress={() => setShowDatePicker(true)}>
-              <Text>{newSchedule.day.toLocaleDateString('en-GB')}</Text>
+              onPress={() => setShowStartDatePicker(true)}>
+              <Text>
+                Ngày bắt đầu:{' '}
+                {newSchedule.startDate.toLocaleDateString('en-GB')}
+              </Text>
             </TouchableOpacity>
 
-            {showDatePicker && (
+            {showStartDatePicker && (
               <DateTimePicker
-                value={newSchedule.day}
+                value={newSchedule.startDate}
                 mode="date"
                 display="default"
-                onChange={handleDateChange}
+                onChange={handleStartDateChange}
+              />
+            )}
+
+            <TouchableOpacity
+              style={styles.datePickerButton}
+              onPress={() => setShowEndDatePicker(true)}>
+              <Text>
+                Ngày kết thúc: {newSchedule.endDate.toLocaleDateString('en-GB')}
+              </Text>
+            </TouchableOpacity>
+
+            {showEndDatePicker && (
+              <DateTimePicker
+                value={newSchedule.endDate}
+                mode="date"
+                display="default"
+                onChange={handleEndDateChange}
               />
             )}
 
@@ -286,6 +363,7 @@ const Teamwork = () => {
                 setNewSchedule({...newSchedule, course: text})
               }
             />
+
             <TextInput
               style={styles.input}
               placeholder="Tiết"
@@ -294,6 +372,7 @@ const Teamwork = () => {
                 setNewSchedule({...newSchedule, period: text})
               }
             />
+
             <TextInput
               style={styles.input}
               placeholder="Nhóm"
@@ -302,6 +381,7 @@ const Teamwork = () => {
                 setNewSchedule({...newSchedule, group: text})
               }
             />
+
             <TextInput
               style={styles.input}
               placeholder="Phòng"
@@ -310,6 +390,7 @@ const Teamwork = () => {
                 setNewSchedule({...newSchedule, room: text})
               }
             />
+
             <TextInput
               style={styles.input}
               placeholder="Giảng viên"
@@ -318,8 +399,9 @@ const Teamwork = () => {
                 setNewSchedule({...newSchedule, instructor: text})
               }
             />
+
             <View style={styles.switchContainer}>
-              <Text>Lịch thi</Text>
+              <Text>Thi :</Text>
               <Switch
                 value={newSchedule.isExam}
                 onValueChange={value =>
@@ -327,6 +409,7 @@ const Teamwork = () => {
                 }
               />
             </View>
+
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.button}
@@ -378,6 +461,22 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
   },
+  weekNavigation: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'white',
+  },
+  navButton: {
+    padding: 8,
+  },
+  weekLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#8A2BE2',
+  },
   weekDaysWrapper: {
     height: 80,
     backgroundColor: 'white',
@@ -385,33 +484,33 @@ const styles = StyleSheet.create({
   },
   weekDaysContainer: {
     paddingVertical: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   dayButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 15,
-    paddingVertical: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 5,
     marginHorizontal: 2,
     borderRadius: 6,
-    height: 60,
+    height: 70,
   },
   selectedDayButton: {
     backgroundColor: '#8A2BE2',
   },
-  weekendDayButton: {},
+  weekendDayButton: {
+    // You can add specific styles for weekend days if needed
+  },
   dayContent: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   dayText: {
-    fontSize: 12,
+    fontSize: 15,
     fontWeight: 'bold',
     marginTop: 2,
   },
   dateText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     marginTop: 2,
   },
@@ -453,6 +552,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderLeftWidth: 4,
     borderLeftColor: '#8A2BE2',
+  },
+  examScheduleItemContent: {
+    borderLeftColor: 'red',
   },
   scheduleItemTitle: {
     fontSize: 16,
@@ -506,6 +608,15 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     paddingHorizontal: 10,
   },
+  datePickerButton: {
+    borderWidth: 1,
+    borderColor: 'gray',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 10,
+    width: '100%',
+    alignItems: 'center',
+  },
   switchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -533,24 +644,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     textAlign: 'center',
-  },
-  datePickerButton: {
-    borderWidth: 1,
-    borderColor: 'gray',
-    borderRadius: 5,
-    padding: 10,
-    marginBottom: 10,
-    width: '100%',
-    alignItems: 'center',
-  },
-  examText: {
-    color: 'red', // Red color for exams
-  },
-  examScheduleItem: {
-    backgroundColor: '#ffeb3b', // Màu vàng cho lịch thi
-  },
-  examScheduleItemContent: {
-    backgroundColor: '#ffeb3b', // Màu vàng cho nội dung lịch thi
   },
 });
 
