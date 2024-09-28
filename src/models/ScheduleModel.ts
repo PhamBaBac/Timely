@@ -7,4 +7,6 @@ export interface ScheduleModel {
     day: Date;
     instructor: string;
     isExam: boolean;
+    startDate: Date;
+    endDate: Date;
 }
