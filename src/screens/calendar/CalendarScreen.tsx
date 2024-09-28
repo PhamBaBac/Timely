@@ -80,7 +80,7 @@ const CalendarScreen = ({navigation}: {navigation: any}) => {
 
     // Cleanup subscription on unmount
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const filtered = tasks.filter(task => {
