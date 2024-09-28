@@ -42,7 +42,7 @@ const initValue: TaskModel = {
   dueDate: new Date(),
   startTime: new Date(),
   remind: '',
-  repeat: 'day' || 'week' || 'month',
+  repeat: 'no' || 'day' || 'week' || 'month',
   category: '',
   isCompleted: false,
   isImportant: false,
@@ -85,7 +85,7 @@ const AddNewScreen = () => {
   const [isNewCategoryModalVisible, setNewCategoryModalVisible] =
     useState(false);
   const [selectedTime, setSelectedTime] = useState('');
-  const [selectedRepeat, setSelectedRepeat] = useState('');
+  const [selectedRepeat, setSelectedRepeat] = useState('Không');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [taskDetail, setTaskDetail] = useState<TaskModel>(initValue);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -100,23 +100,30 @@ const AddNewScreen = () => {
   useEffect(() => {
     user && setTaskDetail({...taskDetail, uid: user.uid});
   }, [user]);
+const handleAddNewTask = async () => {
+  if (!taskDetail.description) {
+    setErrorText('Description is required');
+    return;
+  }
 
-  const handleAddNewTask = async () => {
-    if (!taskDetail.description) {
-      setErrorText('Description is required');
-      return;
-    }
+  const startDate = taskDetail.dueDate
+    ? new Date(taskDetail.dueDate)
+    : new Date();
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Set time to 00:00:00 for comparison
     const data = {
       ...taskDetail,
       subtasks, // Include subtasks in the task data
     };
 
-    const repeat = taskDetail.repeat;
-    const startDate = taskDetail.dueDate
-      ? new Date(taskDetail.dueDate)
-      : new Date();
-
+  if (startDate < today) {
+    setErrorText('Due date cannot be in the past');
+    return;
+  }
+  const data = {
+    ...taskDetail,
+    repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat, // Set to 'no' if no repeat selected
     const taskRef = firestore().collection('tasks').doc();
     const task = {
       ...data,
@@ -141,6 +148,31 @@ const AddNewScreen = () => {
         setIsLoading(false);
       });
   };
+
+  const taskRef = firestore().collection('tasks').doc();
+  const task = {
+    ...data,
+    id: taskRef.id,
+    category: taskDetail.category,
+    startDate: startDate.toISOString(),
+    startTime: taskDetail.startTime?.getTime(),
+  };
+
+  setIsLoading(true);
+  await taskRef
+    .set(task)
+    .then(() => {
+      console.log('New task added with repeat information!!');
+      setIsLoading(false);
+      setTaskDetail(initValue);
+      setErrorText('');
+    })
+    .catch(error => {
+      console.log(error);
+      setIsLoading(false);
+    });
+};
+
 
   const handleOutsidePress = () => {
     setModalVisible(false);
@@ -370,6 +402,15 @@ const AddNewScreen = () => {
           <View style={styles.modalContainer}>
             <TouchableWithoutFeedback>
               <View style={styles.repeatModalContent}>
+                <Text
+                  style={styles.repeatOptionText}
+                  onPress={() => {
+                    handleChangeValue('repeat', 'no');
+                    setRepeatModalVisible(false);
+                    setSelectedRepeat('Không');
+                  }}>
+                  Không lặp lại
+                </Text>
                 <Text
                   style={styles.repeatOptionText}
                   onPress={() => {

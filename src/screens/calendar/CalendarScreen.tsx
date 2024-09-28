@@ -86,6 +86,7 @@ const CalendarScreen = () => {
     const filtered = tasks.filter(task => {
       const repeatedDates = calculateRepeatedDates(
         task.startDate || '',
+        task.repeat as 'day' | 'week' | 'month',
         task.repeat,
         365,
       );
@@ -101,6 +102,7 @@ const CalendarScreen = () => {
     tasks.forEach(task => {
       const repeatedDates = calculateRepeatedDates(
         task.startDate || '',
+        task.repeat as 'day' | 'week' | 'month',
         task.repeat,
         365,
       );
