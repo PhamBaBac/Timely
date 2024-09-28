@@ -96,45 +96,53 @@ const AddNewScreen = () => {
   useEffect(() => {
     user && setTaskDetail({...taskDetail, uid: user.uid});
   }, [user]);
+const handleAddNewTask = async () => {
+  if (!taskDetail.description) {
+    setErrorText('Description is required');
+    return;
+  }
 
- const handleAddNewTask = async () => {
-   if (!taskDetail.description) {
-     setErrorText('Description is required');
-     return;
-   }
+  const startDate = taskDetail.dueDate
+    ? new Date(taskDetail.dueDate)
+    : new Date();
 
-   const data = {
-     ...taskDetail,
-     repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat, // Set to undefined if no repeat selected
-   };
+  // Check if dueDate is before the current date
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Set time to 00:00:00 for comparison
 
-   const startDate = taskDetail.dueDate
-     ? new Date(taskDetail.dueDate)
-     : new Date();
+  if (startDate < today) {
+    setErrorText('Due date cannot be in the past');
+    return;
+  }
 
-   const taskRef = firestore().collection('tasks').doc();
-   const task = {
-     ...data,
-     id: taskRef.id,
-     category: taskDetail.category,
-     startDate: startDate.toISOString(),
-     startTime: taskDetail.startTime?.getTime(),
-   };
+  const data = {
+    ...taskDetail,
+    repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat, // Set to 'no' if no repeat selected
+  };
 
-   setIsLoading(true);
-   await taskRef
-     .set(task)
-     .then(() => {
-       console.log('New task added with repeat information!!');
-       setIsLoading(false);
-       setTaskDetail(initValue);
-       setErrorText('');
-     })
-     .catch(error => {
-       console.log(error);
-       setIsLoading(false);
-     });
- };
+  const taskRef = firestore().collection('tasks').doc();
+  const task = {
+    ...data,
+    id: taskRef.id,
+    category: taskDetail.category,
+    startDate: startDate.toISOString(),
+    startTime: taskDetail.startTime?.getTime(),
+  };
+
+  setIsLoading(true);
+  await taskRef
+    .set(task)
+    .then(() => {
+      console.log('New task added with repeat information!!');
+      setIsLoading(false);
+      setTaskDetail(initValue);
+      setErrorText('');
+    })
+    .catch(error => {
+      console.log(error);
+      setIsLoading(false);
+    });
+};
 
 
   const handleOutsidePress = () => {
