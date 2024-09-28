@@ -59,9 +59,9 @@ LocaleConfig.locales['vi'] = {
 };
 LocaleConfig.defaultLocale = 'vi';
 
-const CalendarScreen = () => {
+const CalendarScreen = ({navigation}: {navigation: any}) => {
   const user = auth().currentUser;
-  const navigation = useNavigation();
+
   const [selected, setSelected] = useState(
     new Date().toISOString().split('T')[0],
   );
