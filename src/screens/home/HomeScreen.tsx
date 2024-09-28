@@ -65,63 +65,65 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     return task.category === activeFilter;
   });
 
-  useEffect(() => {
-    const unsubscribe = firestore()
-      .collection('tasks')
-      .where('uid', '==', user?.uid)
-      .onSnapshot(snapshot => {
-        const tasksList = snapshot.docs.map(
-          doc => ({id: doc.id, ...doc.data()} as TaskModel),
+ 
+useEffect(() => {
+  const unsubscribe = firestore()
+    .collection('tasks')
+    .where('uid', '==', user?.uid)
+    .onSnapshot(snapshot => {
+       console.log('Number of tasks from Firebase:', snapshot.docs.length);
+      const tasksList = snapshot.docs.map(
+        doc => ({id: doc.id, ...doc.data()} as TaskModel),
+      );
+  
+      const allTasksWithRepeats = tasksList.flatMap(task => {
+        if (task.repeat === 'no' || !task.repeat || !task.startDate) {
+          return [task]; // Nếu task có repeat là 'no' hoặc không có repeat, giữ nguyên
+        }
+
+        const repeatedDates = calculateRepeatedDates(
+          task.startDate,
+          task.repeat as 'day' | 'week' | 'month',
+          365, // Generate dates up to today
         );
+        // console.log('repeatedDates for task', task.id, repeatedDates);
 
-        // Lọc ra các task có repeat và tạo các task với ngày lặp lại
-        const allTasksWithRepeats = tasksList.flatMap(task => {
-          if (task.repeat === 'no' || !task.repeat || !task.startDate) {
-            return [task]; // Nếu task có repeat là 'no' hoặc không có repeat, giữ nguyên
-          }
-
-          const repeatedDates = calculateRepeatedDates(
-            task.startDate,
-            task.repeat as 'day' | 'week' | 'month',
-            365, // Generate dates up to today
-          );
-          console.log('repeatedDates', repeatedDates);
-          return repeatedDates.map(date => ({
-            ...task,
-            id: `${task.id}-${date}`,
-            startDate: date, 
-          }));
-        });
-        console.log('allTasksWithRepeats', allTasksWithRepeats);
-
-        setTasks(allTasksWithRepeats);
+        return repeatedDates.map(date => ({
+          ...task,
+          id: `${task.id}-${date}`,
+          startDate: date,
+        }));
       });
 
-    return () => unsubscribe();
-  }, [user]);
+      console.log('allTasksWithRepeats', allTasksWithRepeats);
+      setTasks(allTasksWithRepeats);
+    });
 
-   const calculateRepeatedDates = (
-     startDate: string,
-     repeat: 'day' | 'week' | 'month',
-     count: number,
-   ) => {
-     const dates = [];
-     let currentDate = new Date(startDate);
+  return () => unsubscribe();
+}, [user]);
 
-     for (let i = 0; i < count; i++) {
-       dates.push(currentDate.toISOString());
+const calculateRepeatedDates = (
+  startDate: string,
+  repeat: 'day' | 'week' | 'month',
+  count: number,
+) => {
+  const dates = [];
+  let currentDate = new Date(startDate);
 
-       if (repeat === 'day') {
-         currentDate = addDays(currentDate, 1);
-       } else if (repeat === 'week') {
-         currentDate = addWeeks(currentDate, 1);
-       } else if (repeat === 'month') {
-         currentDate = addMonths(currentDate, 1);
-       }
-     }
+  for (let i = 0; i < count; i++) {
+    dates.push(currentDate.toISOString());
 
-     return dates;
-   };
+    if (repeat === 'day') {
+      currentDate = addDays(currentDate, 1);
+    } else if (repeat === 'week') {
+      currentDate = addWeeks(currentDate, 1);
+    } else if (repeat === 'month') {
+      currentDate = addMonths(currentDate, 1);
+    }
+  }
+
+  return dates;
+};
 
   // Get today's date in a comparable format
   const today = new Date();
