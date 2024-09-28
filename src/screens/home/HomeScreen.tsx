@@ -84,14 +84,16 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
           const repeatedDates = calculateRepeatedDates(
             task.startDate,
             task.repeat as 'day' | 'week' | 'month',
-            new Date(), // Generate dates up to today
+            365, // Generate dates up to today
           );
+          console.log('repeatedDates', repeatedDates);
           return repeatedDates.map(date => ({
             ...task,
             id: `${task.id}-${date}`,
             startDate: date, 
           }));
         });
+        console.log('allTasksWithRepeats', allTasksWithRepeats);
 
         setTasks(allTasksWithRepeats);
       });
@@ -99,27 +101,28 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     return () => unsubscribe();
   }, [user]);
 
-  const calculateRepeatedDates = (
-    startDate: string,
-    repeat: 'day' | 'week' | 'month',
-    endDate: Date,
-  ) => {
-    const dates = [];
-    let currentDate = new Date(startDate);
+   const calculateRepeatedDates = (
+     startDate: string,
+     repeat: 'day' | 'week' | 'month',
+     count: number,
+   ) => {
+     const dates = [];
+     let currentDate = new Date(startDate);
 
-    while (currentDate <= endDate) {
-      dates.push(currentDate.toISOString());
+     for (let i = 0; i < count; i++) {
+       dates.push(currentDate.toISOString());
 
-      if (repeat === 'day') {
-        currentDate = addDays(currentDate, 1);
-      } else if (repeat === 'week') {
-        currentDate = addWeeks(currentDate, 1);
-      } else if (repeat === 'month') {
-        currentDate = addMonths(currentDate, 1);
-      }
-    }
-    return dates;
-  };
+       if (repeat === 'day') {
+         currentDate = addDays(currentDate, 1);
+       } else if (repeat === 'week') {
+         currentDate = addWeeks(currentDate, 1);
+       } else if (repeat === 'month') {
+         currentDate = addMonths(currentDate, 1);
+       }
+     }
+
+     return dates;
+   };
 
   // Get today's date in a comparable format
   const today = new Date();
@@ -135,7 +138,7 @@ const tasksBeforeToday = filteredTasks.filter(task => {
 const sortedTasksBeforeToday = tasksBeforeToday.sort((a, b) => {
   const dateA = new Date(a.startDate || '').getTime();
   const dateB = new Date(b.startDate || '').getTime();
-  return dateA - dateB;
+  return dateB - dateA;
 });
 
 // Use a Map to keep track of the closest task for each unique description
@@ -183,27 +186,7 @@ const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
  const uniqueTasks = Array.from(uniqueTasksMap.values());
 
 
-  const renderRightActions = (item: TaskModel) => (
-    <View style={styles.swipeActions}>
-      <TouchableOpacity
-        style={styles.swipeActionButton}
-        onPress={() => handleHighlight(item.id)}>
-        <MaterialIcons
-          name="star"
-          size={24}
-          color={item.isImportant ? appColors.yellow : appColors.gray}
-        />
-        <Text style={styles.actionText}>Nổi bật</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.swipeActionButton}
-        onPress={() => handleDelete(item.id)}>
-        <MaterialIcons name="delete" size={24} color={appColors.red} />
-        <Text style={styles.actionText}>Xóa</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
+  
   const handleHighlight = async (taskId: string) => {
     try {
       const originalTaskId = taskId.split('-')[0];
@@ -238,8 +221,11 @@ const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
             const originalTaskId = taskId.split('-')[0];
             const taskRef = firestore().collection('tasks').doc(originalTaskId);
             await taskRef.delete();
-            // Remove the virtual task from the state
-            setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+
+            // Remove the task from the state
+            setTasks(prevTasks =>
+              prevTasks.filter(task => !task.id.startsWith(originalTaskId)),
+            );
           } catch (error) {
             console.error('Error deleting task: ', error);
           }
@@ -250,6 +236,27 @@ const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
 
   const renderTask = ({item}: {item: TaskModel}) => {
     if (!item) return null;
+    const renderRightActions = (item: TaskModel) => (
+      <View style={styles.swipeActions}>
+        <TouchableOpacity
+          style={styles.swipeActionButton}
+          onPress={() => handleHighlight(item.id)}>
+          <MaterialIcons
+            name="star"
+            size={24}
+            color={item.isImportant ? appColors.yellow : appColors.gray}
+          />
+          <Text style={styles.actionText}>Nổi bật</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.swipeActionButton}
+          onPress={() => handleDelete(item.id)}>
+          <MaterialIcons name="delete" size={24} color={appColors.red} />
+          <Text style={styles.actionText}>Xóa</Text>
+        </TouchableOpacity>
+      </View>
+    );
+
 
     return (
       <Swipeable renderRightActions={() => renderRightActions(item)}>
