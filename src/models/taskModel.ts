@@ -7,7 +7,7 @@ export interface TaskModel {
   startDate?: string;
   startTime?: Date;
   remind: string;
-  repeat: "day" | "week" | "month";
+  repeat: "no" | "day" | "week" | "month";
   category: string;
   isCompleted: boolean;
   isImportant: boolean;

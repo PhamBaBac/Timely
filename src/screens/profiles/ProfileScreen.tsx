@@ -20,7 +20,7 @@ const ProfileScreen = () => {
           <Text style={styles.statLabel}>Nhiệm vụ đã hoàn thành</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={styles.statNumber}>1</Text>
+          <Text style={styles.statNumber}>0</Text>
           <Text style={styles.statLabel}>nhiệm vụ chưa hoàn thành</Text>
         </View>
       </View>
