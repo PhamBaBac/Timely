@@ -59,9 +59,8 @@ LocaleConfig.locales['vi'] = {
 };
 LocaleConfig.defaultLocale = 'vi';
 
-const CalendarScreen = ({navigation}: {navigation: any}) => {
+const CalendarScreen = ({navigation}: any) => {
   const user = auth().currentUser;
-
   const [selected, setSelected] = useState(
     new Date().toISOString().split('T')[0],
   );
@@ -86,7 +85,7 @@ const CalendarScreen = ({navigation}: {navigation: any}) => {
     const filtered = tasks.filter(task => {
       const repeatedDates = calculateRepeatedDates(
         task.startDate || '',
-        task.repeat,
+        task.repeat as 'day' | 'week' | 'month',
         365,
       );
       return repeatedDates.some(date =>
@@ -101,7 +100,7 @@ const CalendarScreen = ({navigation}: {navigation: any}) => {
     tasks.forEach(task => {
       const repeatedDates = calculateRepeatedDates(
         task.startDate || '',
-        task.repeat,
+        task.repeat as 'day' | 'week' | 'month',
         365,
       );
       repeatedDates.forEach(date => {

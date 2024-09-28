@@ -1,4 +1,6 @@
-import React, {useState} from 'react';
+import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -6,12 +8,72 @@ import {
   TouchableOpacity,
   FlatList,
   SafeAreaView,
+  Modal,
+  TextInput,
+  Switch,
+  Platform,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {appInfo} from '../../constants';
 import {DateTime} from '../../utils/DateTime';
+import LoadingModal from './../../modal/LoadingModal';
+
+interface ScheduleModel {
+  id: string;
+  day: Date;
+  course: string;
+  period: string;
+  group: string;
+  room: string;
+  instructor: string;
+  isExam: boolean;
+}
 
 const Teamwork = () => {
+  const user = auth().currentUser;
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [newSchedule, setNewSchedule] = useState<ScheduleModel>({
+    id: '',
+    day: new Date(),
+    course: '',
+    period: '',
+    group: '',
+    room: '',
+    instructor: '',
+    isExam: false,
+  });
+  const [schedules, setSchedules] = useState<ScheduleModel[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchSchedules();
+  }, []);
+
+  const fetchSchedules = async () => {
+    setLoading(true);
+    try {
+      const snapshot = await firestore()
+        .collection('schedules')
+        .where('uid', '==', user?.uid)
+        .get();
+      const schedulesList = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          ...data,
+          id: doc.id,
+          day: data.day ? data.day.toDate() : new Date(), // Convert Firestore Timestamp to Date
+        } as ScheduleModel;
+      });
+      setSchedules(schedulesList);
+    } catch (error) {
+      console.error('Error fetching schedules:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const generateWeekDays = () => {
     const current = new Date();
@@ -42,40 +104,15 @@ const Teamwork = () => {
 
   const weekDays = generateWeekDays();
 
-  const scheduleItems = [
-    {
-      date: 'Th 2, 23/09',
-      items: [
-        {
-          title: 'Lesson 1',
-          details: [
-            {label: 'Period :', value: '7 - 9'},
-            {label: 'Group :', value: '2'},
-            {label: 'Room :', value: 'A'},
-            {label: 'Instructor :', value: 'John Doe'},
-          ],
-        },
-      ],
-    },
-    {
-      date: 'Th 3, 24/09',
-      items: [
-        {
-          title: 'Lesson 2',
-          details: [
-            {label: 'Period :', value: '1 - 3'},
-            {label: 'Group :', value: '1'},
-            {label: 'Room :', value: 'B'},
-            {label: 'Instructor :', value: 'Jane Doe'},
-          ],
-        },
-      ],
-    },
-  ];
-
   const filteredScheduleItems = selectedDay
-    ? scheduleItems.filter(item => item.date.includes(selectedDay))
-    : scheduleItems;
+    ? schedules.filter(item => {
+        if (item.day instanceof Date) {
+          const itemDate = DateTime.GetDayOfWeek(item.day.getTime());
+          return itemDate === selectedDay;
+        }
+        return false;
+      })
+    : schedules;
 
   const renderDayItem = ({
     item,
@@ -113,34 +150,90 @@ const Teamwork = () => {
     </TouchableOpacity>
   );
 
-  const renderScheduleItem = ({
-    item,
-  }: {
-    item: {
-      date: string;
-      items: {title: string; details: {label: string; value: string}[]}[];
-    };
-  }) => (
+  const renderScheduleItem = ({item}: {item: ScheduleModel}) => (
     <View style={styles.scheduleItem}>
-      <Text style={styles.scheduleDate}>{item.date}</Text>
-      {item.items.map((scheduleItem, itemIndex) => (
-        <View key={itemIndex} style={styles.scheduleItemContent}>
-          <Text style={styles.scheduleItemTitle}>{scheduleItem.title}</Text>
-          {scheduleItem.details.map((detail, detailIndex) => (
-            <View key={detailIndex} style={styles.detailRow}>
-              <Text style={styles.detailLabel}>{detail.label}</Text>
-              <Text style={styles.detailValue}>{detail.value}</Text>
-            </View>
-          ))}
+      <Text style={styles.scheduleDate}>
+        {item.day instanceof Date
+          ? item.day.toLocaleDateString('en-GB')
+          : 'Invalid Date'}
+      </Text>
+      <View
+        style={[
+          styles.scheduleItemContent,
+          item.isExam && styles.examScheduleItemContent, // Chỉ áp dụng kiểu cho nội dung lịch thi
+        ]}>
+        <Text style={styles.scheduleItemTitle}>{item.course}</Text>
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Tiết :</Text>
+          <Text style={styles.detailValue}>{item.period}</Text>
         </View>
-      ))}
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Nhóm :</Text>
+          <Text style={styles.detailValue}>{item.group}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Phòng :</Text>
+          <Text style={styles.detailValue}>{item.room}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Giảng viên :</Text>
+          <Text style={styles.detailValue}>{item.instructor}</Text>
+        </View>
+      </View>
     </View>
   );
+
+  const handleAddSchedule = () => {
+    setModalVisible(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalVisible(false);
+    setNewSchedule({
+      id: '',
+      day: new Date(),
+      course: '',
+      period: '',
+      group: '',
+      room: '',
+      instructor: '',
+      isExam: false,
+    });
+  };
+
+  const handleSaveSchedule = async () => {
+    setLoading(true);
+    try {
+      const scheduleRef = firestore().collection('schedules').doc();
+      const schedule = {
+        ...newSchedule,
+        id: scheduleRef.id,
+        uid: user?.uid,
+      };
+      await scheduleRef.set(schedule);
+      console.log('New schedule added:', schedule);
+      fetchSchedules();
+    } catch (error) {
+      console.error('Error saving schedule:', error);
+    } finally {
+      setLoading(false);
+      handleCloseModal();
+    }
+  };
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    const currentDate = selectedDate || newSchedule.day;
+    setShowDatePicker(Platform.OS === 'ios');
+    setNewSchedule({...newSchedule, day: currentDate});
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Lịch học/ Lịch</Text>
+        <TouchableOpacity onPress={handleAddSchedule} style={styles.addButton}>
+          <Text style={styles.addButtonText}>+</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.weekDaysWrapper}>
@@ -157,9 +250,100 @@ const Teamwork = () => {
       <FlatList
         data={filteredScheduleItems}
         renderItem={renderScheduleItem}
-        keyExtractor={item => item.date}
+        keyExtractor={item => item.id}
         style={styles.scheduleContainer}
       />
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={handleCloseModal}>
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalTitle}>Thêm lịch mới</Text>
+
+            <TouchableOpacity
+              style={styles.datePickerButton}
+              onPress={() => setShowDatePicker(true)}>
+              <Text>{newSchedule.day.toLocaleDateString('en-GB')}</Text>
+            </TouchableOpacity>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={newSchedule.day}
+                mode="date"
+                display="default"
+                onChange={handleDateChange}
+              />
+            )}
+
+            <TextInput
+              style={styles.input}
+              placeholder="Môn học"
+              value={newSchedule.course}
+              onChangeText={text =>
+                setNewSchedule({...newSchedule, course: text})
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Tiết"
+              value={newSchedule.period}
+              onChangeText={text =>
+                setNewSchedule({...newSchedule, period: text})
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Nhóm"
+              value={newSchedule.group}
+              onChangeText={text =>
+                setNewSchedule({...newSchedule, group: text})
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Phòng"
+              value={newSchedule.room}
+              onChangeText={text =>
+                setNewSchedule({...newSchedule, room: text})
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Giảng viên"
+              value={newSchedule.instructor}
+              onChangeText={text =>
+                setNewSchedule({...newSchedule, instructor: text})
+              }
+            />
+            <View style={styles.switchContainer}>
+              <Text>Lịch thi</Text>
+              <Switch
+                value={newSchedule.isExam}
+                onValueChange={value =>
+                  setNewSchedule({...newSchedule, isExam: value})
+                }
+              />
+            </View>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.button}
+                onPress={handleCloseModal}>
+                <Text style={styles.buttonText}>Hủy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.saveButton]}
+                onPress={handleSaveSchedule}>
+                <Text style={styles.buttonText}>Lưu</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {loading && <LoadingModal visible={loading} />}
     </SafeAreaView>
   );
 };
@@ -173,12 +357,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#8A2BE2', // Thay đổi từ '#1e88e5' (xanh) sang '#8e24aa' (tím)
+    backgroundColor: '#8A2BE2',
     padding: 16,
   },
   headerTitle: {
     color: 'white',
     fontSize: 18,
+    fontWeight: 'bold',
+  },
+  addButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addButtonText: {
+    color: '#8A2BE2',
+    fontSize: 24,
     fontWeight: 'bold',
   },
   weekDaysWrapper: {
@@ -247,7 +444,7 @@ const styles = StyleSheet.create({
   scheduleDate: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#8A2BE2', // Thay đổi từ '#1e88e5' (xanh) sang '#8e24aa' (tím)
+    color: '#8A2BE2',
     marginBottom: 8,
   },
   scheduleItemContent: {
@@ -255,7 +452,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 16,
     borderLeftWidth: 4,
-    borderLeftColor: '#8A2BE2', // Thay đổi từ '#4caf50' (xanh lá) sang '#8e24aa' (tím)
+    borderLeftColor: '#8A2BE2',
   },
   scheduleItemTitle: {
     fontSize: 16,
@@ -273,6 +470,87 @@ const styles = StyleSheet.create({
   detailValue: {
     flex: 2,
     fontWeight: '500',
+  },
+  centeredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalView: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 35,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    width: '80%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+  input: {
+    height: 40,
+    borderColor: 'gray',
+    borderWidth: 1,
+    borderRadius: 5,
+    width: '100%',
+    marginBottom: 10,
+    paddingHorizontal: 10,
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  button: {
+    borderRadius: 5,
+    padding: 10,
+    elevation: 2,
+    backgroundColor: '#2196F3',
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  saveButton: {
+    backgroundColor: '#4CAF50',
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  datePickerButton: {
+    borderWidth: 1,
+    borderColor: 'gray',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 10,
+    width: '100%',
+    alignItems: 'center',
+  },
+  examText: {
+    color: 'red', // Red color for exams
+  },
+  examScheduleItem: {
+    backgroundColor: '#ffeb3b', // Màu vàng cho lịch thi
+  },
+  examScheduleItemContent: {
+    backgroundColor: '#ffeb3b', // Màu vàng cho nội dung lịch thi
   },
 });
 
