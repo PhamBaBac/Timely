@@ -95,61 +95,63 @@ const AddNewScreen = () => {
   const [selectedColor, setSelectedColor] = useState(appColors.primary);
   const [categories, setCategories] = useState<CategoryModel[]>([]);
   const [tempCategory, setTempCategory] = useState('');
-  const [subtasks, setSubtasks] = useState<string[]>([]); // New state for subtasks
+  const [subtasks, setSubtasks] = useState<
+    {description: string; isCompleted: boolean}[]
+  >([]); // Updated state for subtasks
 
   useEffect(() => {
     user && setTaskDetail({...taskDetail, uid: user.uid});
   }, [user]);
-const handleAddNewTask = async () => {
-  if (!taskDetail.description) {
-    setErrorText('Description is required');
-    return;
-  }
 
-  const startDate = taskDetail.dueDate
-    ? new Date(taskDetail.dueDate)
-    : new Date();
+  const handleAddNewTask = async () => {
+    if (!taskDetail.description) {
+      setErrorText('Description is required');
+      return;
+    }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // Set time to 00:00:00 for comparison
+    const startDate = taskDetail.dueDate
+      ? new Date(taskDetail.dueDate)
+      : new Date();
 
-  if (startDate < today) {
-    setErrorText('Due date cannot be in the past');
-    return;
-  }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set time to 00:00:00 for comparison
 
-  const data = {
-    ...taskDetail,
-    uid: user?.uid, // Ensure uid is included
-    subtasks, // Include subtasks in the task data
-    repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat, // Set to 'no' if no repeat selected
+    if (startDate < today) {
+      setErrorText('Due date cannot be in the past');
+      return;
+    }
+
+    const data = {
+      ...taskDetail,
+      uid: user?.uid, // Ensure uid is included
+      subtasks, // Include subtasks in the task data
+      repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat, // Set to 'no' if no repeat selected
+    };
+
+    const taskRef = firestore().collection('tasks').doc();
+    const task = {
+      ...data,
+      id: taskRef.id,
+      category: taskDetail.category,
+      startDate: startDate.toISOString(),
+      startTime: taskDetail.startTime?.getTime(),
+    };
+
+    setIsLoading(true);
+    await taskRef
+      .set(task)
+      .then(() => {
+        console.log('New task added with repeat information!!');
+        setIsLoading(false);
+        setTaskDetail(initValue);
+        setSubtasks([]); // Reset subtasks
+        setErrorText('');
+      })
+      .catch(error => {
+        console.log(error);
+        setIsLoading(false);
+      });
   };
-
-  const taskRef = firestore().collection('tasks').doc();
-  const task = {
-    ...data,
-    id: taskRef.id,
-    category: taskDetail.category,
-    startDate: startDate.toISOString(),
-    startTime: taskDetail.startTime?.getTime(),
-  };
-
-  setIsLoading(true);
-  await taskRef
-    .set(task)
-    .then(() => {
-      console.log('New task added with repeat information!!');
-      setIsLoading(false);
-      setTaskDetail(initValue);
-      setSubtasks([]); // Reset subtasks
-      setErrorText('');
-    })
-    .catch(error => {
-      console.log(error);
-      setIsLoading(false);
-    });
-};
-
 
   const handleOutsidePress = () => {
     setModalVisible(false);
@@ -211,12 +213,17 @@ const handleAddNewTask = async () => {
   };
 
   const handleAddSubtask = () => {
-    setSubtasks([...subtasks, '']);
+    const hasEmptySubtask = subtasks.some(
+      subtask => subtask.description === '' && subtask.isCompleted === false,
+    );
+    if (!hasEmptySubtask) {
+      setSubtasks([...subtasks, {description: '', isCompleted: false}]);
+    }
   };
 
   const handleSubtaskChange = (index: number, value: string) => {
     const updatedSubtasks = [...subtasks];
-    updatedSubtasks[index] = value;
+    updatedSubtasks[index].description = value;
     setSubtasks(updatedSubtasks);
   };
 
@@ -260,7 +267,7 @@ const handleAddNewTask = async () => {
           key={index}
           style={styles.subtaskInput}
           placeholder={`Nhiệm vụ phụ ${index + 1}`}
-          value={subtask}
+          value={subtask.description}
           onChangeText={value => handleSubtaskChange(index, value)}
         />
       ))}
