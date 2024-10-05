@@ -29,13 +29,13 @@ const TabNavigator = () => {
           color = focused ? appColors.primary : appColors.gray4;
           size = 23;
           switch (route.name) {
-            case 'Nhiệm vụ':
+            case 'Home':
               icon = <TaskSquare variant="Bold" size={size} color={color} />;
               break;
-            case 'Lịch':
+            case 'Nhiệm vụ':
               icon = <Calendar variant="Bold" size={size} color={color} />;
               break;
-            case 'Nhóm':
+            case 'Lịch học':
               icon = (
                 <MaterialIcons name="group-work" color={color} size={size} />
               );
@@ -81,10 +81,10 @@ const TabNavigator = () => {
           );
         },
       })}>
-      <Tab.Screen name="Nhiệm vụ" component={TaskPersonalNavigator} />
-      <Tab.Screen name="Lịch" component={CalendarNavigator} />
+      <Tab.Screen name="Home" component={TaskPersonalNavigator} />
+      <Tab.Screen name="Nhiệm vụ" component={CalendarNavigator} />
       <Tab.Screen name="Add" component={AddNewScreen} />
-      <Tab.Screen name="Nhóm" component={TeamworkNavigator} />
+      <Tab.Screen name="Lịch học" component={TeamworkNavigator} />
       <Tab.Screen name="Của tôi" component={ProfileNavigator} />
     </Tab.Navigator>
   );

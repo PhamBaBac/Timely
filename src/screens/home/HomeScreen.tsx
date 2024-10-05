@@ -1,32 +1,24 @@
-import React, {useEffect, useState} from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  StatusBar,
-  Alert,
-} from 'react-native';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {SpaceComponent} from '../../components';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
-import {appColors} from '../../constants/appColor';
-import {TaskModel} from '../../models/taskModel';
-import {CategoryModel} from '../../models/categoryModel';
-import {DateTime} from '../../utils/DateTime';
+import {addDays, addMonths, addWeeks} from 'date-fns';
+import React, {useEffect, useState} from 'react';
 import {
-  isSameDay,
-  parseISO,
-  addDays,
-  addWeeks,
-  addMonths,
-  format,
-} from 'date-fns';
-
+  Alert,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import {SpaceComponent} from '../../components';
+import {appColors} from '../../constants/appColor';
+import {CategoryModel} from '../../models/categoryModel';
+import {TaskModel} from '../../models/taskModel';
+import {DateTime} from '../../utils/DateTime';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const HomeScreen = ({navigation}: {navigation: any}) => {
   const user = auth().currentUser;
@@ -34,8 +26,8 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
   const [showBeforeToday, setShowBeforeToday] = useState(true);
   const [showToday, setShowToday] = useState(true);
   const [tasks, setTasks] = useState<TaskModel[]>([]);
-
   const [categories, setCategories] = useState<CategoryModel[]>([]);
+  const [deletedTaskIds, setDeletedTaskIds] = useState<string[]>([]);
 
   useEffect(() => {
     const unsubscribe = firestore()
@@ -65,95 +57,151 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     return task.category === activeFilter;
   });
 
- 
-useEffect(() => {
-  const unsubscribe = firestore()
-    .collection('tasks')
-    .where('uid', '==', user?.uid)
-    .onSnapshot(snapshot => {
-       console.log('Number of tasks from Firebase:', snapshot.docs.length);
-      const tasksList = snapshot.docs.map(
-        doc => ({id: doc.id, ...doc.data()} as TaskModel),
-      );
+  useEffect(() => {
+    const fetchDeletedTasks = async () => {
+      const storedDeletedTasks = await AsyncStorage.getItem('deletedTasks');
+      if (storedDeletedTasks) {
+        const parsedDeletedTasks = JSON.parse(storedDeletedTasks);
+        console.log('Fetched deleted tasks:', parsedDeletedTasks);
+        setDeletedTaskIds(parsedDeletedTasks || []);
+      }
+    };
+
+    fetchDeletedTasks(); 
+  }, []); 
   
-      const allTasksWithRepeats = tasksList.flatMap(task => {
-        if (task.repeat === 'no' || !task.repeat || !task.startDate) {
-          return [task]; // Nếu task có repeat là 'no' hoặc không có repeat, giữ nguyên
-        }
-
-        const repeatedDates = calculateRepeatedDates(
-          task.startDate,
-          task.repeat as 'day' | 'week' | 'month',
-          365, // Generate dates up to today
+  useEffect(() => {
+    const unsubscribe = firestore()
+      .collection('tasks')
+      .where('uid', '==', user?.uid)
+      .onSnapshot(snapshot => {
+        const tasksList = snapshot.docs.map(
+          doc => ({id: doc.id, ...doc.data()} as TaskModel),
         );
-        // console.log('repeatedDates for task', task.id, repeatedDates);
 
-        return repeatedDates.map(date => ({
-          ...task,
-          id: `${task.id}-${date}`,
-          startDate: date,
-        }));
+        const allTasksWithRepeats = tasksList.flatMap(task => {
+          if (task.repeat === 'no' || !task.repeat || !task.startDate) {
+            return [task];
+          }
+
+          const repeatedDates = calculateRepeatedDates(
+            task.startDate,
+            task.repeat as 'day' | 'week' | 'month',
+            365,
+          );
+
+          return repeatedDates.map(date => ({
+            ...task,
+            id: `${task.id}-${date}`,
+            startDate: date,
+          }));
+        });
+
+        // Lọc nhiệm vụ đã xóa khỏi danh sách
+        const filteredTasks = allTasksWithRepeats.filter(
+          task => !deletedTaskIds.includes(task.id),
+        );
+
+        // Cập nhật trạng thái với danh sách nhiệm vụ đã lọc
+        setTasks(filteredTasks);
       });
 
-      console.log('allTasksWithRepeats', allTasksWithRepeats);
-      setTasks(allTasksWithRepeats);
-    });
+    return () => unsubscribe();
+  }, [user, deletedTaskIds]); // Theo dõi cả user và deletedTaskIds
 
-  return () => unsubscribe();
-}, [user]);
+  const handleDelete = async (taskId: string) => {
+    Alert.alert('Xác nhận xóa', 'Bạn có chắc chắn muốn xóa nhiệm vụ này?', [
+      {text: 'Hủy', style: 'cancel'},
+      {
+        text: 'Xóa',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            if (taskId.includes('-')) {
+              const existingDeletedTasks = await AsyncStorage.getItem(
+                'deletedTasks',
+              );
+              const deletedTasks = existingDeletedTasks
+                ? JSON.parse(existingDeletedTasks)
+                : [];
 
-const calculateRepeatedDates = (
-  startDate: string,
-  repeat: 'day' | 'week' | 'month',
-  count: number,
-) => {
-  const dates = [];
-  let currentDate = new Date(startDate);
+              // Loại bỏ trùng lặp trước khi lưu
+              const updatedDeletedTasks = Array.from(
+                new Set([...deletedTasks, taskId]),
+              );
 
-  for (let i = 0; i < count; i++) {
-    dates.push(currentDate.toISOString());
+              await AsyncStorage.setItem(
+                'deletedTasks',
+                JSON.stringify(updatedDeletedTasks),
+              );
+              console.log('Updated deleted tasks:', updatedDeletedTasks);
 
-    if (repeat === 'day') {
-      currentDate = addDays(currentDate, 1);
-    } else if (repeat === 'week') {
-      currentDate = addWeeks(currentDate, 1);
-    } else if (repeat === 'month') {
-      currentDate = addMonths(currentDate, 1);
+              // Cập nhật deletedTaskIds
+              setDeletedTaskIds(updatedDeletedTasks); // Cập nhật state nhưng không kích hoạt lại useEffect
+
+              // Loại bỏ task khỏi UI
+              setTasks(prevTasks =>
+                prevTasks.filter(task => task.id !== taskId),
+              );
+            } else {
+              await firestore().collection('tasks').doc(taskId).delete();
+              console.log('Deleted task from Firebase:', taskId);
+            }
+          } catch (error) {
+            console.error('Error deleting task: ', error);
+          }
+        },
+      },
+    ]);
+  };
+
+  const calculateRepeatedDates = (
+    startDate: string,
+    repeat: 'day' | 'week' | 'month',
+    count: number,
+  ) => {
+    const dates = [];
+    let currentDate = new Date(startDate);
+
+    for (let i = 0; i < count; i++) {
+      dates.push(currentDate.toISOString());
+
+      if (repeat === 'day') {
+        currentDate = addDays(currentDate, 1);
+      } else if (repeat === 'week') {
+        currentDate = addWeeks(currentDate, 1);
+      } else if (repeat === 'month') {
+        currentDate = addMonths(currentDate, 1);
+      }
     }
-  }
 
-  return dates;
-};
+    return dates;
+  };
 
-  // Get today's date in a comparable format
   const today = new Date();
-  today.setHours(0, 0, 0, 0); 
+  today.setHours(0, 0, 0, 0);
 
-const tasksBeforeToday = filteredTasks.filter(task => {
-  const taskStartDate = new Date(task.startDate || '');
-  taskStartDate.setHours(0, 0, 0, 0); // Đặt giờ của taskStartDate về 00:00:00
-  return taskStartDate < today; // Task is before today
-});
+  const tasksBeforeToday = filteredTasks.filter(task => {
+    const taskStartDate = new Date(task.startDate || '');
+    taskStartDate.setHours(0, 0, 0, 0);
+    return taskStartDate < today;
+  });
 
-// Sort tasks by start date
-const sortedTasksBeforeToday = tasksBeforeToday.sort((a, b) => {
-  const dateA = new Date(a.startDate || '').getTime();
-  const dateB = new Date(b.startDate || '').getTime();
-  return dateB - dateA;
-});
+  const sortedTasksBeforeToday = tasksBeforeToday.sort((a, b) => {
+    const dateA = new Date(a.startDate || '').getTime();
+    const dateB = new Date(b.startDate || '').getTime();
+    return dateB - dateA;
+  });
 
-// Use a Map to keep track of the closest task for each unique description
-const uniqueTasksBeforeTodayMap = new Map<string, TaskModel>();
+  const uniqueTasksBeforeTodayMap = new Map<string, TaskModel>();
 
-sortedTasksBeforeToday.forEach(task => {
-  if (!uniqueTasksBeforeTodayMap.has(task.description)) {
-    uniqueTasksBeforeTodayMap.set(task.description, task);
-  }
-});
+  sortedTasksBeforeToday.forEach(task => {
+    if (!uniqueTasksBeforeTodayMap.has(task.description)) {
+      uniqueTasksBeforeTodayMap.set(task.description, task);
+    }
+  });
 
-// Convert the Map values to an array
-const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
-
+  const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
 
   const tasksToday = filteredTasks.filter(task => {
     const taskStartDate = new Date(task.startDate || '');
@@ -161,33 +209,27 @@ const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
     return taskStartDate.getTime() === today.getTime();
   });
 
- const tasksAfterToday = filteredTasks.filter(task => {
-   const taskStartDate = new Date(task.startDate || '');
-   taskStartDate.setHours(0, 0, 0, 0); // Đặt giờ của taskStartDate về 00:00:00
-   return taskStartDate > today; // Task is after today
- });
+  const tasksAfterToday = filteredTasks.filter(task => {
+    const taskStartDate = new Date(task.startDate || '');
+    taskStartDate.setHours(0, 0, 0, 0); // Đặt giờ của taskStartDate về 00:00:00
+    return taskStartDate > today; // Task is after today
+  });
 
- // Sort tasks by start date
- const sortedTasks = tasksAfterToday.sort((a, b) => {
-   const dateA = new Date(a.startDate || '').getTime();
-   const dateB = new Date(b.startDate || '').getTime();
-   return dateA - dateB;
- });
+  const sortedTasks = tasksAfterToday.sort((a, b) => {
+    const dateA = new Date(a.startDate || '').getTime();
+    const dateB = new Date(b.startDate || '').getTime();
+    return dateA - dateB;
+  });
+  const uniqueTasksMap = new Map<string, TaskModel>();
 
- // Use a Map to keep track of the closest task for each unique description
- const uniqueTasksMap = new Map<string, TaskModel>();
+  sortedTasks.forEach(task => {
+    if (!uniqueTasksMap.has(task.description)) {
+      uniqueTasksMap.set(task.description, task);
+    }
+  });
 
- sortedTasks.forEach(task => {
-   if (!uniqueTasksMap.has(task.description)) {
-     uniqueTasksMap.set(task.description, task);
-   }
- });
+  const uniqueTasks = Array.from(uniqueTasksMap.values());
 
- 
- const uniqueTasks = Array.from(uniqueTasksMap.values());
-
-
-  
   const handleHighlight = async (taskId: string) => {
     try {
       const originalTaskId = taskId.split('-')[0];
@@ -211,28 +253,30 @@ const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
       console.error('Error updating task: ', error);
     }
   };
-  const handleDelete = (taskId: string) => {
-    Alert.alert('Xác nhận xóa', 'Bạn có chắc chắn muốn xóa nhiệm vụ này?', [
-      {text: 'Hủy', style: 'cancel'},
-      {
-        text: 'Xóa',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const originalTaskId = taskId.split('-')[0];
-            const taskRef = firestore().collection('tasks').doc(originalTaskId);
-            await taskRef.delete();
 
-            // Remove the task from the state
-            setTasks(prevTasks =>
-              prevTasks.filter(task => !task.id.startsWith(originalTaskId)),
-            );
-          } catch (error) {
-            console.error('Error deleting task: ', error);
-          }
-        },
-      },
-    ]);
+  const handleUpdateRepeat = async (taskId: string) => {
+    try {
+      const originalTaskId = taskId.split('-')[0];
+      const taskRef = firestore().collection('tasks').doc(originalTaskId);
+      const taskDoc = await taskRef.get();
+
+      if (taskDoc.exists) {
+        const currentRepeat = taskDoc.data()?.repeat || 'no';
+        const nextRepeat = currentRepeat === 'no' ? 'day' : 'no';
+        await taskRef.update({
+          repeat: nextRepeat,
+        });
+        setTasks(prevTasks =>
+          prevTasks.map(task =>
+            task.id.startsWith(originalTaskId)
+              ? {...task, repeat: nextRepeat}
+              : task,
+          ),
+        );
+      }
+    } catch (error) {
+      console.error('Error updating task repeat: ', error);
+    }
   };
 
   const handleToggleComplete = async (taskId: string) => {
@@ -255,11 +299,12 @@ const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
     navigation.navigate('TaskDetailScreen', {task: task});
   };
 
-  const renderTask = ({item}: {item: TaskModel}) => {
+  const renderTask = (item: TaskModel) => {
     if (!item) return null;
+
     const renderRightActions = (item: TaskModel) => (
       <View style={styles.swipeActions}>
-        <TouchableOpacity
+        <Pressable
           style={styles.swipeActionButton}
           onPress={() => handleHighlight(item.id)}>
           <MaterialIcons
@@ -268,22 +313,33 @@ const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
             color={item.isImportant ? appColors.yellow : appColors.gray}
           />
           <Text style={styles.actionText}>Nổi bật</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+        </Pressable>
+
+        <Pressable
           style={styles.swipeActionButton}
           onPress={() => handleDelete(item.id)}>
           <MaterialIcons name="delete" size={24} color={appColors.red} />
           <Text style={styles.actionText}>Xóa</Text>
-        </TouchableOpacity>
+        </Pressable>
+
+        {item.repeat !== 'no' && (
+          <Pressable
+            style={styles.swipeActionButton}
+            onPress={() => handleUpdateRepeat(item.id)}>
+            <MaterialIcons name="repeat" size={24} color={appColors.blue} />
+            <Text style={styles.actionText}>Bỏ lặp lại</Text>
+          </Pressable>
+        )}
       </View>
     );
 
-
     return (
-      <Swipeable renderRightActions={() => renderRightActions(item)}>
-        <TouchableOpacity onPress={() => handleTaskPress(item)}>
+      <Swipeable
+        renderRightActions={() => renderRightActions(item)}
+        key={item.id}>
+        <Pressable onPress={() => handleTaskPress(item)}>
           <View style={styles.taskItem}>
-            <TouchableOpacity
+            <Pressable
               style={styles.roundButton}
               onPress={() => handleToggleComplete(item.id)}>
               {item.isCompleted ? (
@@ -299,7 +355,7 @@ const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
                   color={appColors.gray}
                 />
               )}
-            </TouchableOpacity>
+            </Pressable>
             <View style={styles.taskContent}>
               <Text
                 style={[
@@ -313,7 +369,7 @@ const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
               </Text>
             </View>
           </View>
-        </TouchableOpacity>
+        </Pressable>
       </Swipeable>
     );
   };
@@ -326,15 +382,15 @@ const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
       />
 
       <View style={styles.header}>
-        <TouchableOpacity
+        <Pressable
           style={styles.iconButton}
           onPress={() => navigation.openDrawer()}>
           <MaterialIcons name="menu" size={24} color="#000" />
-        </TouchableOpacity>
+        </Pressable>
         <Text style={styles.headerTitle}>Home</Text>
-        <TouchableOpacity style={styles.iconButton}>
+        <Pressable style={styles.iconButton}>
           <MaterialIcons name="search" size={24} color={appColors.black} />
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       <View style={styles.filtersContainer}>
@@ -343,7 +399,7 @@ const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filters}>
           {filters.map((filter, index) => (
-            <TouchableOpacity
+            <Pressable
               key={index}
               style={[
                 styles.filterButton,
@@ -357,81 +413,61 @@ const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
                 ]}>
                 {filter}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           ))}
         </ScrollView>
       </View>
 
-      <View style={styles.tasksContainer}>
+      <ScrollView style={styles.tasksContainer}>
         {tasksBeforeToday.length > 0 && (
           <View style={styles.section}>
-            <TouchableOpacity
+            <Pressable
               onPress={() => setShowBeforeToday(!showBeforeToday)}
               style={styles.sectionHeaderContainer}>
               <Text style={styles.sectionHeader}>Trước</Text>
               <MaterialIcons
                 name={showBeforeToday ? 'expand-less' : 'expand-more'}
                 size={24}
-                color={appColors.black}
+                color={appColors.gray}
               />
-            </TouchableOpacity>
-            {showBeforeToday && (
-              <FlatList
-                data={uniqueTasksBeforeToday}
-                keyExtractor={item => item.id}
-                renderItem={renderTask}
-                contentContainerStyle={styles.flatListContent}
-              />
-            )}
+            </Pressable>
+            {showBeforeToday && uniqueTasksBeforeToday.map(renderTask)}
           </View>
         )}
 
         {tasksToday.length > 0 && (
           <View style={styles.section}>
-            <TouchableOpacity
+            <Pressable
               onPress={() => setShowToday(!showToday)}
               style={styles.sectionHeaderContainer}>
               <Text style={styles.sectionHeader}>Hôm nay </Text>
               <MaterialIcons
                 name={showToday ? 'expand-less' : 'expand-more'}
                 size={24}
-                color={appColors.black}
+                color={appColors.gray}
               />
-            </TouchableOpacity>
-            {showToday && (
-              <FlatList
-                data={tasksToday}
-                keyExtractor={item => item.id}
-                renderItem={renderTask}
-                contentContainerStyle={styles.flatListContent}
-              />
-            )}
+            </Pressable>
+            {showToday && tasksToday.map(renderTask)}
           </View>
         )}
+
         {tasksAfterToday.length > 0 && (
           <View style={styles.section}>
-            <TouchableOpacity
+            <Pressable
               onPress={() => setShowBeforeToday(!showBeforeToday)}
               style={styles.sectionHeaderContainer}>
               <Text style={styles.sectionHeader}>Tương lai</Text>
               <MaterialIcons
                 name={showBeforeToday ? 'expand-less' : 'expand-more'}
                 size={24}
-                color={appColors.black}
+                color={appColors.gray}
               />
-            </TouchableOpacity>
-            {showBeforeToday && (
-              <FlatList
-                data={uniqueTasks}
-                keyExtractor={item => item.id}
-                renderItem={renderTask}
-                contentContainerStyle={styles.flatListContent}
-              />
-            )}
+            </Pressable>
+            {showBeforeToday && uniqueTasks.map(renderTask)}
           </View>
         )}
-      </View>
-      <SpaceComponent height={120} />
+      </ScrollView>
+      <SpaceComponent height={28} />
     </View>
   );
 };
@@ -499,16 +535,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 10,
-    backgroundColor: appColors.white,
+    // backgroundColor: appColors.white,
     borderRadius: 8,
   },
   sectionHeader: {
     fontSize: 16,
     fontWeight: 'bold',
     color: appColors.gray,
-  },
-  flatListContent: {
-    paddingTop: 4,
   },
   taskItem: {
     flexDirection: 'row',
