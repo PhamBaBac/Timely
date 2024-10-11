@@ -19,7 +19,7 @@ import {CategoryModel} from '../../models/categoryModel';
 import {TaskModel} from '../../models/taskModel';
 import {DateTime} from '../../utils/DateTime';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Category } from 'iconsax-react-native';
+import {Category} from 'iconsax-react-native';
 
 const HomeScreen = ({navigation}: {navigation: any}) => {
   const user = auth().currentUser;
@@ -43,25 +43,25 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     return () => unsubscribe();
   }, []);
 
- const filters = categories.reduce<string[]>(
-   (acc, category: CategoryModel) => {
-     if (!acc.includes(category.name)) {
-       acc.push(category.name);
-     }
-     return acc;
-   },
-   [
-     'Tất cả',
-     'Công việc',
-     'Sinh nhật',
-     ...categories.map(category => category.name),
-   ],
- );
+  const filters = categories.reduce<string[]>(
+    (acc, category: CategoryModel) => {
+      if (!acc.includes(category.name)) {
+        acc.push(category.name);
+      }
+      return acc;
+    },
+    [
+      'Tất cả',
+      'Công việc',
+      'Sinh nhật',
+      ...categories.map(category => category.name),
+    ],
+  );
 
- const filteredTasks = tasks.filter(task => {
-   if (activeFilter === 'Tất cả') return true;
-   return task.category === activeFilter;
- });
+  const filteredTasks = tasks.filter(task => {
+    if (activeFilter === 'Tất cả') return true;
+    return task.category === activeFilter;
+  });
 
   useEffect(() => {
     const fetchDeletedTasks = async () => {
@@ -73,9 +73,9 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
       }
     };
 
-    fetchDeletedTasks(); 
-  }, []); 
-  
+    fetchDeletedTasks();
+  }, []);
+
   useEffect(() => {
     const unsubscribe = firestore()
       .collection('tasks')

@@ -4,9 +4,9 @@ import {
   Calendar as CalendarIcon,
   Clock,
   Repeat,
-  Tag
+  Tag,
 } from 'iconsax-react-native';
-import React, { useEffect, useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   Alert,
   FlatList,
@@ -18,18 +18,14 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { Calendar as RNCalendar } from 'react-native-calendars';
+import {Calendar as RNCalendar} from 'react-native-calendars';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {
-  CategoryOption,
-  SpaceComponent,
-  TextComponent
-} from '../components';
-import { appColors } from '../constants';
+import {CategoryOption, SpaceComponent, TextComponent} from '../components';
+import {appColors} from '../constants';
 import LoadingModal from '../modal/LoadingModal';
-import { CategoryModel } from '../models/categoryModel';
-import { TaskModel } from '../models/taskModel';
+import {CategoryModel} from '../models/categoryModel';
+import {TaskModel} from '../models/taskModel';
 
 const now = new Date();
 const initValue: TaskModel = {

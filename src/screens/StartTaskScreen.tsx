@@ -5,7 +5,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {TaskModel} from '../models/taskModel';
 import firestore from '@react-native-firebase/firestore';
 
-const StartTaskScreen = ({navigation}: any) => {
+const StartTaskScreen = ({navigation}: {navigation: any}) => {
   const [tasks, setTasks] = useState<TaskModel[]>([]);
 
   useEffect(() => {

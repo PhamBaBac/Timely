@@ -1,4 +1,3 @@
-
 export interface TaskModel {
   id: string;
   uid: string;
