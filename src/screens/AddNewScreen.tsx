@@ -38,11 +38,12 @@ const now = new Date();
 const initValue: TaskModel = {
   id: '',
   uid: '',
+  name: '',
   description: '',
   dueDate: new Date(),
   startTime: new Date(),
   remind: '',
-  repeat: 'no' || 'day' || 'week' || 'month',
+  repeat: 'no' as 'no' | 'day' | 'week' | 'month',
   category: '',
   isCompleted: false,
   isImportant: false,
