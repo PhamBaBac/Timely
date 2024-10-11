@@ -9,6 +9,7 @@ import {
   addWeeks,
   addMonths,
   format,
+  isValid,
 } from 'date-fns';
 import {appColors} from '../../constants';
 import auth from '@react-native-firebase/auth';
@@ -139,8 +140,11 @@ const CalendarScreen = ({navigation}: any) => {
     return dates;
   };
 
-  const formatDate = (dateString: string) => {
-    return format(parseISO(dateString), 'dd/MM/yyyy');
+  const formatDate = (date: string | Date) => {
+    const parsedDate = typeof date === 'string' ? parseISO(date) : date;
+    return isValid(parsedDate)
+      ? format(parsedDate, 'dd/MM/yyyy HH:mm')
+      : 'Invalid date';
   };
 
   return (
@@ -205,7 +209,26 @@ const CalendarScreen = ({navigation}: any) => {
                     fontSize: 18,
                     fontWeight: '600',
                   }}>
+                  {item.name}
+                </Text>
+                <Text
+                  style={{
+                    color: '#666',
+                    fontSize: 14,
+                    marginTop: 4,
+                  }}>
                   {item.description}
+                </Text>
+                <Text
+                  style={{
+                    color: '#666',
+                    fontSize: 14,
+                    marginTop: 4,
+                  }}>
+                  {item.startDate
+                    ? formatDate(item.startDate)
+                    : 'No start date'}{' '}
+                  - {item.dueDate ? formatDate(item.dueDate) : 'No end date'}
                 </Text>
               </TouchableOpacity>
             )}
