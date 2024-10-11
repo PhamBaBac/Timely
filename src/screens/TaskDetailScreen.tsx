@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {TaskDetailScreenProps} from '../components/TaskDetailProps';
+import { Subtask } from '../models/taskModel';
 
 const TaskDetailScreen = ({
   navigation,
@@ -38,39 +39,8 @@ const TaskDetailScreen = ({
   );
   const options = ['Cá nhân', 'Công việc', 'Gia đình', 'Khác'];
 
-  const renderSubtaskItem = ({
-    item,
-    index,
-  }: {
-    item: {id: string; completed: boolean; text: string};
-    index: number;
-  }) => (
-    <View style={styles.subtaskItem}>
-      <TouchableOpacity onPress={() => toggleSubtaskCompletion(index)}>
-        <MaterialIcons
-          name={
-            item.completed ? 'radio-button-checked' : 'radio-button-unchecked'
-          }
-          size={24}
-          color={item.completed ? '#1a73e8' : '#ccc'}
-        />
-      </TouchableOpacity>
-      <Text
-        style={[
-          styles.subtaskText,
-          item.completed && styles.completedSubtaskText,
-        ]}>
-        {item.text}
-      </Text>
-    </View>
-  );
 
-  const toggleSubtaskCompletion = (index: number) => {
-    const updatedSubtasks = subtasks.map((subtask, i) =>
-      i === index ? {...subtask, completed: !subtask.completed} : subtask,
-    );
-    setSubtasks(updatedSubtasks);
-  };
+
 
   const formatDate = (date: any): string => {
     if (!date) return 'Không';
@@ -141,73 +111,85 @@ const TaskDetailScreen = ({
     {type: 'details', key: 'details'},
   ];
 
-  const renderItem = ({item}: {item: {type: string}}) => {
-    switch (item.type) {
-      case 'header':
-        return (
-          <View>
-            <TextInput
-              style={styles.titleInput}
-              value={task.description}
-              placeholder="Nhập tiêu đề nhiệm vụ"
-            />
-          </View>
-        );
-      case 'subtasks':
-        return (
-          <FlatList
-            data={subtasks}
-            renderItem={renderSubtaskItem}
-            keyExtractor={item => item.id}
-            style={styles.subtaskList}
+const renderItem = ({item}: {item: {type: string}}) => {
+  switch (item.type) {
+    case 'header':
+      return (
+        <View>
+          <TextInput
+            style={styles.titleInput}
+            value={task.description}
+            placeholder="Nhập tiêu đề nhiệm vụ"
           />
-        );
-      case 'details':
-        return (
-          <View>
-            <TouchableOpacity style={styles.addSubtaskButton}>
-              <MaterialIcons name="add" size={24} color="#1a73e8" />
-              <Text style={styles.addSubtaskText}>Thêm nhiệm vụ phụ</Text>
+        </View>
+      );
+    case 'subtasks':
+      return (
+        <FlatList
+          data={task.subtasks}
+          renderItem={({item}: {item: Subtask}) => (
+            <TouchableOpacity style={styles.subtaskItem}>
+              <MaterialIcons
+                name={
+                  item.isCompleted ? 'check-circle' : 'radio-button-unchecked'
+                }
+                size={24}
+                color="#1a73e8"
+              />
+              <Text
+                style={[
+                  styles.subtaskText,
+                  item.isCompleted && styles.completedSubtaskText,
+                ]}>
+                {item.description}
+              </Text>
             </TouchableOpacity>
-            {renderDetailItem(
-              'event',
-              'Ngày đến hạn',
-              formatDate(task.dueDate),
-            )}
-            {renderDetailItem(
-              'access-time',
-              'Thời gian & Lời nhắc',
-              formatTime(task.remind),
-            )}
-            {renderDetailItem(
-              'repeat',
-              'Lặp lại nhiệm vụ',
-              task.repeat || 'Không',
-            )}
-            {renderDetailItem('note', 'Ghi chú', 'THÊM', () => {})}
-            {renderDetailItem(
-              'attach-file',
-              'Tập tin đính kèm',
-              'THÊM',
-              () => {},
-            )}
-            {renderDetailItem(
-              'star',
-              'Đánh đáu',
-              task.isImportant ? 'Quan trọng' : 'Không quan trọng',
-            )}
-            {renderDetailItem(
-              'category',
-              'Nhiệm vụ phụ',
-              task.subtasks?.length || 0,
-            )}
-          </View>
-        );
-      default:
-        return null;
-    }
-  };
-
+          )}
+          keyExtractor={(index) => index.toString()}
+          style={styles.subtaskList}
+        />
+      );
+    case 'details':
+      return (
+        <View>
+          <TouchableOpacity style={styles.addSubtaskButton}>
+            <MaterialIcons name="add" size={24} color="#1a73e8" />
+            <Text style={styles.addSubtaskText}>Thêm nhiệm vụ phụ</Text>
+          </TouchableOpacity>
+          {renderDetailItem('event', 'Ngày đến hạn', formatDate(task.dueDate))}
+          {renderDetailItem(
+            'access-time',
+            'Thời gian & Lời nhắc',
+            formatTime(task.remind),
+          )}
+          {renderDetailItem(
+            'repeat',
+            'Lặp lại nhiệm vụ',
+            task.repeat || 'Không',
+          )}
+          {renderDetailItem('note', 'Ghi chú', 'THÊM', () => {})}
+          {renderDetailItem(
+            'attach-file',
+            'Tập tin đính kèm',
+            'THÊM',
+            () => {},
+          )}
+          {renderDetailItem(
+            'star',
+            'Đánh đáu',
+            task.isImportant ? 'Quan trọng' : 'Không quan trọng',
+          )}
+          {renderDetailItem(
+            'category',
+            'Nhiệm vụ phụ',
+            task.subtasks?.length || 0,
+          )}
+        </View>
+      );
+    default:
+      return null;
+  }
+};
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -315,7 +297,7 @@ const styles = StyleSheet.create({
   titleInput: {
     fontSize: 24,
     fontWeight: 'bold',
-    padding: 16,
+    padding: 10,
   },
   addSubtaskButton: {
     flexDirection: 'row',
@@ -423,7 +405,7 @@ const styles = StyleSheet.create({
     color: '#888',
   },
   subtaskList: {
-    marginTop: 16,
+    marginVertical: 8,
   },
 });
 
