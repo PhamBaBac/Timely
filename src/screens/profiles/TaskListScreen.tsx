@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import {TaskModel} from '../../models/taskModel';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import debounce from 'lodash/debounce';
 
 const TaskListScreen = ({route, navigation}: {route: any; navigation: any}) => {
   const {isCompleted, category} = route.params;
@@ -35,7 +36,10 @@ const TaskListScreen = ({route, navigation}: {route: any; navigation: any}) => {
     }
 
     const unsubscribe = query.onSnapshot(snapshot => {
-      const tasksList = snapshot.docs.map(doc => doc.data() as TaskModel);
+      const tasksList = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id,
+      })) as TaskModel[];
       setTasks(tasksList);
       setFilteredTasks(tasksList);
     });
@@ -43,22 +47,32 @@ const TaskListScreen = ({route, navigation}: {route: any; navigation: any}) => {
     return () => unsubscribe();
   }, [user, isCompleted, category]);
 
-  useEffect(() => {
-    if (searchQuery === '') {
-      setFilteredTasks(tasks);
-    } else {
-      const filtered = tasks.filter(task =>
-        task.name.toLowerCase().includes(searchQuery.toLowerCase()),
-      );
-      setFilteredTasks(filtered);
-    }
-  }, [searchQuery, tasks]);
+  const debouncedSearch = useCallback(
+    debounce((text: string) => {
+      if (text === '') {
+        setFilteredTasks(tasks);
+      } else {
+        const filtered = tasks.filter(task =>
+          task.description.toLowerCase().includes(text.toLowerCase()),
+        );
+        setFilteredTasks(filtered);
+      }
+    }, 300),
+    [tasks],
+  );
+
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+    debouncedSearch(text);
+  };
 
   const renderItem = ({item}: {item: TaskModel}) => (
-    <View style={styles.taskItem}>
-      <Text style={styles.taskName}>{item.name}</Text>
+    <TouchableOpacity
+      style={styles.taskItem}
+      onPress={() => navigation.navigate('TaskDetail', {taskId: item.id})}>
+<Text style={styles.taskName}>{item.description}</Text>
       <Text style={styles.taskDescription}>{item.description}</Text>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -74,14 +88,14 @@ const TaskListScreen = ({route, navigation}: {route: any; navigation: any}) => {
             ? isCompleted
               ? 'Nhiệm vụ đã hoàn thành'
               : 'Nhiệm vụ chưa hoàn thành'
-            : category}
+            : category || 'Tất cả nhiệm vụ'}
         </Text>
       </View>
       <TextInput
         style={styles.searchInput}
         placeholder="Tìm kiếm nhiệm vụ..."
         value={searchQuery}
-        onChangeText={setSearchQuery}
+        onChangeText={handleSearch}
       />
       <FlatList
         data={filteredTasks}
@@ -107,8 +121,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    padding: 8,
   },
   title: {
     fontSize: 24,
@@ -147,4 +160,3 @@ const styles = StyleSheet.create({
 });
 
 export default TaskListScreen;
-    

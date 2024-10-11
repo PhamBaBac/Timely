@@ -28,6 +28,7 @@ interface ScheduleModel {
   room: string;
   instructor: string;
   isExam: boolean;
+  daysOfWeek: number[]; // New field to store days of week (0-6, where 0 is Sunday)
 }
 
 const Teamwork = () => {
@@ -46,6 +47,7 @@ const Teamwork = () => {
     room: '',
     instructor: '',
     isExam: false,
+    daysOfWeek: [],
   });
   const [schedules, setSchedules] = useState<ScheduleModel[]>([]);
   const [loading, setLoading] = useState(false);
@@ -77,6 +79,7 @@ const Teamwork = () => {
           id: doc.id,
           startDate: data.startDate ? data.startDate.toDate() : new Date(),
           endDate: data.endDate ? data.endDate.toDate() : new Date(),
+          daysOfWeek: data.daysOfWeek || [],
         } as ScheduleModel;
       });
 
@@ -122,15 +125,31 @@ const Teamwork = () => {
     setSelectedDay(null);
   };
 
-  const filteredScheduleItems = schedules.filter(item => {
-    const itemStartDate = item.startDate.toISOString().split('T')[0];
-    const itemEndDate = item.endDate.toISOString().split('T')[0];
-    return selectedDay
-      ? itemStartDate <= selectedDay && itemEndDate >= selectedDay
-      : weekDays.some(
-          day => itemStartDate <= day.date && itemEndDate >= day.date,
-        );
-  });
+  const filteredScheduleItems = schedules
+    .flatMap(item => {
+      const recurringDates: Date[] = [];
+      const startDate = new Date(item.startDate);
+      const endDate = new Date(item.endDate);
+
+      while (startDate <= endDate) {
+        if (item.daysOfWeek.includes(startDate.getDay())) {
+          recurringDates.push(new Date(startDate));
+        }
+        startDate.setDate(startDate.getDate() + 1);
+      }
+
+      return recurringDates.map(date => ({
+        ...item,
+        startDate: date,
+        endDate: new Date(date.getTime() + 24 * 60 * 60 * 1000), // End date is next day
+      }));
+    })
+    .filter(item => {
+      const itemDate = item.startDate.toISOString().split('T')[0];
+      return selectedDay
+        ? itemDate === selectedDay
+        : weekDays.some(day => itemDate === day.date);
+    });
 
   const renderDayItem = ({
     item,
@@ -225,6 +244,7 @@ const Teamwork = () => {
       room: '',
       instructor: '',
       isExam: false,
+      daysOfWeek: [],
     });
     setModalVisible(true);
   };
@@ -257,7 +277,11 @@ const Teamwork = () => {
   const handleStartDateChange = (event: any, selectedDate?: Date) => {
     const currentDate = selectedDate || newSchedule.startDate;
     setShowStartDatePicker(Platform.OS === 'ios');
-    setNewSchedule({...newSchedule, startDate: currentDate});
+    setNewSchedule({
+      ...newSchedule,
+      startDate: currentDate,
+      daysOfWeek: [currentDate.getDay()], // Set the day of week
+    });
   };
 
   const handleEndDateChange = (event: any, selectedDate?: Date) => {
@@ -305,7 +329,7 @@ const Teamwork = () => {
       <FlatList
         data={filteredScheduleItems}
         renderItem={renderScheduleItem}
-        keyExtractor={item => item.id}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
         style={styles.scheduleContainer}
       />
 
@@ -354,6 +378,11 @@ const Teamwork = () => {
                 onChange={handleEndDateChange}
               />
             )}
+
+            <Text style={styles.daysOfWeekText}>
+              Lặp lại vào:{' '}
+              {DateTime.GetWeekday(newSchedule.startDate.getTime())}
+            </Text>
 
             <TextInput
               style={styles.input}
@@ -644,6 +673,10 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  daysOfWeekText: {
+    marginBottom: 10,
+    fontSize: 16,
   },
 });
 
