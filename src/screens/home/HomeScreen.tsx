@@ -19,6 +19,7 @@ import {CategoryModel} from '../../models/categoryModel';
 import {TaskModel} from '../../models/taskModel';
 import {DateTime} from '../../utils/DateTime';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Category } from 'iconsax-react-native';
 
 const HomeScreen = ({navigation}: {navigation: any}) => {
   const user = auth().currentUser;
@@ -42,20 +43,25 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     return () => unsubscribe();
   }, []);
 
-  const filters = categories.reduce<string[]>(
-    (acc, category: CategoryModel) => {
-      if (!acc.includes(category.name)) {
-        acc.push(category.name);
-      }
-      return acc;
-    },
-    ['Tất cả', 'Công việc', 'Sinh nhật'],
-  );
+ const filters = categories.reduce<string[]>(
+   (acc, category: CategoryModel) => {
+     if (!acc.includes(category.name)) {
+       acc.push(category.name);
+     }
+     return acc;
+   },
+   [
+     'Tất cả',
+     'Công việc',
+     'Sinh nhật',
+     ...categories.map(category => category.name),
+   ],
+ );
 
-  const filteredTasks = tasks.filter(task => {
-    if (activeFilter === 'Tất cả') return true;
-    return task.category === activeFilter;
-  });
+ const filteredTasks = tasks.filter(task => {
+   if (activeFilter === 'Tất cả') return true;
+   return task.category === activeFilter;
+ });
 
   useEffect(() => {
     const fetchDeletedTasks = async () => {
@@ -87,7 +93,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
           const repeatedDates = calculateRepeatedDates(
             task.startDate,
             task.repeat as 'day' | 'week' | 'month',
-            365,
+            7,
           );
 
           return repeatedDates.map(date => ({
@@ -416,6 +422,14 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
             </Pressable>
           ))}
         </ScrollView>
+        <SpaceComponent width={10} />
+        <Pressable
+          onPress={() => {
+            // Xử lý sự kiện thêm danh mục
+            navigation.navigate('Category');
+          }}>
+          <Category size="24" color={appColors.primary} />
+        </Pressable>
       </View>
 
       <ScrollView style={styles.tasksContainer}>
@@ -498,6 +512,9 @@ const styles = StyleSheet.create({
   },
   filtersContainer: {
     paddingBottom: 4,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   filters: {
     flexDirection: 'row',
@@ -506,7 +523,7 @@ const styles = StyleSheet.create({
   filterButton: {
     paddingHorizontal: 18,
     paddingVertical: 10,
-    backgroundColor: appColors.lightGray,
+    backgroundColor: appColors.gray2,
     borderRadius: 14,
     marginRight: 8,
     height: 40,
@@ -518,7 +535,7 @@ const styles = StyleSheet.create({
   },
   filterButtonText: {
     fontSize: 15,
-    color: appColors.gray,
+    color: appColors.black,
   },
   activeFilterText: {
     color: appColors.white,

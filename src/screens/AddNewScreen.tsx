@@ -4,10 +4,9 @@ import {
   Calendar as CalendarIcon,
   Clock,
   Repeat,
-  Share,
-  Tag,
+  Tag
 } from 'iconsax-react-native';
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -19,20 +18,18 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import {Calendar as RNCalendar} from 'react-native-calendars';
+import { Calendar as RNCalendar } from 'react-native-calendars';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {
-  ButtonComponent,
   CategoryOption,
-  InputComponent,
   SpaceComponent,
-  TextComponent,
+  TextComponent
 } from '../components';
-import {appColors} from '../constants';
+import { appColors } from '../constants';
 import LoadingModal from '../modal/LoadingModal';
-import {TaskModel} from '../models/taskModel';
-import {CategoryModel} from '../models/categoryModel';
+import { CategoryModel } from '../models/categoryModel';
+import { TaskModel } from '../models/taskModel';
 
 const now = new Date();
 const initValue: TaskModel = {
@@ -42,7 +39,7 @@ const initValue: TaskModel = {
   dueDate: new Date(),
   startTime: new Date(),
   remind: '',
-  repeat: 'no' || 'day' || 'week' || 'month',
+  repeat: 'no' as 'no' | 'day' | 'week' | 'month',
   category: '',
   isCompleted: false,
   isImportant: false,
@@ -76,7 +73,7 @@ const rainbowColors = [
   '#BA68C8',
 ];
 
-const AddNewScreen = () => {
+const AddNewScreen = ({navigation}: any) => {
   const user = auth().currentUser;
   const [modalVisible, setModalVisible] = useState(false);
   const [isTimePickerVisible, setTimePickerVisibility] = useState(false);
@@ -132,7 +129,7 @@ const AddNewScreen = () => {
     const task = {
       ...data,
       id: taskRef.id,
-      category: taskDetail.category,
+      category: selectedCategory,
       startDate: startDate.toISOString(),
       startTime: taskDetail.startTime?.getTime(),
     };
@@ -144,8 +141,11 @@ const AddNewScreen = () => {
         console.log('New task added with repeat information!!');
         setIsLoading(false);
         setTaskDetail(initValue);
-        setSubtasks([]); // Reset subtasks
+        setSubtasks([]);
         setErrorText('');
+        navigation.navigate('Trang chủ', {
+          screen: 'HomeScreen',
+        });
       })
       .catch(error => {
         console.log(error);
@@ -261,7 +261,6 @@ const AddNewScreen = () => {
       </View>
       {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
 
-      {/* Subtasks Section */}
       {subtasks.map((subtask, index) => (
         <TextInput
           key={index}
@@ -284,13 +283,13 @@ const AddNewScreen = () => {
             setSelectedRepeat('');
           }}>
           <CalendarIcon size={24} color={appColors.primary} />
-          <Text style={styles.optionText}>Lịch </Text>
+          <Text style={styles.optionText}>Chọn ngày bắt đầu </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.option}
           onPress={() => setCategoryModalVisible(true)}>
           <Tag size={24} color={appColors.primary} />
-          <Text style={styles.optionText}>Danh mục</Text>
+          <Text style={styles.optionText}>Chọn loại công việc</Text>
           <Text style={styles.selectedCategoryText}>{selectedCategory}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.option} onPress={handleAddSubtask}>
@@ -358,7 +357,7 @@ const AddNewScreen = () => {
                     style={styles.modalOption}
                     onPress={showTimePicker}>
                     <Clock size={24} color={appColors.primary} />
-                    <Text style={styles.modalOptionText}>Chọn thời gian</Text>
+                    <Text style={styles.modalOptionText}>Chọn giờ bắt đầu</Text>
                     <Text style={styles.selectedTimeText}>{selectedTime}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
