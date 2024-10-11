@@ -1,93 +1,223 @@
-import React from 'react';
-import {View, Text, ScrollView, StyleSheet} from 'react-native';
+import React, {useEffect, useState} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Dimensions,
+  TouchableOpacity,
+  FlatList,
+} from 'react-native';
+import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
+import {BarChart} from 'react-native-chart-kit';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
-const ProfileScreen = () => {
-  return (
-    <ScrollView style={styles.container}>
+const ProfileScreen = ({navigation}: {navigation: any}) => {
+  const user = auth().currentUser;
+  const [completedTasks, setCompletedTasks] = useState(0);
+  const [incompleteTasks, setIncompleteTasks] = useState(0);
+  const [categories, setCategories] = useState<{name: string; count: number}[]>(
+    [],
+  );
+
+  useEffect(() => {
+    const unsubscribe = firestore()
+      .collection('tasks')
+      .where('uid', '==', user?.uid)
+      .onSnapshot(snapshot => {
+        let completed = 0;
+        let incomplete = 0;
+        const categoryCount: {[key: string]: number} = {};
+        let uncategorizedCount = 0;
+
+        snapshot.forEach(doc => {
+          const task = doc.data();
+          if (task.isCompleted) {
+            completed++;
+          } else {
+            incomplete++;
+          }
+
+          if (task.category) {
+            if (!categoryCount[task.category]) {
+              categoryCount[task.category] = 0;
+            }
+            categoryCount[task.category]++;
+          } else {
+            uncategorizedCount++;
+          }
+        });
+
+        setCompletedTasks(completed);
+        setIncompleteTasks(incomplete);
+        setCategories([
+          ...Object.keys(categoryCount).map(name => ({
+            name,
+            count: categoryCount[name],
+          })),
+          {name: 'Chưa phân loại', count: uncategorizedCount},
+        ]);
+      });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const data = {
+    labels: ['Hoàn thành', 'Chưa hoàn thành'],
+    datasets: [
+      {
+        data: [completedTasks, incompleteTasks],
+        colors: [
+          (opacity = 1) => `rgba(75, 181, 67, ${opacity})`, // Màu xanh lá đậm cho nhiệm vụ hoàn thành
+          (opacity = 1) => `rgba(255, 164, 0, ${opacity})`, // Màu cam cho nhiệm vụ chưa hoàn thành
+        ],
+      },
+    ],
+  };
+
+  const handleViewTasks = (isCompleted: boolean) => {
+    navigation.navigate('TaskListScreen', {isCompleted});
+  };
+
+  const handleViewCategoryTasks = (category: string) => {
+    navigation.navigate('TaskListScreen', {category});
+  };
+
+  const renderCategoryItem = ({
+    item,
+  }: {
+    item: {name: string; count: number};
+  }) => (
+    <TouchableOpacity
+      style={styles.categoryItem}
+      onPress={() => handleViewCategoryTasks(item.name)}>
+      <Text style={styles.categoryName}>{item.name}</Text>
+      <Text style={styles.categoryCount}>{item.count}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderHeader = () => (
+    <>
       <View style={styles.header}>
-        <View style={styles.avatar} />
+        <View style={styles.avatar}>
+          <MaterialIcons name="person" size={50} color="#ffffff" />
+        </View>
+
         <View style={styles.headerText}>
           <Text style={styles.title}>Username</Text>
-          <Text style={styles.subtitle}>Bấm để đăng nhập</Text>
         </View>
       </View>
-
-      <Text style={styles.sectionTitle}>Tổng quan về Nhiệm vụ</Text>
 
       <View style={styles.statsContainer}>
-        <View style={styles.statBox}>
-          <Text style={styles.statNumber}>0</Text>
+        <TouchableOpacity
+          style={styles.statBox}
+          onPress={() => handleViewTasks(true)}>
+          <Text style={styles.statNumber}>{completedTasks}</Text>
           <Text style={styles.statLabel}>Nhiệm vụ đã hoàn thành</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statNumber}>0</Text>
-          <Text style={styles.statLabel}>nhiệm vụ chưa hoàn thành</Text>
-        </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.statBox}
+          onPress={() => handleViewTasks(false)}>
+          <Text style={styles.statNumber}>{incompleteTasks}</Text>
+          <Text style={styles.statLabel}>Nhiệm vụ chưa hoàn thành</Text>
+        </TouchableOpacity>
       </View>
 
-      <Text style={styles.chartTitle}>Hoàn thành nhiệm vụ hàng ngày</Text>
-      <Text style={styles.chartSubtitle}>9/22-9/28</Text>
+      <Text style={styles.sectionTitle}>Biểu đồ thống kê</Text>
+      <BarChart
+        data={data}
+        width={Dimensions.get('window').width - 30}
+        height={220}
+        yAxisLabel=""
+        yAxisSuffix=""
+        chartConfig={{
+          backgroundColor: '#ffffff',
+          backgroundGradientFrom: '#ffffff',
+          backgroundGradientTo: '#ffffff',
+          decimalPlaces: 0,
+          color: (opacity = 1, index) =>
+            data.datasets[0].colors[index ?? 0](opacity),
+          labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+          style: {
+            borderRadius: 16,
+          },
+          barPercentage: 0.5,
+          propsForLabels: {
+            fontSize: 14,
+          },
+          formatYLabel: value => Math.round(Number(value)).toString(),
+        }}
+        style={{
+          marginVertical: 8,
+          borderRadius: 16,
+        }}
+        showValuesOnTopOfBars={true}
+        fromZero={true}
+      />
 
-      <View style={styles.chart}>
-        <Text style={styles.noDataText}>Không có dữ liệu nhiệm vụ</Text>
-      </View>
+      <Text style={styles.sectionTitle}>Phân loại danh mục</Text>
+    </>
+  );
 
-      <Text style={styles.sectionTitle}>Nhiệm vụ trong 7 ngày tới</Text>
-
-      <View style={styles.taskTypeContainer}>
-        <Text style={styles.taskTypeTitle}>
-          Phân loại nhiệm vụ chưa hoàn thành
-        </Text>
-      </View>
-    </ScrollView>
+  return (
+    <FlatList
+      style={styles.container}
+      data={categories}
+      renderItem={renderCategoryItem}
+      keyExtractor={item => item.name}
+      ListHeaderComponent={renderHeader}
+      ListEmptyComponent={
+        <Text style={styles.emptyText}>Không có danh mục nào</Text>
+      }
+    />
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#ffffff',
+    padding: 16,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    marginBottom: 20,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#DDD',
-    marginRight: 12,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 20,
   },
   headerText: {
     flex: 1,
   },
   title: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-  },
-
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    margin: 16,
+    marginBottom: 10,
+    marginTop: 20,
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    margin: 16,
+    marginBottom: 20,
   },
   statBox: {
     flex: 1,
-    backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 8,
-    marginRight: 8,
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 10,
+    marginHorizontal: 5,
   },
   statNumber: {
     fontSize: 24,
@@ -95,40 +225,28 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 14,
-    color: '#666',
-    marginTop: 4,
+    color: '#888',
   },
-
-  chartTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 16,
-  },
-  chartSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 16,
-    marginBottom: 8,
-  },
-  chart: {
-    height: 200,
-    margin: 16,
-    backgroundColor: '#FFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  noDataText: {
-    color: '#999',
-  },
-  taskTypeContainer: {
+  categoryItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    margin: 16,
+    padding: 10,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 10,
+    marginBottom: 10,
   },
-  taskTypeTitle: {
+  categoryName: {
+    fontSize: 16,
+  },
+  categoryCount: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#888',
+    textAlign: 'center',
+    marginTop: 20,
   },
 });
 
