@@ -8,19 +8,35 @@ import {
   FlatList,
   Modal,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {TaskDetailScreenProps} from '../components/TaskDetailProps';
 import { Subtask } from '../models/taskModel';
 
-const TaskDetailScreen = ({route}: TaskDetailScreenProps) => {
+const TaskDetailScreen = ({
+  navigation,
+  route,
+}: {
+  navigation: any;
+  route: any;
+}) => {
   const {task} = route.params;
-
-  const navigation = useNavigation();
   const [isListOpen, setIsListOpen] = useState(false);
   const [selectedOption, setSelectedOption] = useState(task.category);
   const [isModalVisible, setIsModalVisible] = useState(false);
-
+  const [subtasks, setSubtasks] = useState<
+    {id: string; completed: boolean; text: string}[]
+  >(
+    Array.isArray(task.subtasks) &&
+      task.subtasks.every(
+        (subtask: { id: string; completed: boolean; text: string }) =>
+          typeof subtask === 'object' &&
+          'id' in subtask &&
+          'completed' in subtask &&
+          'text' in subtask,
+      )
+      ? task.subtasks
+      : [],
+  );
   const options = ['Cá nhân', 'Công việc', 'Gia đình', 'Khác'];
 
 
