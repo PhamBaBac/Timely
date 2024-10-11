@@ -380,6 +380,18 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     );
   };
 
+  const incompleteTasksBeforeToday = tasksBeforeToday.filter(
+    task => !task.isCompleted,
+  );
+  const incompleteTasksToday = tasksToday.filter(task => !task.isCompleted);
+
+  const incompleteTasksAfterToday = tasksAfterToday.filter(
+    task => !task.isCompleted,
+  )
+
+  //lay ra task da hoan thanh truoc ngay hom nay
+  const completedTasksTasksToday = tasksToday.filter(task => task.isCompleted);
+
   return (
     <View style={styles.container}>
       <StatusBar
@@ -433,7 +445,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
       </View>
 
       <ScrollView style={styles.tasksContainer}>
-        {tasksBeforeToday.length > 0 && (
+        {incompleteTasksBeforeToday.length > 0 && (
           <View style={styles.section}>
             <Pressable
               onPress={() => setShowBeforeToday(!showBeforeToday)}
@@ -449,7 +461,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
           </View>
         )}
 
-        {tasksToday.length > 0 && (
+        {incompleteTasksToday.length > 0 && (
           <View style={styles.section}>
             <Pressable
               onPress={() => setShowToday(!showToday)}
@@ -465,7 +477,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
           </View>
         )}
 
-        {tasksAfterToday.length > 0 && (
+        {incompleteTasksAfterToday.length > 0 && (
           <View style={styles.section}>
             <Pressable
               onPress={() => setShowBeforeToday(!showBeforeToday)}
@@ -478,6 +490,21 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
               />
             </Pressable>
             {showBeforeToday && uniqueTasks.map(renderTask)}
+          </View>
+        )}
+        {completedTasksTasksToday.length > 0 && (
+          <View style={styles.section}>
+            <Pressable
+              onPress={() => setShowToday(!showToday)}
+              style={styles.sectionHeaderContainer}>
+              <Text style={styles.sectionHeader}>Công việc đã hoàn thành</Text>
+              <MaterialIcons
+                name={showToday ? 'expand-less' : 'expand-more'}
+                size={24}
+                color={appColors.gray}
+              />
+            </Pressable>
+            {showToday && tasksToday.map(renderTask)}
           </View>
         )}
       </ScrollView>
