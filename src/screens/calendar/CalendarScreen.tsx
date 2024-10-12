@@ -102,7 +102,7 @@ const CalendarScreen = ({navigation}: any) => {
       const repeatedDates = calculateRepeatedDates(
         task.startDate || '',
         task.repeat as 'day' | 'week' | 'month',
-        365,
+        7,
       );
       repeatedDates.forEach(date => {
         const dateString = date.split('T')[0];
