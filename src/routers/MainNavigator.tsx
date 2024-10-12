@@ -1,6 +1,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import React from 'react'
 import DrawerNavigator from './DrawerNavigator'
+import { CategoryScreen } from '../screens'
 
 
 const MainNavigator = () => {
@@ -11,6 +12,7 @@ const MainNavigator = () => {
         headerShown: false,
       }}>
       <Stack.Screen name="Main" component={DrawerNavigator} />
+      <Stack.Screen name="Category" component={CategoryScreen} />
     </Stack.Navigator>
   );
 }

@@ -1,5 +1,5 @@
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {AddSquare, Calendar, Location, TaskSquare, User} from 'iconsax-react-native';
+import {AddSquare, ArchiveBook, Calendar, Location, TaskSquare, User} from 'iconsax-react-native';
 import React, {ReactNode} from 'react';
 import {Platform, View} from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -29,16 +29,14 @@ const TabNavigator = () => {
           color = focused ? appColors.primary : appColors.gray4;
           size = 23;
           switch (route.name) {
-            case 'Nhiệm vụ':
+            case 'Trang chủ':
               icon = <TaskSquare variant="Bold" size={size} color={color} />;
               break;
-            case 'Lịch':
+            case 'Lịch trình':
               icon = <Calendar variant="Bold" size={size} color={color} />;
               break;
-            case 'Nhóm':
-              icon = (
-                <MaterialIcons name="group-work" color={color} size={size} />
-              );
+            case 'Lịch học':
+              icon = <ArchiveBook variant="Bold" color={color} size={size} />;
               break;
             case 'Của tôi':
               icon = <User variant="Bold" color={color} size={size} />;
@@ -81,10 +79,10 @@ const TabNavigator = () => {
           );
         },
       })}>
-      <Tab.Screen name="Nhiệm vụ" component={TaskPersonalNavigator} />
-      <Tab.Screen name="Lịch" component={CalendarNavigator} />
+      <Tab.Screen name="Trang chủ" component={TaskPersonalNavigator} />
+      <Tab.Screen name="Lịch trình" component={CalendarNavigator} />
       <Tab.Screen name="Add" component={AddNewScreen} />
-      <Tab.Screen name="Nhóm" component={TeamworkNavigator} />
+      <Tab.Screen name="Lịch học" component={TeamworkNavigator} />
       <Tab.Screen name="Của tôi" component={ProfileNavigator} />
     </Tab.Navigator>
   );
