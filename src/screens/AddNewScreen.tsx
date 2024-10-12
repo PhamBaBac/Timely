@@ -98,7 +98,7 @@ const AddNewScreen = ({navigation}: any) => {
 
   const handleAddNewTask = async () => {
     if (!taskDetail.description) {
-      setErrorText('Description is required');
+      setErrorText('Vui lòng nhập tên công việc');
       return;
     }
 
@@ -422,7 +422,6 @@ const AddNewScreen = ({navigation}: any) => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-
       <Modal
         transparent={true}
         visible={isCategoryModalVisible}
@@ -450,16 +449,30 @@ const AddNewScreen = ({navigation}: any) => {
                 <TouchableOpacity
                   style={styles.categoryOption}
                   onPress={() => {
-                    handleChangeValue('category', 'Sinh nhật');
-                    setSelectedCategory('Sinh nhật');
+                    handleChangeValue('category', 'Cá nhân');
+                    setSelectedCategory('Cá nhân');
                     setCategoryModalVisible(false);
                   }}>
                   <MaterialIcons
-                    name="celebration"
+                    name="person"
                     size={24}
                     color={appColors.primary}
                   />
-                  <Text style={styles.categoryOptionText}>Sinh nhật</Text>
+                  <Text style={styles.categoryOptionText}>Cá nhân</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.categoryOption}
+                  onPress={() => {
+                    handleChangeValue('category', 'Gia đình');
+                    setSelectedCategory('Gia đình');
+                    setCategoryModalVisible(false);
+                  }}>
+                  <MaterialIcons
+                    name="family-restroom"
+                    size={24}
+                    color={appColors.primary}
+                  />
+                  <Text style={styles.categoryOptionText}>Gia đình</Text>
                 </TouchableOpacity>
                 <FlatList
                   data={categories}

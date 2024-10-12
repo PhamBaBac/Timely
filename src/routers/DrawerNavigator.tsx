@@ -3,6 +3,7 @@ import React from 'react';
 import DrawerCustom from '../components/DrawerCustom';
 import TabNavigator from './TabNavigator';
 import StartTaskScreen from '../screens/StartTaskScreen'; //
+import CompletedScreen from '../screens/comp/CompletedScreen'; //
 
 const DrawerNavigator = () => {
   const Drawer = createDrawerNavigator();
@@ -15,6 +16,7 @@ const DrawerNavigator = () => {
       drawerContent={props => <DrawerCustom {...props} />}>
       <Drawer.Screen name="TabNavigator" component={TabNavigator} />
       <Drawer.Screen name="StartTaskScreen" component={StartTaskScreen} />
+      <Drawer.Screen name="CompletedScreen" component={CompletedScreen} />
     </Drawer.Navigator>
   );
 };

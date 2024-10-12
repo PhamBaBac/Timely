@@ -387,7 +387,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
 
   const incompleteTasksAfterToday = tasksAfterToday.filter(
     task => !task.isCompleted,
-  )
+  );
 
   //lay ra task da hoan thanh truoc ngay hom nay
   const completedTasksTasksToday = tasksToday.filter(task => task.isCompleted);
@@ -405,7 +405,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
           onPress={() => navigation.openDrawer()}>
           <MaterialIcons name="menu" size={24} color="#000" />
         </Pressable>
-        <Text style={styles.headerTitle}>Home</Text>
+        <Text style={styles.headerTitle}>Trang chủ</Text>
         <Pressable style={styles.iconButton}>
           <MaterialIcons name="search" size={24} color={appColors.black} />
         </Pressable>

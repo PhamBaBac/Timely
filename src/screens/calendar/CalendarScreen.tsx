@@ -75,6 +75,12 @@ const CalendarScreen = ({navigation}: any) => {
       .where('uid', '==', user?.uid)
       .onSnapshot(snapshot => {
         const tasksList = snapshot.docs.map(doc => doc.data() as TaskModel);
+        // Sort tasks by createdAt field
+        tasksList.sort((a, b) => {
+          const dateA = parseISO(a.createdAt.toString());
+          const dateB = parseISO(b.createdAt.toString());
+          return dateA.getTime() - dateB.getTime();
+        });
         setTasks(tasksList);
       });
 
@@ -140,10 +146,10 @@ const CalendarScreen = ({navigation}: any) => {
     return dates;
   };
 
-  const formatDate = (date: string | Date) => {
+  const formatDate = (date: string | Date, formatString: string) => {
     const parsedDate = typeof date === 'string' ? parseISO(date) : date;
     return isValid(parsedDate)
-      ? format(parsedDate, 'dd/MM/yyyy HH:mm')
+      ? format(parsedDate, formatString)
       : 'Invalid date';
   };
 
@@ -180,7 +186,7 @@ const CalendarScreen = ({navigation}: any) => {
             paddingHorizontal: 16,
             marginBottom: 10,
           }}>
-          Nhiệm vụ ngày {formatDate(selected)}:
+          Nhiệm vụ ngày {formatDate(selected, 'dd/MM/yyyy')}:
         </Text>
         {filteredTasks.length > 0 ? (
           <FlatList
@@ -209,14 +215,6 @@ const CalendarScreen = ({navigation}: any) => {
                     fontSize: 18,
                     fontWeight: '600',
                   }}>
-                  {item.name}
-                </Text>
-                <Text
-                  style={{
-                    color: '#666',
-                    fontSize: 14,
-                    marginTop: 4,
-                  }}>
                   {item.description}
                 </Text>
                 <Text
@@ -225,11 +223,32 @@ const CalendarScreen = ({navigation}: any) => {
                     fontSize: 14,
                     marginTop: 4,
                   }}>
+                  Giờ bắt đầu:{' '}
                   {item.startDate
-                    ? formatDate(item.startDate)
-                    : 'No start date'}{' '}
-                  - {item.dueDate ? formatDate(item.dueDate) : 'No end date'}
+                    ? formatDate(item.startDate, 'HH:mm')
+                    : 'No start time'}
                 </Text>
+                <Text
+                  style={{
+                    color: '#666',
+                    fontSize: 14,
+                    marginTop: 4,
+                  }}>
+                  Ngày bắt đầu:{' '}
+                  {item.startDate
+                    ? formatDate(item.startDate, 'dd/MM/yyyy')
+                    : 'No start date'}
+                </Text>
+                {item.dueDate && isValid(parseISO(item.dueDate.toString())) && (
+                  <Text
+                    style={{
+                      color: '#666',
+                      fontSize: 14,
+                      marginTop: 4,
+                    }}>
+                    Ngày kết thúc: {formatDate(item.dueDate, 'dd/MM/yyyy')}
+                  </Text>
+                )}
               </TouchableOpacity>
             )}
           />

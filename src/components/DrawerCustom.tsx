@@ -31,7 +31,7 @@ const DrawerCustom = ({navigation}: any) => {
       key: 'CompletedTasks',
       title: 'Nhiệm vụ đã hoàn thành', // Added new menu item for completed tasks
       icon: <MaterialIcons name="done" size={size} color={color} />,
-      action: () => navigation.navigate('CompletedTasksScreen'), // Add navigation action here
+      action: () => navigation.navigate('CompletedScreen'), // Add navigation action here
     },
     {
       key: 'Habits',
