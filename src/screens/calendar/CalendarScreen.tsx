@@ -15,6 +15,7 @@ import {appColors} from '../../constants';
 import auth from '@react-native-firebase/auth';
 import {TaskModel} from '../../models/taskModel';
 import {useNavigation} from '@react-navigation/native';
+import { DateTime } from '../../utils/DateTime';
 
 // Set Vietnamese locale for the calendar
 LocaleConfig.locales['vi'] = {
@@ -140,12 +141,10 @@ const CalendarScreen = ({navigation}: any) => {
     return dates;
   };
 
-  const formatDate = (date: string | Date) => {
-    const parsedDate = typeof date === 'string' ? parseISO(date) : date;
-    return isValid(parsedDate)
-      ? format(parsedDate, 'dd/MM/yyyy HH:mm')
-      : 'Invalid date';
+  const formatTime = (date: Date) => {
+    return format(date, 'HH:mm');
   };
+
 
   return (
     <View style={{flex: 1}}>
@@ -173,15 +172,6 @@ const CalendarScreen = ({navigation}: any) => {
         }}
       />
       <View style={{flex: 1, paddingTop: 10}}>
-        <Text
-          style={{
-            fontSize: 18,
-            fontWeight: 'bold',
-            paddingHorizontal: 16,
-            marginBottom: 10,
-          }}>
-          Nhiệm vụ ngày {formatDate(selected)}:
-        </Text>
         {filteredTasks.length > 0 ? (
           <FlatList
             data={filteredTasks}
@@ -205,14 +195,6 @@ const CalendarScreen = ({navigation}: any) => {
                 }>
                 <Text
                   style={{
-                    color: '#333',
-                    fontSize: 18,
-                    fontWeight: '600',
-                  }}>
-                  {item.name}
-                </Text>
-                <Text
-                  style={{
                     color: '#666',
                     fontSize: 14,
                     marginTop: 4,
@@ -225,10 +207,10 @@ const CalendarScreen = ({navigation}: any) => {
                     fontSize: 14,
                     marginTop: 4,
                   }}>
-                  {item.startDate
-                    ? formatDate(item.startDate)
-                    : 'No start date'}{' '}
-                  - {item.dueDate ? formatDate(item.dueDate) : 'No end date'}
+                  {DateTime.GetDate(new Date(item.startDate || ''))} -{' '}
+                  {item.startTime
+                    ? formatTime(item.startTime)
+                    : 'No start time'}
                 </Text>
               </TouchableOpacity>
             )}
