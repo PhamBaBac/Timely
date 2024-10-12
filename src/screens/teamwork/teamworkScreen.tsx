@@ -17,6 +17,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {DateTime} from '../../utils/DateTime';
 import LoadingModal from '../../modal/LoadingModal';
+import {addDays, addWeeks, addMonths} from 'date-fns';
 
 interface ScheduleModel {
   id: string;
@@ -28,8 +29,29 @@ interface ScheduleModel {
   room: string;
   instructor: string;
   isExam: boolean;
-  daysOfWeek: number[]; // New field to store days of week (0-6, where 0 is Sunday)
+  repeatWeekly: boolean;
+  repeatCount: number;
 }
+
+const calculateRepeatedDates = (
+  startDate: Date,
+  repeat: 'day' | 'week' | 'month',
+  count: number,
+) => {
+  const dates = [];
+  let currentDate = new Date(startDate);
+  for (let i = 0; i < count; i++) {
+    dates.push(new Date(currentDate));
+    if (repeat === 'day') {
+      currentDate = addDays(currentDate, 1);
+    } else if (repeat === 'week') {
+      currentDate = addWeeks(currentDate, 1);
+    } else if (repeat === 'month') {
+      currentDate = addMonths(currentDate, 1);
+    }
+  }
+  return dates;
+};
 
 const Teamwork = () => {
   const user = auth().currentUser;
@@ -47,7 +69,8 @@ const Teamwork = () => {
     room: '',
     instructor: '',
     isExam: false,
-    daysOfWeek: [],
+    repeatWeekly: false,
+    repeatCount: 1,
   });
   const [schedules, setSchedules] = useState<ScheduleModel[]>([]);
   const [loading, setLoading] = useState(false);
@@ -55,7 +78,7 @@ const Teamwork = () => {
 
   useEffect(() => {
     fetchSchedules();
-    setCurrentWeekStart(getMonday(new Date()));
+    setCurrentWeekToToday();
   }, []);
 
   const getMonday = (d: Date) => {
@@ -79,7 +102,6 @@ const Teamwork = () => {
           id: doc.id,
           startDate: data.startDate ? data.startDate.toDate() : new Date(),
           endDate: data.endDate ? data.endDate.toDate() : new Date(),
-          daysOfWeek: data.daysOfWeek || [],
         } as ScheduleModel;
       });
 
@@ -92,6 +114,11 @@ const Teamwork = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const setCurrentWeekToToday = () => {
+    setCurrentWeekStart(getMonday(new Date()));
+    setSelectedDay(null);
   };
 
   const generateWeekDays = (startDate: Date) => {
@@ -127,22 +154,20 @@ const Teamwork = () => {
 
   const filteredScheduleItems = schedules
     .flatMap(item => {
-      const recurringDates: Date[] = [];
-      const startDate = new Date(item.startDate);
-      const endDate = new Date(item.endDate);
-
-      while (startDate <= endDate) {
-        if (item.daysOfWeek.includes(startDate.getDay())) {
-          recurringDates.push(new Date(startDate));
-        }
-        startDate.setDate(startDate.getDate() + 1);
+      if (item.repeatWeekly) {
+        const repeatedDates = calculateRepeatedDates(
+          item.startDate,
+          'week',
+          item.repeatCount,
+        );
+        return repeatedDates.map(date => ({
+          ...item,
+          startDate: date,
+          endDate: new Date(date.getTime() + 24 * 60 * 60 * 1000), // End date is next day
+        }));
+      } else {
+        return [item];
       }
-
-      return recurringDates.map(date => ({
-        ...item,
-        startDate: date,
-        endDate: new Date(date.getTime() + 24 * 60 * 60 * 1000), // End date is next day
-      }));
     })
     .filter(item => {
       const itemDate = item.startDate.toISOString().split('T')[0];
@@ -198,9 +223,7 @@ const Teamwork = () => {
       onPress={() => handleEditSchedule(item)}
       style={styles.scheduleItem}>
       <Text style={styles.scheduleDate}>
-        {`${item.startDate.toLocaleDateString(
-          'en-GB',
-        )} - ${item.endDate.toLocaleDateString('en-GB')}`}
+        {`${DateTime.GetWeekday(item.startDate.getTime())}`}
       </Text>
       <View
         style={[
@@ -244,7 +267,8 @@ const Teamwork = () => {
       room: '',
       instructor: '',
       isExam: false,
-      daysOfWeek: [],
+      repeatWeekly: false,
+      repeatCount: 1,
     });
     setModalVisible(true);
   };
@@ -277,11 +301,7 @@ const Teamwork = () => {
   const handleStartDateChange = (event: any, selectedDate?: Date) => {
     const currentDate = selectedDate || newSchedule.startDate;
     setShowStartDatePicker(Platform.OS === 'ios');
-    setNewSchedule({
-      ...newSchedule,
-      startDate: currentDate,
-      daysOfWeek: [currentDate.getDay()], // Set the day of week
-    });
+    setNewSchedule({...newSchedule, startDate: currentDate});
   };
 
   const handleEndDateChange = (event: any, selectedDate?: Date) => {
@@ -294,11 +314,19 @@ const Teamwork = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Lịch học/ Lịch</Text>
-        <TouchableOpacity onPress={handleAddSchedule} style={styles.addButton}>
-          <Text style={styles.addButtonText}>+</Text>
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            onPress={setCurrentWeekToToday}
+            style={styles.todayButton}>
+            <MaterialIcons name="today" size={24} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleAddSchedule}
+            style={styles.addButton}>
+            <Text style={styles.addButtonText}>+</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-
       <View style={styles.weekNavigation}>
         <TouchableOpacity
           onPress={() => navigateWeek('prev')}
@@ -379,11 +407,6 @@ const Teamwork = () => {
               />
             )}
 
-            <Text style={styles.daysOfWeekText}>
-              Lặp lại vào:{' '}
-              {DateTime.GetWeekday(newSchedule.startDate.getTime())}
-            </Text>
-
             <TextInput
               style={styles.input}
               placeholder="Môn học"
@@ -439,6 +462,31 @@ const Teamwork = () => {
               />
             </View>
 
+            <View style={styles.switchContainer}>
+              <Text>Lặp lại hàng tuần:</Text>
+              <Switch
+                value={newSchedule.repeatWeekly}
+                onValueChange={value =>
+                  setNewSchedule({...newSchedule, repeatWeekly: value})
+                }
+              />
+            </View>
+
+            {newSchedule.repeatWeekly && (
+              <TextInput
+                style={styles.input}
+                placeholder="Số lần lặp lại"
+                value={newSchedule.repeatCount.toString()}
+                onChangeText={text =>
+                  setNewSchedule({
+                    ...newSchedule,
+                    repeatCount: parseInt(text) || 1,
+                  })
+                }
+                keyboardType="numeric"
+              />
+            )}
+
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.button}
@@ -454,8 +502,6 @@ const Teamwork = () => {
           </View>
         </View>
       </Modal>
-
-      {loading && <LoadingModal visible={loading} />}
     </SafeAreaView>
   );
 };
@@ -464,6 +510,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f0f0f0',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  todayButton: {
+    marginRight: 16,
+    padding: 4,
   },
   header: {
     flexDirection: 'row',
@@ -673,10 +727,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     textAlign: 'center',
-  },
-  daysOfWeekText: {
-    marginBottom: 10,
-    fontSize: 16,
   },
 });
 

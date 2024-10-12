@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {TaskDetailScreenProps} from '../components/TaskDetailProps';
-import { Subtask } from '../models/taskModel';
+import {Subtask} from '../models/taskModel';
 
 const TaskDetailScreen = ({
   navigation,
@@ -23,12 +23,10 @@ const TaskDetailScreen = ({
   const [isListOpen, setIsListOpen] = useState(false);
   const [selectedOption, setSelectedOption] = useState(task.category);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [subtasks, setSubtasks] = useState<
-    {id: string; completed: boolean; text: string}[]
-  >(
+  const [subtasks, setSubtasks] = useState<Subtask[]>(
     Array.isArray(task.subtasks) &&
       task.subtasks.every(
-        (subtask: { id: string; completed: boolean; text: string }) =>
+        (subtask: Subtask) =>
           typeof subtask === 'object' &&
           'id' in subtask &&
           'completed' in subtask &&
@@ -37,10 +35,9 @@ const TaskDetailScreen = ({
       ? task.subtasks
       : [],
   );
-  const options = ['Cá nhân', 'Công việc', 'Gia đình', 'Khác'];
-
-
-
+  const options = task.category
+    ? task.category
+    : ['Công việc', 'Cá nhân', 'Gia đình', 'Khác'];
 
   const formatDate = (date: any): string => {
     if (!date) return 'Không';
@@ -111,85 +108,95 @@ const TaskDetailScreen = ({
     {type: 'details', key: 'details'},
   ];
 
-const renderItem = ({item}: {item: {type: string}}) => {
-  switch (item.type) {
-    case 'header':
-      return (
-        <View>
-          <TextInput
-            style={styles.titleInput}
-            value={task.description}
-            placeholder="Nhập tiêu đề nhiệm vụ"
+  const renderItem = ({item}: {item: {type: string}}) => {
+    switch (item.type) {
+      case 'header':
+        return (
+          <View>
+            <TextInput
+              style={styles.titleInput}
+              value={task.description}
+              placeholder="Nhập tiêu đề nhiệm vụ"
+            />
+          </View>
+        );
+      case 'subtasks':
+        return (
+          <FlatList
+            data={task.subtasks}
+            renderItem={({item}: {item: Subtask}) => (
+              <TouchableOpacity style={styles.subtaskItem}>
+                <MaterialIcons
+                  name={
+                    item.isCompleted ? 'check-circle' : 'radio-button-unchecked'
+                  }
+                  size={24}
+                  color="#1a73e8"
+                />
+                <Text
+                  style={[
+                    styles.subtaskText,
+                    item.isCompleted && styles.completedSubtaskText,
+                  ]}>
+                  {item.description}
+                </Text>
+              </TouchableOpacity>
+            )}
+            keyExtractor={(item, index) => index.toString()}
+            style={styles.subtaskList}
           />
-        </View>
-      );
-    case 'subtasks':
-      return (
-        <FlatList
-          data={task.subtasks}
-          renderItem={({item}: {item: Subtask}) => (
-            <TouchableOpacity style={styles.subtaskItem}>
-              <MaterialIcons
-                name={
-                  item.isCompleted ? 'check-circle' : 'radio-button-unchecked'
-                }
-                size={24}
-                color="#1a73e8"
-              />
-              <Text
-                style={[
-                  styles.subtaskText,
-                  item.isCompleted && styles.completedSubtaskText,
-                ]}>
-                {item.description}
-              </Text>
+        );
+      case 'details':
+        return (
+          <View>
+            <TouchableOpacity style={styles.addSubtaskButton}>
+              <MaterialIcons name="add" size={24} color="#1a73e8" />
+              <Text style={styles.addSubtaskText}>Thêm nhiệm vụ phụ</Text>
             </TouchableOpacity>
-          )}
-          keyExtractor={(index) => index.toString()}
-          style={styles.subtaskList}
-        />
-      );
-    case 'details':
-      return (
-        <View>
-          <TouchableOpacity style={styles.addSubtaskButton}>
-            <MaterialIcons name="add" size={24} color="#1a73e8" />
-            <Text style={styles.addSubtaskText}>Thêm nhiệm vụ phụ</Text>
-          </TouchableOpacity>
-          {renderDetailItem('event', 'Ngày đến hạn', formatDate(task.dueDate))}
-          {renderDetailItem(
-            'access-time',
-            'Thời gian & Lời nhắc',
-            formatTime(task.remind),
-          )}
-          {renderDetailItem(
-            'repeat',
-            'Lặp lại nhiệm vụ',
-            task.repeat || 'Không',
-          )}
-          {renderDetailItem('note', 'Ghi chú', 'THÊM', () => {})}
-          {renderDetailItem(
-            'attach-file',
-            'Tập tin đính kèm',
-            'THÊM',
-            () => {},
-          )}
-          {renderDetailItem(
-            'star',
-            'Đánh đáu',
-            task.isImportant ? 'Quan trọng' : 'Không quan trọng',
-          )}
-          {renderDetailItem(
-            'category',
-            'Nhiệm vụ phụ',
-            task.subtasks?.length || 0,
-          )}
-        </View>
-      );
-    default:
-      return null;
-  }
-};
+            {renderDetailItem(
+              'event',
+              'Ngày đến hạn',
+              formatDate(task.dueDate),
+            )}
+            {renderDetailItem(
+              'access-time',
+              'Thời gian & Lời nhắc',
+              formatTime(task.remind),
+            )}
+            {renderDetailItem(
+              'repeat',
+              'Lặp lại nhiệm vụ',
+              task.repeat || 'Không',
+            )}
+            {renderDetailItem('note', 'Ghi chú', 'THÊM', () => {})}
+            {renderDetailItem(
+              'attach-file',
+              'Tập tin đính kèm',
+              'THÊM',
+              () => {},
+            )}
+            {renderDetailItem(
+              'star',
+              'Đánh dấu',
+              task.isImportant ? 'Quan trọng' : 'Không quan trọng',
+            )}
+            {renderDetailItem(
+              'category',
+              'Danh mục',
+              <TextInput
+                style={styles.categoryInput}
+                value={selectedOption}
+                onChangeText={setSelectedOption}
+                placeholder="Chọn danh mục"
+              />,
+            )}
+          </View>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -406,6 +413,14 @@ const styles = StyleSheet.create({
   },
   subtaskList: {
     marginVertical: 8,
+  },
+  categoryInput: {
+    fontSize: 14,
+    color: '#757575',
+    marginTop: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    padding: 4,
   },
 });
 

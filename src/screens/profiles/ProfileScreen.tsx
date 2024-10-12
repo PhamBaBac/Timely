@@ -19,8 +19,16 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
   const [categories, setCategories] = useState<{name: string; count: number}[]>(
     [],
   );
+  const [userName, setUserName] = useState<string | null>(null);
+  const [weeklyCompletedTasks, setWeeklyCompletedTasks] = useState<number[]>(
+    new Array(7).fill(0),
+  );
 
   useEffect(() => {
+    if (user) {
+      setUserName(user.displayName || user.email);
+    }
+
     const unsubscribe = firestore()
       .collection('tasks')
       .where('uid', '==', user?.uid)
@@ -29,11 +37,18 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
         let incomplete = 0;
         const categoryCount: {[key: string]: number} = {};
         let uncategorizedCount = 0;
+        const weeklyCount = new Array(7).fill(0);
 
         snapshot.forEach(doc => {
           const task = doc.data();
+          const taskDate = task.date
+            ? new Date(task.date.seconds * 1000)
+            : new Date();
+          const dayOfWeek = (taskDate.getDay() + 6) % 7; // Adjust to make Monday = 0, Sunday = 6
+
           if (task.isCompleted) {
             completed++;
+            weeklyCount[dayOfWeek]++;
           } else {
             incomplete++;
           }
@@ -50,6 +65,7 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
 
         setCompletedTasks(completed);
         setIncompleteTasks(incomplete);
+        setWeeklyCompletedTasks(weeklyCount);
         setCategories([
           ...Object.keys(categoryCount).map(name => ({
             name,
@@ -63,13 +79,12 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
   }, [user]);
 
   const data = {
-    labels: ['Hoàn thành', 'Chưa hoàn thành'],
+    labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
     datasets: [
       {
-        data: [completedTasks, incompleteTasks],
+        data: weeklyCompletedTasks,
         colors: [
           (opacity = 1) => `rgba(75, 181, 67, ${opacity})`, // Màu xanh lá đậm cho nhiệm vụ hoàn thành
-          (opacity = 1) => `rgba(255, 164, 0, ${opacity})`, // Màu cam cho nhiệm vụ chưa hoàn thành
         ],
       },
     ],
@@ -104,7 +119,7 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
         </View>
 
         <View style={styles.headerText}>
-          <Text style={styles.title}>Username</Text>
+          <Text style={styles.title}>{userName}</Text>
         </View>
       </View>
 
@@ -130,6 +145,7 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
         height={220}
         yAxisLabel=""
         yAxisSuffix=""
+        yAxisInterval={2} // Interval for Y-axis
         chartConfig={{
           backgroundColor: '#ffffff',
           backgroundGradientFrom: '#ffffff',
@@ -155,7 +171,7 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
         fromZero={true}
       />
 
-      <Text style={styles.sectionTitle}>Phân loại danh mục</Text>
+      <Text style={styles.sectionTitle}>Phân loại công việc</Text>
     </>
   );
 
@@ -167,7 +183,7 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
       keyExtractor={item => item.name}
       ListHeaderComponent={renderHeader}
       ListEmptyComponent={
-        <Text style={styles.emptyText}>Không có danh mục nào</Text>
+        <Text style={styles.emptyText}>Không có phân loại nào</Text>
       }
     />
   );
