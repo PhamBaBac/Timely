@@ -1,4 +1,4 @@
-import auth from '@react-native-firebase/auth';
+import auth, {firebase} from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import {addDays, addMonths, addWeeks, format} from 'date-fns';
 import React, {useEffect, useState} from 'react';
@@ -20,17 +20,38 @@ import {TaskModel} from '../../models/taskModel';
 import {DateTime} from '../../utils/DateTime';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Category} from 'iconsax-react-native';
+import {useDispatch, useSelector} from 'react-redux';
+import {RootState} from '../../redux/store';
+import {setCategories} from '../../redux/reducers/categoriesSlice';
+import {
+  deleteTask,
+  setCompletedTasks,
+  setDeletedTaskIds,
+  setTasks,
+} from '../../redux/reducers/tasksSlice';
+import { fetchCompletedTasks, fetchDeletedTasks, fetchImportantTasks, handleDeleteTask, handleToggleComplete, handleToggleImportant, handleUpdateRepeat } from '../../utils/taskUtil';
 
 const HomeScreen = ({navigation}: {navigation: any}) => {
   const user = auth().currentUser;
   const [activeFilter, setActiveFilter] = useState('Tất cả');
   const [showBeforeToday, setShowBeforeToday] = useState(true);
+  const dispatch = useDispatch();
   const [showToday, setShowToday] = useState(true);
-  const [tasks, setTasks] = useState<TaskModel[]>([]);
-  console.log('Tasks:', tasks);
-  const [categories, setCategories] = useState<CategoryModel[]>([]);
-  const [deletedTaskIds, setDeletedTaskIds] = useState<string[]>([]);
-  const [completedTasks, setCompletedTasks] = useState<{[key: string]: boolean}>({});
+  const tasks = useSelector((state: RootState) => state.tasks.tasks);
+  const categories = useSelector(
+    (state: RootState) => state.categories.categories,
+  );
+  const deletedTaskIds = useSelector(
+    (state: RootState) => state.tasks.deletedTaskIds,
+  );
+  const completedTasks = useSelector(
+    (state: RootState) => state.tasks.completedTasks,
+  );
+
+  const isImportantTasks = useSelector(
+    (state: RootState) => state.tasks.isImportantTasks,
+  );
+
 
   useEffect(() => {
     const unsubscribe = firestore()
@@ -40,11 +61,10 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
         const categoriesList = snapshot.docs.map(
           doc => doc.data() as CategoryModel,
         );
-        setCategories(categoriesList);
+        dispatch(setCategories(categoriesList));
       });
     return () => unsubscribe();
-  }, []);
-
+  }, [dispatch, user]);
   const filters = categories.reduce<string[]>(
     (acc, category: CategoryModel) => {
       if (!acc.includes(category.name)) {
@@ -64,40 +84,52 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     if (activeFilter === 'Tất cả') return true;
     return task.category === activeFilter;
   });
+  useEffect(() => {
+    fetchDeletedTasks(dispatch);
+    fetchCompletedTasks(dispatch);
+    fetchImportantTasks(dispatch);
+  }, [dispatch]);
 
   useEffect(() => {
-    const fetchDeletedTasks = async () => {
-      const storedDeletedTasks = await AsyncStorage.getItem('deletedTasks');
-      if (storedDeletedTasks) {
-        const parsedDeletedTasks = JSON.parse(storedDeletedTasks);
-        setDeletedTaskIds(parsedDeletedTasks || []);
-      }
-    };
-
-    fetchDeletedTasks();
-  }, []);
-
-  useEffect(() => {
-    const fetchCompletedTasks = async () => {
-      const storedCompletedTasks = await AsyncStorage.getItem('completedTasks');
-      if (storedCompletedTasks) {
-        const parsedCompletedTasks = JSON.parse(storedCompletedTasks);
-        setCompletedTasks(parsedCompletedTasks || {});
-      }
-    };
-
-    fetchCompletedTasks();
-  }, []);
-
+    const unsubscribe = firestore()
+      .collection('categories')
+      .where('uid', '==', user?.uid)
+      .onSnapshot(snapshot => {
+        const categoriesList = snapshot.docs.map(
+          doc => doc.data() as CategoryModel,
+        );
+        dispatch(setCategories(categoriesList));
+      });
+    return () => unsubscribe();
+  }, [dispatch, user]);
   useEffect(() => {
     const unsubscribe = firestore()
       .collection('tasks')
       .where('uid', '==', user?.uid)
       .onSnapshot(snapshot => {
-        const tasksList = snapshot.docs.map(
-          doc => ({id: doc.id, ...doc.data()} as TaskModel),
-        );
+        const tasksList = snapshot.docs.map(doc => {
+          const taskData = doc.data() as TaskModel;
 
+          // Chuyển đổi dueDate và startTime (nếu có) thành Date hoặc chuỗi ISO
+          const dueDate =
+            taskData.dueDate instanceof firebase.firestore.Timestamp
+              ? taskData.dueDate.toDate().toISOString()
+              : taskData.dueDate;
+
+          const startTime =
+            taskData.startTime instanceof firebase.firestore.Timestamp
+              ? taskData.startTime.toDate().toISOString()
+              : taskData.startTime;
+
+          return {
+            ...taskData,
+            id: doc.id,
+            dueDate,
+            startTime,
+          } as TaskModel;
+        });
+
+        // Logic xử lý lặp lại task
         const allTasksWithRepeats = tasksList.flatMap(task => {
           if (task.repeat === 'no' || !task.repeat || !task.startDate) {
             return [task];
@@ -116,122 +148,37 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
           }));
         });
 
-        // Lọc nhiệm vụ đã xóa khỏi danh sách
         const filteredTasks = allTasksWithRepeats.filter(
           task => !deletedTaskIds.includes(task.id),
         );
 
-        // Khôi phục trạng thái isCompleted từ AsyncStorage
         const restoredTasks = filteredTasks.map(task => ({
           ...task,
           isCompleted: completedTasks[task.id] || task.isCompleted,
+          isImportant: isImportantTasks[task.id] || task.isImportant,
         }));
 
-        // Cập nhật trạng thái với danh sách nhiệm vụ đã lọc và khôi phục
-        setTasks(restoredTasks);
+        dispatch(setTasks(restoredTasks));
       });
 
     return () => unsubscribe();
-  }, [user, deletedTaskIds, completedTasks]); // Theo dõi cả user, deletedTaskIds và completedTasks
+  }, [dispatch, user, deletedTaskIds, completedTasks, isImportantTasks]);
 
-  const handleDelete = async (taskId: string) => {
-    Alert.alert('Xác nhận xóa', 'Bạn có chắc chắn muốn xóa nhiệm vụ này?', [
-      {text: 'Hủy', style: 'cancel'},
-      {
-        text: 'Xóa',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            if (taskId.includes('-')) {
-              const existingDeletedTasks = await AsyncStorage.getItem(
-                'deletedTasks',
-              );
-              const deletedTasks = existingDeletedTasks
-                ? JSON.parse(existingDeletedTasks)
-                : [];
+ const handleDelete = (taskId: string) => {
+   handleDeleteTask(taskId, dispatch, deletedTaskIds);
+ };
 
-              // Loại bỏ trùng lặp trước khi lưu
-              const updatedDeletedTasks = Array.from(
-                new Set([...deletedTasks, taskId]),
-              );
+ const handleToggleCompleteTask = (taskId: string) => {
+   handleToggleComplete(taskId, tasks, dispatch);
+ };
 
-              await AsyncStorage.setItem(
-                'deletedTasks',
-                JSON.stringify(updatedDeletedTasks),
-              );
-              console.log('Updated deleted tasks:', updatedDeletedTasks);
-
-              // Cập nhật deletedTaskIds
-              setDeletedTaskIds(updatedDeletedTasks); // Cập nhật state nhưng không kích hoạt lại useEffect
-
-              // Loại bỏ task khỏi UI
-              setTasks(prevTasks =>
-                prevTasks.filter(task => task.id !== taskId),
-              );
-            } else {
-              await firestore().collection('tasks').doc(taskId).delete();
-              console.log('Deleted task from Firebase:', taskId);
-            }
-          } catch (error) {
-            console.error('Error deleting task: ', error);
-          }
-        },
-      },
-    ]);
-  };
-const handleToggleComplete = async (taskId: string) => {
-  try {
-    if (taskId.includes('-')) {
-      // Task lặp lại (có chứa '-')
-      setTasks(prevTasks =>
-        prevTasks.map(task =>
-          task.id === taskId ? {...task, isCompleted: !task.isCompleted} : task,
-        ),
-      );
-
-      // Lưu trạng thái vào AsyncStorage
-      const existingCompletedTasks = await AsyncStorage.getItem(
-        'completedTasks',
-      );
-      const completedTasks = existingCompletedTasks
-        ? JSON.parse(existingCompletedTasks)
-        : {};
-
-      // Cập nhật taskId với trạng thái mới
-      const updatedCompletedTasks = {
-        ...completedTasks,
-        [taskId]: !completedTasks[taskId], // Toggle trạng thái isCompleted
-      };
-
-      await AsyncStorage.setItem(
-        'completedTasks',
-        JSON.stringify(updatedCompletedTasks),
-      );
-    } else {
-      // Task bình thường lưu trữ trên Firestore
-      const taskRef = firestore().collection('tasks').doc(taskId);
-      const taskDoc = await taskRef.get();
-
-      if (taskDoc.exists) {
-        const currentCompleted = taskDoc.data()?.isCompleted || false;
-        await taskRef.update({
-          isCompleted: !currentCompleted,
-        });
-
-        // Cập nhật lại state cho task đã thay đổi
-        setTasks(prevTasks =>
-          prevTasks.map(task =>
-            task.id === taskId
-              ? {...task, isCompleted: !currentCompleted}
-              : task,
-          ),
-        );
-      }
-    }
-  } catch (error) {
-    console.error('Error updating task completion status: ', error);
+  const handleHighlight = async (taskId: string) => {
+    handleToggleImportant(taskId, tasks, dispatch);
   }
-};
+
+    const handleUpdateRepeatTask = (taskId: string) => {
+      handleUpdateRepeat(taskId);
+    };
 
   const calculateRepeatedDates = (
     startDate: string,
@@ -292,7 +239,7 @@ const handleToggleComplete = async (taskId: string) => {
 
   const tasksAfterToday = filteredTasks.filter(task => {
     const taskStartDate = new Date(task.startDate || '');
-    taskStartDate.setHours(0, 0, 0, 0); 
+    taskStartDate.setHours(0, 0, 0, 0);
     return taskStartDate > today; // Task is after today
   });
 
@@ -311,54 +258,9 @@ const handleToggleComplete = async (taskId: string) => {
 
   const uniqueTasks = Array.from(uniqueTasksMap.values());
 
-  const handleHighlight = async (taskId: string) => {
-    try {
-      const originalTaskId = taskId.split('-')[0];
-      const taskRef = firestore().collection('tasks').doc(originalTaskId);
-      const taskDoc = await taskRef.get();
+  
 
-      if (taskDoc.exists) {
-        const currentIsImportant = taskDoc.data()?.isImportant;
-        await taskRef.update({
-          isImportant: !currentIsImportant,
-        });
-        setTasks(prevTasks =>
-          prevTasks.map(task =>
-            task.id.startsWith(originalTaskId)
-              ? {...task, isImportant: !currentIsImportant}
-              : task,
-          ),
-        );
-      }
-    } catch (error) {
-      console.error('Error updating task: ', error);
-    }
-  };
-
-  const handleUpdateRepeat = async (taskId: string) => {
-    try {
-      const originalTaskId = taskId.split('-')[0];
-      const taskRef = firestore().collection('tasks').doc(originalTaskId);
-      const taskDoc = await taskRef.get();
-
-      if (taskDoc.exists) {
-        const currentRepeat = taskDoc.data()?.repeat || 'no';
-        const nextRepeat = currentRepeat === 'no' ? 'day' : 'no';
-        await taskRef.update({
-          repeat: nextRepeat,
-        });
-        setTasks(prevTasks =>
-          prevTasks.map(task =>
-            task.id.startsWith(originalTaskId)
-              ? {...task, repeat: nextRepeat}
-              : task,
-          ),
-        );
-      }
-    } catch (error) {
-      console.error('Error updating task repeat: ', error);
-    }
-  };
+ 
 
   const handleTaskPress = (task: TaskModel) => {
     navigation.navigate('TaskDetailScreen', {task: task});
@@ -369,8 +271,6 @@ const handleToggleComplete = async (taskId: string) => {
 
     const renderRightActions = (item: TaskModel) => (
       <View style={styles.swipeActions}>
-        
-
         <Pressable
           style={styles.swipeActionButton}
           onPress={() => handleDelete(item.id)}>
@@ -381,7 +281,7 @@ const handleToggleComplete = async (taskId: string) => {
         {item.repeat !== 'no' && (
           <Pressable
             style={styles.swipeActionButton}
-            onPress={() => handleUpdateRepeat(item.id)}>
+            onPress={() => handleUpdateRepeatTask(item.id)}>
             <MaterialIcons name="repeat" size={24} color={appColors.blue} />
             <Text style={styles.actionText}>Bỏ lặp lại</Text>
           </Pressable>
@@ -397,7 +297,7 @@ const handleToggleComplete = async (taskId: string) => {
           <View style={styles.taskItem}>
             <Pressable
               style={styles.roundButton}
-              onPress={() => handleToggleComplete(item.id)}>
+              onPress={() => handleToggleCompleteTask(item.id)}>
               {item.isCompleted ? (
                 <MaterialIcons
                   name="check-circle"
