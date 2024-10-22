@@ -15,6 +15,7 @@ import {appColors} from '../../constants';
 import auth from '@react-native-firebase/auth';
 import {TaskModel} from '../../models/taskModel';
 import {useNavigation} from '@react-navigation/native';
+import {DateTime} from '../../utils/DateTime';
 
 // Set Vietnamese locale for the calendar
 LocaleConfig.locales['vi'] = {
@@ -75,12 +76,6 @@ const CalendarScreen = ({navigation}: any) => {
       .where('uid', '==', user?.uid)
       .onSnapshot(snapshot => {
         const tasksList = snapshot.docs.map(doc => doc.data() as TaskModel);
-        // Sort tasks by createdAt field
-        tasksList.sort((a, b) => {
-          const dateA = parseISO(a.createdAt.toString());
-          const dateB = parseISO(b.createdAt.toString());
-          return dateA.getTime() - dateB.getTime();
-        });
         setTasks(tasksList);
       });
 
@@ -146,11 +141,8 @@ const CalendarScreen = ({navigation}: any) => {
     return dates;
   };
 
-  const formatDate = (date: string | Date, formatString: string) => {
-    const parsedDate = typeof date === 'string' ? parseISO(date) : date;
-    return isValid(parsedDate)
-      ? format(parsedDate, formatString)
-      : 'Invalid date';
+  const formatTime = (date: Date) => {
+    return format(date, 'HH:mm');
   };
 
   return (
@@ -179,15 +171,6 @@ const CalendarScreen = ({navigation}: any) => {
         }}
       />
       <View style={{flex: 1, paddingTop: 10}}>
-        <Text
-          style={{
-            fontSize: 18,
-            fontWeight: 'bold',
-            paddingHorizontal: 16,
-            marginBottom: 10,
-          }}>
-          Nhiệm vụ ngày {formatDate(selected, 'dd/MM/yyyy')}:
-        </Text>
         {filteredTasks.length > 0 ? (
           <FlatList
             data={filteredTasks}
@@ -211,9 +194,9 @@ const CalendarScreen = ({navigation}: any) => {
                 }>
                 <Text
                   style={{
-                    color: '#333',
-                    fontSize: 18,
-                    fontWeight: '600',
+                    color: '#666',
+                    fontSize: 14,
+                    marginTop: 4,
                   }}>
                   {item.description}
                 </Text>
@@ -223,32 +206,11 @@ const CalendarScreen = ({navigation}: any) => {
                     fontSize: 14,
                     marginTop: 4,
                   }}>
-                  Giờ bắt đầu:{' '}
-                  {item.startDate
-                    ? formatDate(item.startDate, 'HH:mm')
+                  {DateTime.GetDate(new Date(item.startDate || ''))} -{' '}
+                  {item.startTime
+                    ? formatTime(item.startTime)
                     : 'No start time'}
                 </Text>
-                <Text
-                  style={{
-                    color: '#666',
-                    fontSize: 14,
-                    marginTop: 4,
-                  }}>
-                  Ngày bắt đầu:{' '}
-                  {item.startDate
-                    ? formatDate(item.startDate, 'dd/MM/yyyy')
-                    : 'No start date'}
-                </Text>
-                {item.dueDate && isValid(parseISO(item.dueDate.toString())) && (
-                  <Text
-                    style={{
-                      color: '#666',
-                      fontSize: 14,
-                      marginTop: 4,
-                    }}>
-                    Ngày kết thúc: {formatDate(item.dueDate, 'dd/MM/yyyy')}
-                  </Text>
-                )}
               </TouchableOpacity>
             )}
           />
