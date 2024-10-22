@@ -71,8 +71,8 @@ const rainbowColors = [
 
 const AddNewScreen = ({navigation}: any) => {
   const user = auth().currentUser;
-  const [modalVisible, setModalVisible] = useState(false);
-  const [isTimePickerVisible, setTimePickerVisibility] = useState(false);
+  const [isDateModalVisible, setDateModalVisible] = useState(false);
+  const [isTimeModalVisible, setTimeModalVisible] = useState(false);
   const [isRepeatModalVisible, setRepeatModalVisible] = useState(false);
   const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
   const [isNewCategoryModalVisible, setNewCategoryModalVisible] =
@@ -90,7 +90,7 @@ const AddNewScreen = ({navigation}: any) => {
   const [tempCategory, setTempCategory] = useState('');
   const [subtasks, setSubtasks] = useState<
     {description: string; isCompleted: boolean}[]
-  >([]); // Updated state for subtasks
+  >([]);
 
   useEffect(() => {
     user && setTaskDetail({...taskDetail, uid: user.uid});
@@ -98,7 +98,7 @@ const AddNewScreen = ({navigation}: any) => {
 
   const handleAddNewTask = async () => {
     if (!taskDetail.description) {
-      setErrorText('Vui lòng nhập tên công việc');
+      setErrorText('Vui lòng nhập tên công việc');
       return;
     }
 
@@ -107,18 +107,18 @@ const AddNewScreen = ({navigation}: any) => {
       : new Date();
 
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set time to 00:00:00 for comparison
+    today.setHours(0, 0, 0, 0);
 
     if (startDate < today) {
-      setErrorText('Due date cannot be in the past');
+      setErrorText('Ngày bắt đầu không hợp lệ');
       return;
     }
 
     const data = {
       ...taskDetail,
-      uid: user?.uid, // Ensure uid is included
-      subtasks, // Include subtasks in the task data
-      repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat, // Set to 'no' if no repeat selected
+      uid: user?.uid,
+      subtasks,
+      repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat,
     };
 
     const taskRef = firestore().collection('tasks').doc();
@@ -149,16 +149,26 @@ const AddNewScreen = ({navigation}: any) => {
       });
   };
 
-  const handleOutsidePress = () => {
-    setModalVisible(false);
+  const handleChangeValue = (id: string, value: string | Date) => {
+    setTaskDetail(prevState => ({
+      ...prevState,
+      [id]: value,
+    }));
   };
 
-  const showTimePicker = () => {
-    setTimePickerVisibility(true);
+  const handleAddSubtask = () => {
+    const hasEmptySubtask = subtasks.some(
+      subtask => subtask.description === '' && subtask.isCompleted === false,
+    );
+    if (!hasEmptySubtask) {
+      setSubtasks([...subtasks, {description: '', isCompleted: false}]);
+    }
   };
 
-  const hideTimePicker = () => {
-    setTimePickerVisibility(false);
+  const handleSubtaskChange = (index: number, value: string) => {
+    const updatedSubtasks = [...subtasks];
+    updatedSubtasks[index].description = value;
+    setSubtasks(updatedSubtasks);
   };
 
   const handleNewCategoryCreate = async () => {
@@ -201,26 +211,10 @@ const AddNewScreen = ({navigation}: any) => {
     }
   };
 
-  const handleChangeValue = (id: string, value: string | Date) => {
-    setTaskDetail(prevState => ({
-      ...prevState,
-      [id]: value,
-    }));
-  };
-
-  const handleAddSubtask = () => {
-    const hasEmptySubtask = subtasks.some(
-      subtask => subtask.description === '' && subtask.isCompleted === false,
-    );
-    if (!hasEmptySubtask) {
-      setSubtasks([...subtasks, {description: '', isCompleted: false}]);
-    }
-  };
-
-  const handleSubtaskChange = (index: number, value: string) => {
-    const updatedSubtasks = [...subtasks];
-    updatedSubtasks[index].description = value;
-    setSubtasks(updatedSubtasks);
+  const handleDateSelection = (date: any) => {
+    setSelectedDate(new Date(date.dateString));
+    handleChangeValue('dueDate', new Date(date.dateString));
+    setDateModalVisible(false);
   };
 
   useEffect(() => {
@@ -272,14 +266,26 @@ const AddNewScreen = ({navigation}: any) => {
       <View style={styles.optionsContainer}>
         <TouchableOpacity
           style={styles.option}
-          onPress={() => {
-            setModalVisible(true);
-            setSelectedDate(new Date());
-            setSelectedTime('');
-            setSelectedRepeat('');
-          }}>
+          onPress={() => setDateModalVisible(true)}>
           <CalendarIcon size={24} color={appColors.primary} />
-          <Text style={styles.optionText}>Chọn ngày bắt đầu </Text>
+          <Text style={styles.optionText}>Chọn ngày bắt đầu</Text>
+          <Text style={styles.selectedDateText}>
+            {selectedDate ? selectedDate.toLocaleDateString() : ''}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.option}
+          onPress={() => setTimeModalVisible(true)}>
+          <Clock size={24} color={appColors.primary} />
+          <Text style={styles.optionText}>Chọn giờ bắt đầu</Text>
+          <Text style={styles.selectedTimeText}>{selectedTime}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.option}
+          onPress={() => setRepeatModalVisible(true)}>
+          <Repeat size={24} color={appColors.primary} />
+          <Text style={styles.optionText}>Chọn lặp lại</Text>
+          <Text style={styles.selectedRepeatText}>{selectedRepeat}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.option}
@@ -298,80 +304,52 @@ const AddNewScreen = ({navigation}: any) => {
         </TouchableOpacity>
       </View>
 
+      {/* Date Selection Modal */}
       <Modal
         transparent={true}
-        visible={modalVisible}
+        visible={isDateModalVisible}
         animationType="slide"
-        onRequestClose={() => setModalVisible(false)}>
-        <TouchableWithoutFeedback onPress={handleOutsidePress}>
+        onRequestClose={() => setDateModalVisible(false)}>
+        <TouchableWithoutFeedback onPress={() => setDateModalVisible(false)}>
           <View style={styles.modalContainer}>
             <TouchableWithoutFeedback>
               <View style={styles.modalContent}>
                 <RNCalendar
-                  value={taskDetail.dueDate}
                   style={styles.calendar}
-                  markingType={'custom'}
+                  onDayPress={handleDateSelection}
                   markedDates={{
-                    [new Date().toISOString().split('T')[0]]: {
-                      marked: true,
-                      dotColor: appColors.primary,
-                      customStyles: {
-                        text: {
-                          color: appColors.primary,
-                          fontWeight: 'bold',
-                        },
-                      },
-                    },
                     [selectedDate
                       ? selectedDate.toISOString().split('T')[0]
                       : '']: {
                       selected: true,
-                      textColor: appColors.primary,
                       selectedColor: appColors.primary,
                     },
                   }}
-                  onDayPress={({dateString}: {dateString: string}) => {
-                    const selectedDate = new Date(dateString);
-                    setSelectedDate(selectedDate);
-                    handleChangeValue('dueDate', selectedDate);
-                  }}
-                  renderArrow={(direction: 'left' | 'right') => (
-                    <MaterialIcons
-                      name={
-                        direction === 'left'
-                          ? 'arrow-back-ios'
-                          : 'arrow-forward-ios'
-                      }
-                      size={14}
-                      color={appColors.primary}
-                    />
-                  )}
                 />
-
-                <View style={styles.modalOptions}>
-                  <TouchableOpacity
-                    style={styles.modalOption}
-                    onPress={showTimePicker}>
-                    <Clock size={24} color={appColors.primary} />
-                    <Text style={styles.modalOptionText}>Chọn giờ bắt đầu</Text>
-                    <Text style={styles.selectedTimeText}>{selectedTime}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.modalOption}
-                    onPress={() => setRepeatModalVisible(true)}>
-                    <Repeat size={24} color={appColors.primary} />
-                    <Text style={styles.modalOptionText}>Chọn lặp lại</Text>
-                    <Text style={styles.selectedRepeatText}>
-                      {selectedRepeat}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
               </View>
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
 
+      {/* Time Selection Modal */}
+      <DateTimePickerModal
+        isVisible={isTimeModalVisible}
+        mode="time"
+        onConfirm={time => {
+          setSelectedTime(
+            time.toLocaleTimeString('vi-VN', {
+              hour: '2-digit',
+              minute: '2-digit',
+            }),
+          );
+          handleChangeValue('startTime', time);
+          setTimeModalVisible(false);
+        }}
+        onCancel={() => setTimeModalVisible(false)}
+      />
+
+      {/* Repeat Selection Modal */}
       <Modal
         transparent={true}
         visible={isRepeatModalVisible}
@@ -422,6 +400,8 @@ const AddNewScreen = ({navigation}: any) => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {/* Category Selection Modal */}
       <Modal
         transparent={true}
         visible={isCategoryModalVisible}
@@ -505,7 +485,7 @@ const AddNewScreen = ({navigation}: any) => {
                     color={appColors.primary}
                   />
                   <Text style={styles.categoryOptionText}>
-                    Tạo danh mục mới
+                    Tạo loại công việc mới
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -514,6 +494,7 @@ const AddNewScreen = ({navigation}: any) => {
         </TouchableWithoutFeedback>
       </Modal>
 
+      {/* New Category Modal */}
       <Modal
         transparent={true}
         visible={isNewCategoryModalVisible}
@@ -527,7 +508,7 @@ const AddNewScreen = ({navigation}: any) => {
                 <View style={styles.newCategoryInputContainer}>
                   <TextInput
                     style={styles.newCategoryInput}
-                    placeholder="Nhập tên danh mục mới"
+                    placeholder="Nhập tên loại công việc mới"
                     value={tempCategory}
                     onChangeText={val => setTempCategory(val)}
                   />
@@ -589,21 +570,6 @@ const AddNewScreen = ({navigation}: any) => {
         </TouchableWithoutFeedback>
       </Modal>
 
-      <DateTimePickerModal
-        isVisible={isTimePickerVisible}
-        mode="time"
-        onConfirm={time => {
-          setSelectedTime(
-            time.toLocaleTimeString('vi-VN', {
-              hour: '2-digit',
-              minute: '2-digit',
-            }),
-          );
-          handleChangeValue('startTime', time);
-          hideTimePicker();
-        }}
-        onCancel={hideTimePicker}
-      />
       <LoadingModal visible={isLoading} />
     </View>
   );
@@ -664,10 +630,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: appColors.primary,
   },
-  selectedCategoryText: {
-    marginLeft: 10,
+  selectedDateText: {
+    marginLeft: 'auto',
     fontSize: 16,
-    color: appColors.black,
+    color: appColors.gray,
+  },
+  selectedTimeText: {
+    marginLeft: 'auto',
+    fontSize: 16,
+    color: appColors.gray,
+  },
+  selectedRepeatText: {
+    marginLeft: 'auto',
+    fontSize: 16,
+    color: appColors.gray,
+  },
+  selectedCategoryText: {
+    marginLeft: 'auto',
+    fontSize: 16,
+    color: appColors.gray,
   },
   modalContainer: {
     flex: 1,
@@ -685,42 +666,17 @@ const styles = StyleSheet.create({
   calendar: {
     width: '100%',
     height: 350,
-    marginBottom: 20,
-  },
-  modalOptions: {
-    width: '100%',
-  },
-  modalOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 10,
-  },
-  modalOptionText: {
-    marginLeft: 10,
-    fontSize: 16,
-    color: appColors.primary,
-  },
-  selectedTimeText: {
-    marginLeft: 'auto',
-    fontSize: 16,
-    color: appColors.gray,
   },
   repeatModalContent: {
     width: '80%',
     backgroundColor: '#ffffff',
     borderRadius: 10,
     padding: 20,
-    alignItems: 'center',
   },
   repeatOptionText: {
     fontSize: 16,
     color: appColors.primary,
     marginVertical: 10,
-  },
-  selectedRepeatText: {
-    marginLeft: 'auto',
-    fontSize: 16,
-    color: appColors.gray,
   },
   categoryModalContent: {
     width: '90%',
@@ -796,3 +752,4 @@ const styles = StyleSheet.create({
 });
 
 export default AddNewScreen;
+  

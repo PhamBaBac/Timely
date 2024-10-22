@@ -9,7 +9,6 @@ import {
   Modal,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {TaskDetailScreenProps} from '../components/TaskDetailProps';
 import {Subtask} from '../models/taskModel';
 
 const TaskDetailScreen = ({

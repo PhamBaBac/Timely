@@ -12,6 +12,7 @@ import firestore from '@react-native-firebase/firestore';
 import {TaskModel} from '../../models/taskModel';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import debounce from 'lodash/debounce';
+import {appColors} from '../../constants';
 
 const TaskListScreen = ({route, navigation}: {route: any; navigation: any}) => {
   const {isCompleted, category} = route.params;
@@ -69,9 +70,15 @@ const TaskListScreen = ({route, navigation}: {route: any; navigation: any}) => {
   const renderItem = ({item}: {item: TaskModel}) => (
     <TouchableOpacity
       style={styles.taskItem}
-      onPress={() => navigation.navigate('TaskDetail', {taskId: item.id})}>
-<Text style={styles.taskName}>{item.description}</Text>
-      <Text style={styles.taskDescription}>{item.description}</Text>
+      onPress={() =>
+        navigation.navigate('TaskDetailScreen', {task: item, isCompleted})
+      }>
+      <Text style={styles.taskName}>{item.description}</Text>
+      <Text style={styles.taskDate}>
+        {item.startDate
+          ? new Date(item.startDate).toLocaleString()
+          : 'No date available'}
+      </Text>
     </TouchableOpacity>
   );
 
@@ -119,6 +126,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
+    backgroundColor: appColors.primary,
   },
   backButton: {
     padding: 8,
@@ -130,7 +138,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     height: 40,
-    borderColor: '#ccc',
+    borderColor: appColors.primary,
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 16,
@@ -148,6 +156,11 @@ const styles = StyleSheet.create({
   },
   taskDescription: {
     fontSize: 14,
+    color: '#888',
+    marginTop: 4,
+  },
+  taskDate: {
+    fontSize: 12,
     color: '#888',
     marginTop: 4,
   },

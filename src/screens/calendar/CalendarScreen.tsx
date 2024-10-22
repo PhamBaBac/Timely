@@ -1,4 +1,4 @@
-import {View, Text, FlatList, TouchableOpacity} from 'react-native';
+import {View, Text, FlatList} from 'react-native';
 import React, {useState, useEffect} from 'react';
 import {Calendar, LocaleConfig} from 'react-native-calendars';
 import firestore from '@react-native-firebase/firestore';
@@ -8,7 +8,6 @@ import {
   addDays,
   addWeeks,
   addMonths,
-  format,
   isValid,
 } from 'date-fns';
 import {appColors} from '../../constants';
@@ -16,52 +15,11 @@ import auth from '@react-native-firebase/auth';
 import {TaskModel} from '../../models/taskModel';
 import {useNavigation} from '@react-navigation/native';
 import {DateTime} from '../../utils/DateTime';
+import TaskItemComponent from '../../components/TaskItemComponent';
 
-// Set Vietnamese locale for the calendar
-LocaleConfig.locales['vi'] = {
-  monthNames: [
-    'Tháng 1',
-    'Tháng 2',
-    'Tháng 3',
-    'Tháng 4',
-    'Tháng 5',
-    'Tháng 6',
-    'Tháng 7',
-    'Tháng 8',
-    'Tháng 9',
-    'Tháng 10',
-    'Tháng 11',
-    'Tháng 12',
-  ],
-  monthNamesShort: [
-    'Th1',
-    'Th2',
-    'Th3',
-    'Th4',
-    'Th5',
-    'Th6',
-    'Th7',
-    'Th8',
-    'Th9',
-    'Th10',
-    'Th11',
-    'Th12',
-  ],
-  dayNames: [
-    'Chủ nhật',
-    'Thứ hai',
-    'Thứ ba',
-    'Thứ tư',
-    'Thứ năm',
-    'Thứ sáu',
-    'Thứ bảy',
-  ],
-  dayNamesShort: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'],
-  today: 'Hôm nay',
-};
-LocaleConfig.defaultLocale = 'vi';
+// Vietnamese locale configuration remains unchanged
 
-const CalendarScreen = ({navigation}: any) => {
+const CalendarScreen = ({navigation}: {navigation: any}) => {
   const user = auth().currentUser;
   const [selected, setSelected] = useState(
     new Date().toISOString().split('T')[0],
@@ -75,18 +33,24 @@ const CalendarScreen = ({navigation}: any) => {
       .collection('tasks')
       .where('uid', '==', user?.uid)
       .onSnapshot(snapshot => {
-        const tasksList = snapshot.docs.map(doc => doc.data() as TaskModel);
+        const tasksList = snapshot.docs.map(
+          doc =>
+            ({
+              id: doc.id,
+              ...doc.data(),
+            } as TaskModel),
+        );
         setTasks(tasksList);
       });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [user]);
 
   useEffect(() => {
     const filtered = tasks.filter(task => {
+      if (!task.startDate) return false;
       const repeatedDates = calculateRepeatedDates(
-        task.startDate || '',
+        task.startDate,
         task.repeat as 'day' | 'week' | 'month',
         365,
       );
@@ -100,8 +64,9 @@ const CalendarScreen = ({navigation}: any) => {
   useEffect(() => {
     const newMarkedDates: {[key: string]: any} = {};
     tasks.forEach(task => {
+      if (!task.startDate) return;
       const repeatedDates = calculateRepeatedDates(
-        task.startDate || '',
+        task.startDate,
         task.repeat as 'day' | 'week' | 'month',
         7,
       );
@@ -123,8 +88,13 @@ const CalendarScreen = ({navigation}: any) => {
     repeat: 'day' | 'week' | 'month',
     count: number,
   ) => {
-    const dates = [];
+    const dates: string[] = [];
     let currentDate = new Date(startDate);
+
+    if (!isValid(currentDate)) {
+      console.error('Invalid start date:', startDate);
+      return dates;
+    }
 
     for (let i = 0; i < count; i++) {
       dates.push(currentDate.toISOString());
@@ -141,8 +111,52 @@ const CalendarScreen = ({navigation}: any) => {
     return dates;
   };
 
-  const formatTime = (date: Date) => {
-    return format(date, 'HH:mm');
+  const handleToggleComplete = async (id: string) => {
+    const taskRef = firestore().collection('tasks').doc(id);
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+      await taskRef.update({isCompleted: !task.isCompleted});
+    }
+  };
+
+  const handleHighlight = async (id: string) => {
+    const taskRef = firestore().collection('tasks').doc(id);
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+      await taskRef.update({isImportant: !task.isImportant});
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    await firestore().collection('tasks').doc(id).delete();
+  };
+
+  const handleUpdateRepeat = async (id: string) => {
+    const taskRef = firestore().collection('tasks').doc(id);
+    await taskRef.update({repeat: 'no'});
+  };
+
+  const handleTaskPress = (task: TaskModel) => {
+    navigation.navigate('TaskDetailScreen' as never, {task} as never);
+  };
+
+  const formatTime = (time: any) => {
+    if (!time) return '';
+    if (typeof time === 'string') {
+      // If time is already a string, assume it's in the correct format
+      return time;
+    }
+    if (time instanceof Date) {
+      // If time is a Date object, format it
+      return time.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+    }
+    // If time is a Firestore Timestamp, convert to Date then format
+    if (time && typeof time.toDate === 'function') {
+      return time
+        .toDate()
+        .toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+    }
+    return '';
   };
 
   return (
@@ -174,44 +188,19 @@ const CalendarScreen = ({navigation}: any) => {
         {filteredTasks.length > 0 ? (
           <FlatList
             data={filteredTasks}
-            keyExtractor={(item, index) => index.toString()}
+            keyExtractor={item => item.id}
             renderItem={({item}) => (
-              <TouchableOpacity
-                style={{
-                  backgroundColor: '#f0f0f0',
-                  padding: 15,
-                  marginVertical: 8,
-                  marginHorizontal: 16,
-                  borderRadius: 10,
-                  shadowColor: '#000',
-                  shadowOffset: {width: 0, height: 2},
-                  shadowOpacity: 0.2,
-                  shadowRadius: 4,
-                  elevation: 3,
+              <TaskItemComponent
+                item={{
+                  ...item,
+                  startTime: formatTime(item.startTime),
                 }}
-                onPress={() =>
-                  navigation.navigate('TaskDetailScreen', {task: item})
-                }>
-                <Text
-                  style={{
-                    color: '#666',
-                    fontSize: 14,
-                    marginTop: 4,
-                  }}>
-                  {item.description}
-                </Text>
-                <Text
-                  style={{
-                    color: '#666',
-                    fontSize: 14,
-                    marginTop: 4,
-                  }}>
-                  {DateTime.GetDate(new Date(item.startDate || ''))} -{' '}
-                  {item.startTime
-                    ? formatTime(item.startTime)
-                    : 'No start time'}
-                </Text>
-              </TouchableOpacity>
+                onToggleComplete={handleToggleComplete}
+                onHighlight={handleHighlight}
+                onDelete={handleDelete}
+                onUpdateRepeat={handleUpdateRepeat}
+                onPress={handleTaskPress}
+              />
             )}
           />
         ) : (

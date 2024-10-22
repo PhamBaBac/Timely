@@ -11,6 +11,8 @@ import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import {BarChart} from 'react-native-chart-kit';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {appColors} from '../../constants';
 
 const ProfileScreen = ({navigation}: {navigation: any}) => {
   const user = auth().currentUser;
@@ -32,48 +34,61 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
     const unsubscribe = firestore()
       .collection('tasks')
       .where('uid', '==', user?.uid)
-      .onSnapshot(snapshot => {
-        let completed = 0;
-        let incomplete = 0;
-        const categoryCount: {[key: string]: number} = {};
-        let uncategorizedCount = 0;
-        const weeklyCount = new Array(7).fill(0);
-
-        snapshot.forEach(doc => {
-          const task = doc.data();
-          const taskDate = task.date
-            ? new Date(task.date.seconds * 1000)
-            : new Date();
-          const dayOfWeek = (taskDate.getDay() + 6) % 7; // Adjust to make Monday = 0, Sunday = 6
-
-          if (task.isCompleted) {
-            completed++;
-            weeklyCount[dayOfWeek]++;
-          } else {
-            incomplete++;
-          }
-
-          if (task.category) {
-            if (!categoryCount[task.category]) {
-              categoryCount[task.category] = 0;
-            }
-            categoryCount[task.category]++;
-          } else {
-            uncategorizedCount++;
-          }
-        });
-
-        setCompletedTasks(completed);
-        setIncompleteTasks(incomplete);
-        setWeeklyCompletedTasks(weeklyCount);
-        setCategories([
-          ...Object.keys(categoryCount).map(name => ({
-            name,
-            count: categoryCount[name],
-          })),
-          {name: 'Chưa phân loại', count: uncategorizedCount},
-        ]);
+      .onSnapshot(async snapshot => {
+        const tasks = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+        await AsyncStorage.setItem('tasks', JSON.stringify(tasks));
+        updateStateWithTasks(tasks);
       });
+
+    const fetchTasksFromAsyncStorage = async () => {
+      const tasksJson = await AsyncStorage.getItem('tasks');
+      const tasks = tasksJson ? JSON.parse(tasksJson) : [];
+      updateStateWithTasks(tasks);
+    };
+
+    const updateStateWithTasks = (tasks: any[]) => {
+      let completed = 0;
+      let incomplete = 0;
+      const categoryCount: {[key: string]: number} = {};
+      let uncategorizedCount = 0;
+      const weeklyCount = new Array(7).fill(0);
+
+      tasks.forEach((task: any) => {
+        const taskDate = task.date
+          ? new Date(task.date.seconds * 1000)
+          : new Date();
+        const dayOfWeek = (taskDate.getDay() + 6) % 7; // Adjust to make Monday = 0, Sunday = 6
+
+        if (task.isCompleted) {
+          completed++;
+          weeklyCount[dayOfWeek]++;
+        } else {
+          incomplete++;
+        }
+
+        if (task.category) {
+          if (!categoryCount[task.category]) {
+            categoryCount[task.category] = 0;
+          }
+          categoryCount[task.category]++;
+        } else {
+          uncategorizedCount++;
+        }
+      });
+
+      setCompletedTasks(completed);
+      setIncompleteTasks(incomplete);
+      setWeeklyCompletedTasks(weeklyCount);
+      setCategories([
+        ...Object.keys(categoryCount).map(name => ({
+          name,
+          count: categoryCount[name],
+        })),
+        {name: 'Chưa phân loại', count: uncategorizedCount},
+      ]);
+    };
+
+    fetchTasksFromAsyncStorage();
 
     return () => unsubscribe();
   }, [user]);
@@ -204,7 +219,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#000',
+    backgroundColor: appColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 20,
@@ -260,7 +275,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#888',
+    color: appColors.primary,
     textAlign: 'center',
     marginTop: 20,
   },

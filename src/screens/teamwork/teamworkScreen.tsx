@@ -10,6 +10,7 @@ import {
   Switch,
   Platform,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
@@ -17,7 +18,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {DateTime} from '../../utils/DateTime';
 import LoadingModal from '../../modal/LoadingModal';
-import {addDays, addWeeks, addMonths} from 'date-fns';
+import {addDays, isBefore, isAfter, isSameDay} from 'date-fns';
+import {appColors} from '../../constants';
 
 interface ScheduleModel {
   id: string;
@@ -29,29 +31,7 @@ interface ScheduleModel {
   room: string;
   instructor: string;
   isExam: boolean;
-  repeatWeekly: boolean;
-  repeatCount: number;
 }
-
-const calculateRepeatedDates = (
-  startDate: Date,
-  repeat: 'day' | 'week' | 'month',
-  count: number,
-) => {
-  const dates = [];
-  let currentDate = new Date(startDate);
-  for (let i = 0; i < count; i++) {
-    dates.push(new Date(currentDate));
-    if (repeat === 'day') {
-      currentDate = addDays(currentDate, 1);
-    } else if (repeat === 'week') {
-      currentDate = addWeeks(currentDate, 1);
-    } else if (repeat === 'month') {
-      currentDate = addMonths(currentDate, 1);
-    }
-  }
-  return dates;
-};
 
 const Teamwork = () => {
   const user = auth().currentUser;
@@ -69,8 +49,6 @@ const Teamwork = () => {
     room: '',
     instructor: '',
     isExam: false,
-    repeatWeekly: false,
-    repeatCount: 1,
   });
   const [schedules, setSchedules] = useState<ScheduleModel[]>([]);
   const [loading, setLoading] = useState(false);
@@ -152,22 +130,30 @@ const Teamwork = () => {
     setSelectedDay(null);
   };
 
+  const calculateRepeatedDates = (startDate: Date, endDate: Date) => {
+    const dates = [];
+    let currentDate = new Date(startDate);
+    while (
+      isBefore(currentDate, endDate) ||
+      currentDate.getTime() === endDate.getTime()
+    ) {
+      dates.push(new Date(currentDate));
+      currentDate = addDays(currentDate, 7); // Add 7 days for weekly repetition
+    }
+    return dates;
+  };
+
   const filteredScheduleItems = schedules
     .flatMap(item => {
-      if (item.repeatWeekly) {
-        const repeatedDates = calculateRepeatedDates(
-          item.startDate,
-          'week',
-          item.repeatCount,
-        );
-        return repeatedDates.map(date => ({
-          ...item,
-          startDate: date,
-          endDate: new Date(date.getTime() + 24 * 60 * 60 * 1000), // End date is next day
-        }));
-      } else {
-        return [item];
-      }
+      const repeatedDates = calculateRepeatedDates(
+        item.startDate,
+        item.endDate,
+      );
+      return repeatedDates.map(date => ({
+        ...item,
+        startDate: date,
+        endDate: new Date(date.getTime() + 24 * 60 * 60 * 1000), // End date is next day
+      }));
     })
     .filter(item => {
       const itemDate = item.startDate.toISOString().split('T')[0];
@@ -186,66 +172,116 @@ const Teamwork = () => {
       isSaturday: boolean;
       isSunday: boolean;
     };
-  }) => (
-    <TouchableOpacity
-      style={[
-        styles.dayButton,
-        item.date === selectedDay && styles.selectedDayButton,
-        (item.isSaturday || item.isSunday) && styles.weekendDayButton,
-      ]}
-      onPress={() =>
-        setSelectedDay(item.date === selectedDay ? null : item.date)
-      }>
-      <View style={styles.dayContent}>
-        <Text
-          style={[
-            styles.dayText,
-            item.date === selectedDay && styles.selectedDayText,
-            (item.isSaturday || item.isSunday) && styles.weekendDayText,
-          ]}>
-          {item.day}
-        </Text>
-        <Text
-          style={[
-            styles.dateText,
-            item.date === selectedDay && styles.selectedDateText,
-            (item.isSaturday || item.isSunday) && styles.weekendDateText,
-          ]}>
-          {item.fullDate.getDate()}
-        </Text>
-        {item.date === selectedDay && <View style={styles.selectedDot} />}
-      </View>
-    </TouchableOpacity>
-  );
+  }) => {
+    const isToday = isSameDay(item.fullDate, new Date());
+    return (
+      <TouchableOpacity
+        style={[
+          styles.dayButton,
+          item.date === selectedDay && styles.selectedDayButton,
+          (item.isSaturday || item.isSunday) && styles.weekendDayButton,
+          isToday && styles.todayButton,
+        ]}
+        onPress={() =>
+          setSelectedDay(item.date === selectedDay ? null : item.date)
+        }>
+        <View style={styles.dayContent}>
+          <Text
+            style={[
+              styles.dayText,
+              item.date === selectedDay && styles.selectedDayText,
+              (item.isSaturday || item.isSunday) && styles.weekendDayText,
+              isToday && styles.todayText,
+            ]}>
+            {item.day}
+          </Text>
+          <Text
+            style={[
+              styles.dateText,
+              item.date === selectedDay && styles.selectedDateText,
+              (item.isSaturday || item.isSunday) && styles.weekendDateText,
+              isToday && styles.todayText,
+            ]}>
+            {item.fullDate.getDate()}
+          </Text>
+          {item.date === selectedDay && <View style={styles.selectedDot} />}
+          {isToday && <View style={styles.todayDot} />}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const handleDeleteSchedule = (scheduleId: string) => {
+    Alert.alert('Xóa lịch học', 'Bạn có chắc chắn muốn xóa lịch học này?', [
+      {
+        text: 'Hủy',
+        style: 'cancel',
+      },
+      {
+        text: 'Xóa',
+        onPress: () => confirmDeleteSchedule(scheduleId),
+        style: 'destructive',
+      },
+    ]);
+  };
+
+  const confirmDeleteSchedule = async (scheduleId: string) => {
+    setLoading(true);
+    try {
+      await firestore().collection('schedules').doc(scheduleId).delete();
+      console.log('Schedule deleted:', scheduleId);
+      fetchSchedules(); // Refresh the schedules list
+    } catch (error) {
+      console.error('Error deleting schedule:', error);
+      Alert.alert('Lỗi', 'Không thể xóa lịch học. Vui lòng thử lại sau.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderScheduleItem = ({item}: {item: ScheduleModel}) => (
     <TouchableOpacity
       onPress={() => handleEditSchedule(item)}
       style={styles.scheduleItem}>
       <Text style={styles.scheduleDate}>
-        {`${DateTime.GetWeekday(item.startDate.getTime())}`}
+        {`${DateTime.GetWeekday(
+          item.startDate.getTime(),
+        )}- ${item.startDate.toLocaleDateString('en-GB')}`}
       </Text>
       <View
         style={[
           styles.scheduleItemContent,
-          item.isExam && styles.examScheduleItemContent,
+          item.isExam && styles.scheduleItemContent,
         ]}>
-        <Text style={styles.scheduleItemTitle}>{item.course}</Text>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Tiết :</Text>
-          <Text style={styles.detailValue}>{item.period}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Nhóm :</Text>
-          <Text style={styles.detailValue}>{item.group}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Phòng :</Text>
-          <Text style={styles.detailValue}>{item.room}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Giảng viên :</Text>
-          <Text style={styles.detailValue}>{item.instructor}</Text>
+        <View style={styles.scheduleItem}>
+          <View style={styles.scheduleItemContent}>
+            <View style={styles.scheduleHeader}>
+              <Text style={styles.scheduleItemTitle}>{item.course}</Text>
+            </View>
+            <View style={styles.scheduleDetails}>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Tiết:</Text>
+                <Text style={styles.detailValue}>{item.period}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Nhóm:</Text>
+                <Text style={styles.detailValue}>{item.group}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Phòng:</Text>
+                <Text style={styles.detailValue}>{item.room}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Giảng viên:</Text>
+                <Text style={styles.detailValue}>{item.instructor}</Text>
+              </View>
+            </View>
+            {item.isExam && (
+              <View style={styles.scheduleFooter}>
+                <Text style={styles.scheduleFooterText}>Thi</Text>
+              </View>
+            )}
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -267,8 +303,6 @@ const Teamwork = () => {
       room: '',
       instructor: '',
       isExam: false,
-      repeatWeekly: false,
-      repeatCount: 1,
     });
     setModalVisible(true);
   };
@@ -313,7 +347,7 @@ const Teamwork = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Lịch học/ Lịch</Text>
+        <Text style={styles.headerTitle}>Lịch học/ Lịch thi</Text>
         <View style={styles.headerButtons}>
           <TouchableOpacity
             onPress={setCurrentWeekToToday}
@@ -462,31 +496,6 @@ const Teamwork = () => {
               />
             </View>
 
-            <View style={styles.switchContainer}>
-              <Text>Lặp lại hàng tuần:</Text>
-              <Switch
-                value={newSchedule.repeatWeekly}
-                onValueChange={value =>
-                  setNewSchedule({...newSchedule, repeatWeekly: value})
-                }
-              />
-            </View>
-
-            {newSchedule.repeatWeekly && (
-              <TextInput
-                style={styles.input}
-                placeholder="Số lần lặp lại"
-                value={newSchedule.repeatCount.toString()}
-                onChangeText={text =>
-                  setNewSchedule({
-                    ...newSchedule,
-                    repeatCount: parseInt(text) || 1,
-                  })
-                }
-                keyboardType="numeric"
-              />
-            )}
-
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.button}
@@ -498,6 +507,16 @@ const Teamwork = () => {
                 onPress={handleSaveSchedule}>
                 <Text style={styles.buttonText}>Lưu</Text>
               </TouchableOpacity>
+              {newSchedule.id && (
+                <TouchableOpacity
+                  style={[styles.button, styles.deleteButton]}
+                  onPress={() => {
+                    handleCloseModal();
+                    handleDeleteSchedule(newSchedule.id);
+                  }}>
+                  <Text style={styles.buttonText}>Xóa</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
@@ -515,16 +534,60 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  todayButton: {
-    marginRight: 16,
-    padding: 4,
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#8A2BE2',
+    backgroundColor: appColors.primary,
     padding: 16,
+  },
+  scheduleItem: {
+    marginBottom: 16,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: 'white',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+  },
+  scheduleItemContent: {
+    flexDirection: 'column',
+  },
+  scheduleHeader: {
+    backgroundColor: appColors.primary,
+    padding: 10,
+  },
+  scheduleItemTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  scheduleDetails: {
+    padding: 10,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 5,
+  },
+  detailLabel: {
+    color: appColors.primary,
+    fontWeight: 'bold',
+  },
+  detailValue: {
+    flex: 1,
+    textAlign: 'right',
+  },
+  scheduleFooter: {
+    backgroundColor: 'red',
+    padding: 5,
+    alignItems: 'center',
+  },
+  scheduleFooterText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
   headerTitle: {
     color: 'white',
@@ -540,7 +603,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addButtonText: {
-    color: '#8A2BE2',
+    color: appColors.primary,
     fontSize: 24,
     fontWeight: 'bold',
   },
@@ -558,7 +621,7 @@ const styles = StyleSheet.create({
   weekLabel: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#8A2BE2',
+    color: appColors.primary,
   },
   weekDaysWrapper: {
     height: 80,
@@ -578,7 +641,7 @@ const styles = StyleSheet.create({
     height: 70,
   },
   selectedDayButton: {
-    backgroundColor: '#8A2BE2',
+    backgroundColor: appColors.gray5,
   },
   weekendDayButton: {
     // You can add specific styles for weekend days if needed
@@ -616,46 +679,33 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     marginTop: 2,
   },
+  todayButton: {
+    padding: 8,
+  },
+  todayText: {
+    color: appColors.primary, // Purple text for today
+    fontWeight: 'bold',
+  },
+  todayDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#8A2BE2', // Purple dot for today
+    marginTop: 2,
+  },
   scheduleContainer: {
     flex: 1,
     paddingHorizontal: 16,
+    paddingVertical: 8,
   },
-  scheduleItem: {
-    marginBottom: 16,
-  },
+
   scheduleDate: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#8A2BE2',
     marginBottom: 8,
   },
-  scheduleItemContent: {
-    backgroundColor: 'white',
-    borderRadius: 8,
-    padding: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#8A2BE2',
-  },
-  examScheduleItemContent: {
-    borderLeftColor: 'red',
-  },
-  scheduleItemTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    marginBottom: 4,
-  },
-  detailLabel: {
-    flex: 1,
-    color: '#8A2BE2',
-  },
-  detailValue: {
-    flex: 2,
-    fontWeight: '500',
-  },
+
   centeredView: {
     flex: 1,
     justifyContent: 'center',
@@ -722,6 +772,9 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: '#4CAF50',
+  },
+  deleteButton: {
+    backgroundColor: '#FF0000',
   },
   buttonText: {
     color: 'white',
