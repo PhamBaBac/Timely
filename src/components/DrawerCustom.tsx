@@ -135,6 +135,10 @@ const DrawerCustom = ({navigation}: any) => {
     await auth().signOut();
 
     await AsyncStorage.removeItem('fcmtoken');
+    await AsyncStorage.removeItem('completedTasks');
+    await AsyncStorage.removeItem('importantTasks');
+    await AsyncStorage.removeItem('deletedTasks');
+
   };
 
   return (
