@@ -278,7 +278,6 @@ const CategoryScreen = () => {
           <Icon name="add" size={24} color={appColors.primary} />
           <Text style={styles.addButtonText}>Tạo mới</Text>
         </TouchableOpacity>
-        <Text style={styles.footer}>Nhấn và kéo để sắp xếp lại</Text>
       </ScrollView>
 
       {modalVisible && (
@@ -331,7 +330,7 @@ const CategoryScreen = () => {
             <Text style={styles.editModalSubtitle}>
               {editingCategory.name.length}/50
             </Text>
-            <View style={styles.colorOption}>
+            {/* <View style={styles.colorOption}>
               <Text>Màu sắc danh mục</Text>
               <View style={styles.colorSwitch}>
                 <Text>Mặc định</Text>
@@ -340,7 +339,7 @@ const CategoryScreen = () => {
                   onValueChange={setIsDefaultColor}
                 />
               </View>
-            </View>
+            </View> */}
             <View style={styles.editModalButtons}>
               <TouchableOpacity onPress={() => setEditModalVisible(false)}>
                 <Text style={styles.cancelButton}>HỦY</Text>

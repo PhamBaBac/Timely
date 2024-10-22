@@ -1,33 +1,20 @@
+import React, {useEffect, useState} from 'react';
+import {View, ScrollView, StyleSheet, Alert} from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import {addDays, addMonths, addWeeks, format} from 'date-fns';
-import React, {useEffect, useState} from 'react';
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {RowComponent, SpaceComponent} from '../../components';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {appColors} from '../../constants/appColor';
+import HeaderComponent from '../../components/HeaderComponent';
+import FilterComponent from '../../components/FilterComponent';
+import TaskItemComponent from '../../components/TaskItemComponent';
 import {CategoryModel} from '../../models/categoryModel';
 import {TaskModel} from '../../models/taskModel';
-import {DateTime} from '../../utils/DateTime';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {Category} from 'iconsax-react-native';
+import {addDays, addMonths, addWeeks, format} from 'date-fns';
 
 const HomeScreen = ({navigation}: {navigation: any}) => {
   const user = auth().currentUser;
   const [activeFilter, setActiveFilter] = useState('Tất cả');
-  const [showBeforeToday, setShowBeforeToday] = useState(true);
-  const [showToday, setShowToday] = useState(true);
   const [tasks, setTasks] = useState<TaskModel[]>([]);
-  console.log('Tasks:', tasks);
   const [categories, setCategories] = useState<CategoryModel[]>([]);
   const [deletedTaskIds, setDeletedTaskIds] = useState<string[]>([]);
   const [completedTasks, setCompletedTasks] = useState<{
@@ -46,21 +33,6 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
       });
     return () => unsubscribe();
   }, []);
-
-  const filters = categories.reduce<string[]>(
-    (acc, category: CategoryModel) => {
-      if (!acc.includes(category.name)) {
-        acc.push(category.name);
-      }
-      return acc;
-    },
-    [
-      'Tất cả',
-      'Công việc',
-      'Sinh nhật',
-      ...categories.map(category => category.name),
-    ],
-  );
 
   const filteredTasks = tasks.filter(task => {
     if (activeFilter === 'Tất cả') return true;
@@ -368,188 +340,51 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     navigation.navigate('TaskDetailScreen', {task: task});
   };
 
-  const renderTask = (item: TaskModel) => {
-    if (!item) return null;
-
-    const renderRightActions = (item: TaskModel) => (
-      <View style={styles.swipeActions}>
-        <Pressable
-          style={styles.swipeActionButton}
-          onPress={() => handleDelete(item.id)}>
-          <MaterialIcons name="delete" size={24} color={appColors.red} />
-          <Text style={styles.actionText}>Xóa</Text>
-        </Pressable>
-
-        {item.repeat !== 'no' && (
-          <Pressable
-            style={styles.swipeActionButton}
-            onPress={() => handleUpdateRepeat(item.id)}>
-            <MaterialIcons name="repeat" size={24} color={appColors.blue} />
-            <Text style={styles.actionText}>Bỏ lặp lại</Text>
-          </Pressable>
-        )}
-      </View>
-    );
-
-    return (
-      <Swipeable
-        renderRightActions={() => renderRightActions(item)}
-        key={item.id}>
-        <Pressable onPress={() => handleTaskPress(item)}>
-          <View style={styles.taskItem}>
-            <Pressable
-              style={styles.roundButton}
-              onPress={() => handleToggleComplete(item.id)}>
-              {item.isCompleted ? (
-                <MaterialIcons
-                  name="check-circle"
-                  size={24}
-                  color={appColors.primary}
-                />
-              ) : (
-                <MaterialIcons
-                  name="radio-button-unchecked"
-                  size={24}
-                  color={appColors.gray}
-                />
-              )}
-            </Pressable>
-            <RowComponent>
-              <View style={styles.taskContent}>
-                <Text
-                  style={[
-                    styles.taskTitle,
-                    item.isCompleted && styles.completedTaskTitle,
-                  ]}>
-                  {item.description}
-                </Text>
-                <Text style={styles.taskDate}>
-                  {DateTime.GetDate(new Date(item.startDate || ''))} -{' '}
-                  {item.startTime
-                    ? formatTime(item.startTime)
-                    : 'No start time'}
-                </Text>
-              </View>
-              <Pressable
-                style={{
-                  paddingRight: 40,
-                }}
-                onPress={() => handleHighlight(item.id)}>
-                <MaterialIcons
-                  name="star"
-                  size={24}
-                  color={item.isImportant ? appColors.yellow : appColors.gray}
-                />
-              </Pressable>
-            </RowComponent>
-          </View>
-        </Pressable>
-      </Swipeable>
-    );
-  };
+  const filters = categories.reduce(
+    (acc, category) => {
+      if (!acc.includes(category.name)) {
+        acc.push(category.name);
+      }
+      return acc;
+    },
+    ['Tất cả', 'Công việc', 'Sinh nhật', 'Cá nhân', 'Gia đình'],
+  );
 
   return (
     <View style={styles.container}>
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor={appColors.whitesmoke}
+      <HeaderComponent
+        title="Trang chủ"
+        onMenuPress={() => navigation.openDrawer()}
+        onSearchPress={() => {
+          /* Xử lý tìm kiếm */
+        }}
       />
 
-      <View style={styles.header}>
-        <Pressable
-          style={styles.iconButton}
-          onPress={() => navigation.openDrawer()}>
-          <MaterialIcons name="menu" size={24} color="#000" />
-        </Pressable>
-        <Text style={styles.headerTitle}>Home</Text>
-        <Pressable style={styles.iconButton}>
-          <MaterialIcons name="search" size={24} color={appColors.black} />
-        </Pressable>
-      </View>
-
-      <View style={styles.filtersContainer}>
-        <ScrollView
-          horizontal={true}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filters}>
-          {filters.map((filter, index) => (
-            <Pressable
-              key={index}
-              style={[
-                styles.filterButton,
-                activeFilter === filter && styles.activeFilterButton,
-              ]}
-              onPress={() => setActiveFilter(filter)}>
-              <Text
-                style={[
-                  styles.filterButtonText,
-                  activeFilter === filter && styles.activeFilterText,
-                ]}>
-                {filter}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-        <SpaceComponent width={10} />
-        <Pressable
-          onPress={() => {
-            // Xử lý sự kiện thêm danh mục
-            navigation.navigate('Category');
-          }}>
-          <Category size="24" color={appColors.primary} />
-        </Pressable>
-      </View>
+      <FilterComponent
+        filters={filters}
+        activeFilter={activeFilter}
+        setActiveFilter={setActiveFilter}
+        onCategoryPress={() => navigation.navigate('Category')}
+      />
 
       <ScrollView style={styles.tasksContainer}>
-        {tasksBeforeToday.length > 0 && (
-          <View style={styles.section}>
-            <Pressable
-              onPress={() => setShowBeforeToday(!showBeforeToday)}
-              style={styles.sectionHeaderContainer}>
-              <Text style={styles.sectionHeader}>Trước</Text>
-              <MaterialIcons
-                name={showBeforeToday ? 'expand-less' : 'expand-more'}
-                size={24}
-                color={appColors.gray}
-              />
-            </Pressable>
-            {showBeforeToday && uniqueTasksBeforeToday.map(renderTask)}
-          </View>
-        )}
-
-        {tasksToday.length > 0 && (
-          <View style={styles.section}>
-            <Pressable
-              onPress={() => setShowToday(!showToday)}
-              style={styles.sectionHeaderContainer}>
-              <Text style={styles.sectionHeader}>Hôm nay </Text>
-              <MaterialIcons
-                name={showToday ? 'expand-less' : 'expand-more'}
-                size={24}
-                color={appColors.gray}
-              />
-            </Pressable>
-            {showToday && tasksToday.map(renderTask)}
-          </View>
-        )}
-
-        {tasksAfterToday.length > 0 && (
-          <View style={styles.section}>
-            <Pressable
-              onPress={() => setShowBeforeToday(!showBeforeToday)}
-              style={styles.sectionHeaderContainer}>
-              <Text style={styles.sectionHeader}>Tương lai</Text>
-              <MaterialIcons
-                name={showBeforeToday ? 'expand-less' : 'expand-more'}
-                size={24}
-                color={appColors.gray}
-              />
-            </Pressable>
-            {showBeforeToday && uniqueTasks.map(renderTask)}
-          </View>
-        )}
+        {tasks.map(task => (
+          <TaskItemComponent
+            key={task.id}
+            item={{
+              ...task,
+              startTime: task.startTime
+                ? formatTime(new Date(task.startTime))
+                : '',
+            }}
+            onToggleComplete={handleToggleComplete}
+            onHighlight={handleHighlight}
+            onDelete={handleDelete}
+            onUpdateRepeat={handleUpdateRepeat}
+            onPress={handleTaskPress}
+          />
+        ))}
       </ScrollView>
-      <SpaceComponent height={28} />
     </View>
   );
 };
@@ -560,122 +395,8 @@ const styles = StyleSheet.create({
     backgroundColor: appColors.whitesmoke,
     paddingHorizontal: 10,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    backgroundColor: appColors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: appColors.lightGray,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: appColors.black,
-  },
-  iconButton: {
-    padding: 8,
-  },
-  filtersContainer: {
-    paddingBottom: 4,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  filters: {
-    flexDirection: 'row',
-    paddingVertical: 8,
-  },
-  filterButton: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    backgroundColor: appColors.gray2,
-    borderRadius: 14,
-    marginRight: 8,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  activeFilterButton: {
-    backgroundColor: appColors.primary,
-  },
-  filterButtonText: {
-    fontSize: 15,
-    color: appColors.black,
-  },
-  activeFilterText: {
-    color: appColors.white,
-  },
   tasksContainer: {
     flex: 1,
-  },
-  section: {
-    marginVertical: 4,
-  },
-  sectionHeaderContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    // backgroundColor: appColors.white,
-    borderRadius: 8,
-  },
-  sectionHeader: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: appColors.gray,
-  },
-  taskItem: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    backgroundColor: appColors.white,
-    padding: 16,
-    borderRadius: 10,
-    marginBottom: 8,
-    shadowColor: appColors.black,
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  roundButton: {
-    marginRight: 10,
-  },
-  taskContent: {
-    flex: 1,
-    flexDirection: 'column',
-  },
-  taskTitle: {
-    fontSize: 16,
-    color: appColors.black,
-  },
-  completedTaskTitle: {
-    textDecorationLine: 'line-through',
-    color: appColors.gray,
-  },
-  taskDate: {
-    fontSize: 14,
-    color: appColors.red,
-    marginTop: 4,
-  },
-  swipeActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  swipeActionButton: {
-    padding: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  actionText: {
-    color: appColors.black,
-    fontSize: 14,
-    marginTop: 4,
   },
 });
 
