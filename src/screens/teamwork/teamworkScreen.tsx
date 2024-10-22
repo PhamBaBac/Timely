@@ -690,7 +690,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#8A2BE2', // Purple dot for today
+    backgroundColor: appColors.primary, // Purple dot for today
     marginTop: 2,
   },
   scheduleContainer: {
@@ -702,7 +702,7 @@ const styles = StyleSheet.create({
   scheduleDate: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#8A2BE2',
+    color: appColors.primary,
     marginBottom: 8,
   },
 
