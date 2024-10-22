@@ -1,21 +1,18 @@
-import {View, Text, FlatList, TouchableOpacity} from 'react-native';
-import React, {useState, useEffect} from 'react';
+import {View, Text, FlatList, TouchableOpacity, Pressable, StyleSheet} from 'react-native';
+import React, {useState, useEffect, useCallback} from 'react';
 import {Calendar, LocaleConfig} from 'react-native-calendars';
-import firestore from '@react-native-firebase/firestore';
-import {
-  isSameDay,
-  parseISO,
-  addDays,
-  addWeeks,
-  addMonths,
-  format,
-  isValid,
-} from 'date-fns';
+import {isSameDay, addDays, addWeeks, addMonths, format} from 'date-fns';
 import {appColors} from '../../constants';
-import auth from '@react-native-firebase/auth';
+import {useSelector} from 'react-redux';
+import {RootState} from '../../redux/store';
 import {TaskModel} from '../../models/taskModel';
 import {useNavigation} from '@react-navigation/native';
-import { DateTime } from '../../utils/DateTime';
+import {DateTime} from '../../utils/DateTime';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { Swipeable } from 'react-native-gesture-handler';
+import { RowComponent } from '../../components';
+import { fetchCompletedTasks, fetchDeletedTasks, fetchImportantTasks, handleDeleteTask, handleToggleComplete, handleToggleImportant } from '../../utils/taskUtil';
+import { useDispatch } from 'react-redux';  
 
 // Set Vietnamese locale for the calendar
 LocaleConfig.locales['vi'] = {
@@ -62,89 +59,149 @@ LocaleConfig.locales['vi'] = {
 LocaleConfig.defaultLocale = 'vi';
 
 const CalendarScreen = ({navigation}: any) => {
-  const user = auth().currentUser;
+    const dispatch = useDispatch();
+     const deletedTaskIds = useSelector(
+       (state: RootState) => state.tasks.deletedTaskIds,
+     );
   const [selected, setSelected] = useState(
     new Date().toISOString().split('T')[0],
   );
-  const [tasks, setTasks] = useState<TaskModel[]>([]);
+  const tasks = useSelector((state: RootState) => state.tasks.tasks);
   const [filteredTasks, setFilteredTasks] = useState<TaskModel[]>([]);
   const [markedDates, setMarkedDates] = useState<{[key: string]: any}>({});
 
+  // Lọc task theo ngày được chọn
   useEffect(() => {
-    const unsubscribe = firestore()
-      .collection('tasks')
-      .where('uid', '==', user?.uid)
-      .onSnapshot(snapshot => {
-        const tasksList = snapshot.docs.map(doc => doc.data() as TaskModel);
-        setTasks(tasksList);
-      });
-
-    // Cleanup subscription on unmount
-    return () => unsubscribe();
-  }, [user]);
-
-  useEffect(() => {
-    const filtered = tasks.filter(task => {
-      const repeatedDates = calculateRepeatedDates(
-        task.startDate || '',
-        task.repeat as 'day' | 'week' | 'month',
-        365,
-      );
-      return repeatedDates.some(date =>
-        isSameDay(parseISO(date), parseISO(selected)),
-      );
-    });
+    const filtered = tasks.filter(
+      task =>
+        task.startDate &&
+        isSameDay(new Date(task.startDate), new Date(selected)),
+    );
     setFilteredTasks(filtered);
-  }, [selected, tasks]);
+  }, [tasks, selected]);
+
+  // Cập nhật markedDates khi tasks thay đổi
+ useEffect(() => {
+   const newMarkedDates: {[key: string]: any} = {};
+
+   tasks.forEach(task => {
+     const dateString = task.startDate?.split('T')[0]; // Lấy ngày từ startDate
+     if (dateString) {
+       // Kiểm tra nếu ngày chưa được đánh dấu
+       if (!newMarkedDates[dateString]) {
+         newMarkedDates[dateString] = {
+           marked: true,
+           dotColor: appColors.primary,
+         };
+       }
+     }
+   });
+
+   setMarkedDates(newMarkedDates);
+ }, [tasks]);
 
   useEffect(() => {
-    const newMarkedDates: {[key: string]: any} = {};
-    tasks.forEach(task => {
-      const repeatedDates = calculateRepeatedDates(
-        task.startDate || '',
-        task.repeat as 'day' | 'week' | 'month',
-        7,
-      );
-      repeatedDates.forEach(date => {
-        const dateString = date.split('T')[0];
-        if (!newMarkedDates[dateString]) {
-          newMarkedDates[dateString] = {
-            marked: true,
-            dotColor: appColors.primary,
-          };
-        }
-      });
-    });
-    setMarkedDates(newMarkedDates);
-  }, [tasks]);
+    fetchDeletedTasks(dispatch);
+     fetchCompletedTasks(dispatch);
+     fetchImportantTasks(dispatch);
+  }, [dispatch]);
+   
 
-  const calculateRepeatedDates = (
-    startDate: string,
-    repeat: 'day' | 'week' | 'month',
-    count: number,
-  ) => {
-    const dates = [];
-    let currentDate = new Date(startDate);
+    const handleDelete = (taskId: string) => {
+      handleDeleteTask(taskId, dispatch, deletedTaskIds);
+    };
+    const handleToggleCompleteTask = (taskId: string) => {
+      handleToggleComplete(taskId, tasks, dispatch);
+    };
 
-    for (let i = 0; i < count; i++) {
-      dates.push(currentDate.toISOString());
-
-      if (repeat === 'day') {
-        currentDate = addDays(currentDate, 1);
-      } else if (repeat === 'week') {
-        currentDate = addWeeks(currentDate, 1);
-      } else if (repeat === 'month') {
-        currentDate = addMonths(currentDate, 1);
-      }
-    }
-
-    return dates;
-  };
+    const handleHighlight = async (taskId: string) => {
+      handleToggleImportant(taskId, tasks, dispatch);
+    };
+ 
 
   const formatTime = (date: Date) => {
     return format(date, 'HH:mm');
   };
 
+   const renderTask = (item: TaskModel) => {
+     if (!item) return null;
+
+     const renderRightActions = (item: TaskModel) => (
+       <View style={styles.swipeActions}>
+         <Pressable
+           style={styles.swipeActionButton}
+           onPress={() => handleDelete(item.id)}>
+           <MaterialIcons name="delete" size={24} color={appColors.red} />
+           <Text style={styles.actionText}>Xóa</Text>
+         </Pressable>
+
+         {item.repeat !== 'no' && (
+           <Pressable
+             style={styles.swipeActionButton}
+            >
+             <MaterialIcons name="repeat" size={24} color={appColors.blue} />
+             <Text style={styles.actionText}>Bỏ lặp lại</Text>
+           </Pressable>
+         )}
+       </View>
+     );
+
+     return (
+       <Swipeable
+         renderRightActions={() => renderRightActions(item)}
+         key={item.id}>
+         <Pressable onPress={() => {}}>
+           <View style={styles.taskItem}>
+             <Pressable
+               style={styles.roundButton}
+               onPress={() => handleToggleCompleteTask(item.id)}>
+               {item.isCompleted ? (
+                 <MaterialIcons
+                   name="check-circle"
+                   size={24}
+                   color={appColors.primary}
+                 />
+               ) : (
+                 <MaterialIcons
+                   name="radio-button-unchecked"
+                   size={24}
+                   color={appColors.gray}
+                 />
+               )}
+             </Pressable>
+             <RowComponent>
+               <View style={styles.taskContent}>
+                 <Text
+                   style={[
+                     styles.taskTitle,
+                     item.isCompleted && styles.completedTaskTitle,
+                   ]}>
+                   {item.description}
+                 </Text>
+                 <Text style={styles.taskDate}>
+                   {DateTime.GetDate(new Date(item.startDate || ''))} -{' '}
+                   {item.startTime
+                     ? formatTime(item.startTime)
+                     : 'No start time'}
+                 </Text>
+               </View>
+               <Pressable
+                 style={{
+                   paddingRight: 40,
+                 }}
+                 onPress={() => handleHighlight(item.id)}>
+                 <MaterialIcons
+                   name="star"
+                   size={24}
+                   color={item.isImportant ? appColors.yellow : appColors.gray}
+                 />
+               </Pressable>
+             </RowComponent>
+           </View>
+         </Pressable>
+       </Swipeable>
+     );
+   };
 
   return (
     <View style={{flex: 1}}>
@@ -175,45 +232,8 @@ const CalendarScreen = ({navigation}: any) => {
         {filteredTasks.length > 0 ? (
           <FlatList
             data={filteredTasks}
-            keyExtractor={(item, index) => index.toString()}
-            renderItem={({item}) => (
-              <TouchableOpacity
-                style={{
-                  backgroundColor: '#f0f0f0',
-                  padding: 15,
-                  marginVertical: 8,
-                  marginHorizontal: 16,
-                  borderRadius: 10,
-                  shadowColor: '#000',
-                  shadowOffset: {width: 0, height: 2},
-                  shadowOpacity: 0.2,
-                  shadowRadius: 4,
-                  elevation: 3,
-                }}
-                onPress={() =>
-                  navigation.navigate('TaskDetailScreen', {task: item})
-                }>
-                <Text
-                  style={{
-                    color: '#666',
-                    fontSize: 14,
-                    marginTop: 4,
-                  }}>
-                  {item.description}
-                </Text>
-                <Text
-                  style={{
-                    color: '#666',
-                    fontSize: 14,
-                    marginTop: 4,
-                  }}>
-                  {DateTime.GetDate(new Date(item.startDate || ''))} -{' '}
-                  {item.startTime
-                    ? formatTime(item.startTime)
-                    : 'No start time'}
-                </Text>
-              </TouchableOpacity>
-            )}
+            renderItem={({item}) => renderTask(item)}
+            keyExtractor={item => item.id}
           />
         ) : (
           <Text style={{fontSize: 16, textAlign: 'center', color: '#666'}}>
@@ -226,3 +246,59 @@ const CalendarScreen = ({navigation}: any) => {
 };
 
 export default CalendarScreen;
+
+
+const styles = StyleSheet.create({
+
+ 
+  taskItem: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    backgroundColor: appColors.white,
+    padding: 16,
+    borderRadius: 10,
+    marginBottom: 8,
+    shadowColor: appColors.black,
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 2,
+    marginHorizontal:8,
+  },
+  roundButton: {
+    marginRight: 10,
+  },
+  taskContent: {
+    flex: 1,
+    flexDirection: 'column',
+  },
+  taskTitle: {
+    fontSize: 16,
+    color: appColors.black,
+  },
+  completedTaskTitle: {
+    textDecorationLine: 'line-through',
+    color: appColors.gray,
+  },
+  taskDate: {
+    fontSize: 14,
+    color: appColors.red,
+    marginTop: 4,
+  },
+  swipeActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  swipeActionButton: {
+    padding: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionText: {
+    color: appColors.black,
+    fontSize: 14,
+    marginTop: 4,
+  },
+});
