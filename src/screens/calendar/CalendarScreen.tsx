@@ -1,4 +1,11 @@
-import {View, Text, FlatList, TouchableOpacity, Pressable, StyleSheet} from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  Pressable,
+  StyleSheet,
+} from 'react-native';
 import React, {useState, useEffect, useCallback} from 'react';
 import {Calendar, LocaleConfig} from 'react-native-calendars';
 import {isSameDay, addDays, addWeeks, addMonths, format} from 'date-fns';
@@ -9,10 +16,17 @@ import {TaskModel} from '../../models/taskModel';
 import {useNavigation} from '@react-navigation/native';
 import {DateTime} from '../../utils/DateTime';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { Swipeable } from 'react-native-gesture-handler';
-import { RowComponent } from '../../components';
-import { fetchCompletedTasks, fetchDeletedTasks, fetchImportantTasks, handleDeleteTask, handleToggleComplete, handleToggleImportant } from '../../utils/taskUtil';
-import { useDispatch } from 'react-redux';  
+import {Swipeable} from 'react-native-gesture-handler';
+import {RowComponent} from '../../components';
+import {
+  fetchCompletedTasks,
+  fetchDeletedTasks,
+  fetchImportantTasks,
+  handleDeleteTask,
+  handleToggleComplete,
+  handleToggleImportant,
+} from '../../utils/taskUtil';
+import {useDispatch} from 'react-redux';
 
 // Set Vietnamese locale for the calendar
 LocaleConfig.locales['vi'] = {
@@ -59,10 +73,10 @@ LocaleConfig.locales['vi'] = {
 LocaleConfig.defaultLocale = 'vi';
 
 const CalendarScreen = ({navigation}: any) => {
-    const dispatch = useDispatch();
-     const deletedTaskIds = useSelector(
-       (state: RootState) => state.tasks.deletedTaskIds,
-     );
+  const dispatch = useDispatch();
+  const deletedTaskIds = useSelector(
+    (state: RootState) => state.tasks.deletedTaskIds,
+  );
   const [selected, setSelected] = useState(
     new Date().toISOString().split('T')[0],
   );
@@ -81,127 +95,128 @@ const CalendarScreen = ({navigation}: any) => {
   }, [tasks, selected]);
 
   // Cập nhật markedDates khi tasks thay đổi
- useEffect(() => {
-   const newMarkedDates: {[key: string]: any} = {};
+  useEffect(() => {
+    const newMarkedDates: {[key: string]: any} = {};
 
-   tasks.forEach(task => {
-     const dateString = task.startDate?.split('T')[0]; // Lấy ngày từ startDate
-     if (dateString) {
-       // Kiểm tra nếu ngày chưa được đánh dấu
-       if (!newMarkedDates[dateString]) {
-         newMarkedDates[dateString] = {
-           marked: true,
-           dotColor: appColors.primary,
-         };
-       }
-     }
-   });
+    tasks.forEach(task => {
+      const dateString = task.startDate?.split('T')[0]; // Lấy ngày từ startDate
+      if (dateString) {
+        // Kiểm tra nếu ngày chưa được đánh dấu
+        if (!newMarkedDates[dateString]) {
+          newMarkedDates[dateString] = {
+            marked: true,
+            dotColor: appColors.primary,
+          };
+        }
+      }
+    });
 
-   setMarkedDates(newMarkedDates);
- }, [tasks]);
+    setMarkedDates(newMarkedDates);
+  }, [tasks]);
 
   useEffect(() => {
     fetchDeletedTasks(dispatch);
-     fetchCompletedTasks(dispatch);
-     fetchImportantTasks(dispatch);
+    fetchCompletedTasks(dispatch);
+    fetchImportantTasks(dispatch);
   }, [dispatch]);
-   
 
-    const handleDelete = (taskId: string) => {
-      handleDeleteTask(taskId, dispatch, deletedTaskIds);
-    };
-    const handleToggleCompleteTask = (taskId: string) => {
-      handleToggleComplete(taskId, tasks, dispatch);
-    };
+  const handleDelete = (taskId: string) => {
+    handleDeleteTask(taskId, dispatch, deletedTaskIds);
+  };
+  const handleToggleCompleteTask = (taskId: string) => {
+    handleToggleComplete(taskId, tasks, dispatch);
+  };
 
-    const handleHighlight = async (taskId: string) => {
-      handleToggleImportant(taskId, tasks, dispatch);
-    };
- 
+  const handleHighlight = async (taskId: string) => {
+    handleToggleImportant(taskId, tasks, dispatch);
+  };
 
   const formatTime = (date: Date) => {
     return format(date, 'HH:mm');
   };
+  const fomatDate = (date: Date) => {
+    return format(date, 'dd/MM');
+  };
+  const renderTask = (item: TaskModel) => {
+    if (!item) return null;
 
-   const renderTask = (item: TaskModel) => {
-     if (!item) return null;
+    const renderRightActions = (item: TaskModel) => (
+      <View style={styles.swipeActions}>
+        <Pressable
+          style={styles.swipeActionButton}
+          onPress={() => handleDelete(item.id)}>
+          <MaterialIcons name="delete" size={24} color={appColors.red} />
+          <Text style={styles.actionText}>Xóa</Text>
+        </Pressable>
 
-     const renderRightActions = (item: TaskModel) => (
-       <View style={styles.swipeActions}>
-         <Pressable
-           style={styles.swipeActionButton}
-           onPress={() => handleDelete(item.id)}>
-           <MaterialIcons name="delete" size={24} color={appColors.red} />
-           <Text style={styles.actionText}>Xóa</Text>
-         </Pressable>
+        {item.repeat !== 'no' && (
+          <Pressable style={styles.swipeActionButton}>
+            <MaterialIcons name="repeat" size={24} color={appColors.blue} />
+            <Text style={styles.actionText}>Bỏ lặp lại</Text>
+          </Pressable>
+        )}
+      </View>
+    );
 
-         {item.repeat !== 'no' && (
-           <Pressable
-             style={styles.swipeActionButton}
-            >
-             <MaterialIcons name="repeat" size={24} color={appColors.blue} />
-             <Text style={styles.actionText}>Bỏ lặp lại</Text>
-           </Pressable>
-         )}
-       </View>
-     );
-
-     return (
-       <Swipeable
-         renderRightActions={() => renderRightActions(item)}
-         key={item.id}>
-         <Pressable onPress={() => {}}>
-           <View style={styles.taskItem}>
-             <Pressable
-               style={styles.roundButton}
-               onPress={() => handleToggleCompleteTask(item.id)}>
-               {item.isCompleted ? (
-                 <MaterialIcons
-                   name="check-circle"
-                   size={24}
-                   color={appColors.primary}
-                 />
-               ) : (
-                 <MaterialIcons
-                   name="radio-button-unchecked"
-                   size={24}
-                   color={appColors.gray}
-                 />
-               )}
-             </Pressable>
-             <RowComponent>
-               <View style={styles.taskContent}>
-                 <Text
-                   style={[
-                     styles.taskTitle,
-                     item.isCompleted && styles.completedTaskTitle,
-                   ]}>
-                   {item.description}
-                 </Text>
-                 <Text style={styles.taskDate}>
-                   {DateTime.GetDate(new Date(item.startDate || ''))} -{' '}
-                   {item.startTime
-                     ? formatTime(item.startTime)
-                     : 'No start time'}
-                 </Text>
-               </View>
-               <Pressable
-                 style={{
-                   paddingRight: 40,
-                 }}
-                 onPress={() => handleHighlight(item.id)}>
-                 <MaterialIcons
-                   name="star"
-                   size={24}
-                   color={item.isImportant ? appColors.yellow : appColors.gray}
-                 />
-               </Pressable>
-             </RowComponent>
-           </View>
-         </Pressable>
-       </Swipeable>
-     );
-   };
+    return (
+      <Swipeable
+        renderRightActions={() => renderRightActions(item)}
+        key={item.id}>
+        <Pressable onPress={() => {}}>
+          <View style={styles.taskItem}>
+            <Pressable
+              style={styles.roundButton}
+              onPress={() => handleToggleCompleteTask(item.id)}>
+              {item.isCompleted ? (
+                <MaterialIcons
+                  name="check-circle"
+                  size={24}
+                  color={appColors.primary}
+                />
+              ) : (
+                <MaterialIcons
+                  name="radio-button-unchecked"
+                  size={24}
+                  color={appColors.gray}
+                />
+              )}
+            </Pressable>
+            <RowComponent>
+              <View style={styles.taskContent}>
+                <Text
+                  style={[
+                    styles.taskTitle,
+                    item.isCompleted && styles.completedTaskTitle,
+                  ]}>
+                  {item.description}
+                </Text>
+                <Text style={styles.taskDate}>
+                  {item.dueDate
+                    ? fomatDate(new Date(item.startDate || ''))
+                    : 'No due date'}{' '}
+                  -{' '}
+                  {item.startTime
+                    ? formatTime(item.startTime)
+                    : 'No start time'}
+                </Text>
+              </View>
+              <Pressable
+                style={{
+                  paddingRight: 40,
+                }}
+                onPress={() => handleHighlight(item.id)}>
+                <MaterialIcons
+                  name="star"
+                  size={24}
+                  color={item.isImportant ? appColors.yellow : appColors.gray2}
+                />
+              </Pressable>
+            </RowComponent>
+          </View>
+        </Pressable>
+      </Swipeable>
+    );
+  };
 
   return (
     <View style={{flex: 1}}>
@@ -247,10 +262,7 @@ const CalendarScreen = ({navigation}: any) => {
 
 export default CalendarScreen;
 
-
 const styles = StyleSheet.create({
-
- 
   taskItem: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
@@ -264,7 +276,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 2,
-    marginHorizontal:8,
+    marginHorizontal: 8,
   },
   roundButton: {
     marginRight: 10,
@@ -283,7 +295,6 @@ const styles = StyleSheet.create({
   },
   taskDate: {
     fontSize: 14,
-    color: appColors.red,
     marginTop: 4,
   },
   swipeActions: {

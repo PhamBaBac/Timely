@@ -86,10 +86,14 @@ export const handleToggleComplete = async (
   dispatch: Dispatch,
 ) => {
   try {
+    const updatedAt = Date.now(); // Lấy thời gian hiện tại
+
     if (taskId.includes('-')) {
       // Task lặp lại (có chứa '-')
       const updatedTasks = tasks.map(task =>
-        task.id === taskId ? {...task, isCompleted: !task.isCompleted} : task,
+        task.id === taskId
+          ? {...task, isCompleted: !task.isCompleted, updatedAt}
+          : task,
       );
       dispatch(setTasks(updatedTasks)); // Cập nhật tasks trong Redux
 
@@ -121,11 +125,14 @@ export const handleToggleComplete = async (
         const currentCompleted = taskDoc.data()?.isCompleted || false;
         await taskRef.update({
           isCompleted: !currentCompleted,
+          updatedAt,
         });
 
         // Cập nhật lại state cho task đã thay đổi trong Redux
         const updatedTasks = tasks.map(task =>
-          task.id === taskId ? {...task, isCompleted: !currentCompleted} : task,
+          task.id === taskId
+            ? {...task, isCompleted: !currentCompleted, updatedAt}
+            : task,
         );
         dispatch(setTasks(updatedTasks));
       }
