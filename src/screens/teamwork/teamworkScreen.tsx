@@ -18,6 +18,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {DateTime} from '../../utils/DateTime';
 import LoadingModal from '../../modal/LoadingModal';
 
+
 interface ScheduleModel {
   id: string;
   startDate: Date;
@@ -55,6 +56,7 @@ const Teamwork = () => {
     fetchSchedules();
     setCurrentWeekStart(getMonday(new Date()));
   }, []);
+
 
   const getMonday = (d: Date) => {
     d = new Date(d);

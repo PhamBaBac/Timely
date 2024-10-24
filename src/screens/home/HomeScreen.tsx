@@ -29,7 +29,15 @@ import {
   setDeletedTaskIds,
   setTasks,
 } from '../../redux/reducers/tasksSlice';
-import { fetchCompletedTasks, fetchDeletedTasks, fetchImportantTasks, handleDeleteTask, handleToggleComplete, handleToggleImportant, handleUpdateRepeat } from '../../utils/taskUtil';
+import {
+  fetchCompletedTasks,
+  fetchDeletedTasks,
+  fetchImportantTasks,
+  handleDeleteTask,
+  handleToggleComplete,
+  handleToggleImportant,
+  handleUpdateRepeat,
+} from '../../utils/taskUtil';
 
 const HomeScreen = ({navigation}: {navigation: any}) => {
   const user = auth().currentUser;
@@ -51,7 +59,6 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
   const isImportantTasks = useSelector(
     (state: RootState) => state.tasks.isImportantTasks,
   );
-
 
   useEffect(() => {
     const unsubscribe = firestore()
@@ -164,21 +171,21 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     return () => unsubscribe();
   }, [dispatch, user, deletedTaskIds, completedTasks, isImportantTasks]);
 
- const handleDelete = (taskId: string) => {
-   handleDeleteTask(taskId, dispatch, deletedTaskIds);
- };
+  const handleDelete = (taskId: string) => {
+    handleDeleteTask(taskId, dispatch, deletedTaskIds);
+  };
 
- const handleToggleCompleteTask = (taskId: string) => {
-   handleToggleComplete(taskId, tasks, dispatch);
- };
+  const handleToggleCompleteTask = (taskId: string) => {
+    handleToggleComplete(taskId, tasks, dispatch);
+  };
 
   const handleHighlight = async (taskId: string) => {
     handleToggleImportant(taskId, tasks, dispatch);
-  }
+  };
 
-    const handleUpdateRepeatTask = (taskId: string) => {
-      handleUpdateRepeat(taskId);
-    };
+  const handleUpdateRepeatTask = (taskId: string) => {
+    handleUpdateRepeat(taskId);
+  };
 
   const calculateRepeatedDates = (
     startDate: string,
@@ -208,11 +215,14 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
   const formatTime = (date: Date) => {
     return format(date, 'HH:mm');
   };
+  const fomatDate = (date: Date) => {
+    return format(date, 'dd/MM');
+  };
 
   const tasksBeforeToday = filteredTasks.filter(task => {
     const taskStartDate = new Date(task.startDate || '');
     taskStartDate.setHours(0, 0, 0, 0);
-    return taskStartDate < today;
+    return taskStartDate < today && !task.isCompleted;
   });
 
   const sortedTasksBeforeToday = tasksBeforeToday.sort((a, b) => {
@@ -234,13 +244,13 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
   const tasksToday = filteredTasks.filter(task => {
     const taskStartDate = new Date(task.startDate || '');
     taskStartDate.setHours(0, 0, 0, 0); // Đặt giờ về 00:00:00
-    return taskStartDate.getTime() === today.getTime();
+    return taskStartDate.getTime() === today.getTime() && !task.isCompleted;
   });
 
   const tasksAfterToday = filteredTasks.filter(task => {
     const taskStartDate = new Date(task.startDate || '');
     taskStartDate.setHours(0, 0, 0, 0);
-    return taskStartDate > today; // Task is after today
+    return taskStartDate > today && !task.isCompleted;
   });
 
   const sortedTasks = tasksAfterToday.sort((a, b) => {
@@ -257,10 +267,6 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
   });
 
   const uniqueTasks = Array.from(uniqueTasksMap.values());
-
-  
-
- 
 
   const handleTaskPress = (task: TaskModel) => {
     navigation.navigate('TaskDetailScreen', {task: task});
@@ -322,11 +328,15 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
                   {item.description}
                 </Text>
                 <Text style={styles.taskDate}>
-                  {DateTime.GetDate(new Date(item.startDate || ''))} -{' '}
+                  {item.dueDate
+                    ? fomatDate(new Date(item.startDate || ''))
+                    : 'No due date'}{' '}
+                  -{' '}
                   {item.startTime
                     ? formatTime(item.startTime)
                     : 'No start time'}
                 </Text>
+                
               </View>
               <Pressable
                 style={{
@@ -336,7 +346,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
                 <MaterialIcons
                   name="star"
                   size={24}
-                  color={item.isImportant ? appColors.yellow : appColors.gray}
+                  color={item.isImportant ? appColors.yellow : appColors.gray2}
                 />
               </Pressable>
             </RowComponent>
@@ -430,7 +440,6 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
             {showToday && tasksToday.map(renderTask)}
           </View>
         )}
-
         {tasksAfterToday.length > 0 && (
           <View style={styles.section}>
             <Pressable
@@ -444,6 +453,34 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
               />
             </Pressable>
             {showBeforeToday && uniqueTasks.map(renderTask)}
+          </View>
+        )}
+
+        {tasks.filter(
+          task =>
+            task.isCompleted &&
+            new Date(task.updatedAt).toDateString() === today.toDateString(),
+        ).length > 0 && (
+          <View style={styles.section}>
+            <Pressable
+              onPress={() => setShowBeforeToday(!showBeforeToday)}
+              style={styles.sectionHeaderContainer}>
+              <Text style={styles.sectionHeader}>Đã hoàn thành hôm nay</Text>
+              <MaterialIcons
+                name={showBeforeToday ? 'expand-less' : 'expand-more'}
+                size={24}
+                color={appColors.gray}
+              />
+            </Pressable>
+            {showBeforeToday &&
+              tasks
+                .filter(
+                  task =>
+                    task.isCompleted &&
+                    new Date(task.updatedAt).toDateString() ===
+                      today.toDateString(),
+                )
+                .map(renderTask)}
           </View>
         )}
       </ScrollView>
@@ -539,6 +576,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 2,
+    borderLeftWidth: 2,
+    borderLeftColor: appColors.primary,
   },
   roundButton: {
     marginRight: 10,
@@ -557,7 +596,6 @@ const styles = StyleSheet.create({
   },
   taskDate: {
     fontSize: 14,
-    color: appColors.red,
     marginTop: 4,
   },
   swipeActions: {
