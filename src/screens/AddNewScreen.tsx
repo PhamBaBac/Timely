@@ -307,7 +307,7 @@ const AddNewScreen = ({navigation}: any) => {
           <RowComponent>
             <Text style={styles.modalOptionText}>Chọn giờ bắt đầu</Text>
           </RowComponent>
-          <Text style={styles.selectedTimeText}>
+          <Text style={[styles.selectedTimeText]}>
             {selectedTime
               ? selectedTime.toLocaleTimeString('vi-VN', {
                   hour: '2-digit',
@@ -327,7 +327,13 @@ const AddNewScreen = ({navigation}: any) => {
               justifyContent: 'space-between',
             }}>
             <Text style={styles.optionText}>Chọn loại công việc</Text>
-            <Text style={styles.selectedTimeText}>{selectedCategory}</Text>
+            <SpaceComponent width={10} />
+            <Text
+              style={styles.selectedTimeText}
+              numberOfLines={1}
+              ellipsizeMode="tail">
+              {selectedCategory}
+            </Text>
           </View>
         </TouchableOpacity>
         <TouchableOpacity
@@ -571,6 +577,7 @@ const styles = StyleSheet.create({
   selectedTimeText: {
     marginLeft: 'auto',
     fontSize: 16,
+    flexShrink: 1,
   },
   repeatModalContent: {
     width: '100%',
