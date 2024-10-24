@@ -38,7 +38,7 @@ const TabNavigator = () => {
             case 'Lịch học':
               icon = <ArchiveBook variant="Bold" color={color} size={size} />;
               break;
-            case 'Của tôi':
+            case 'Thông kê':
               icon = <User variant="Bold" color={color} size={size} />;
               break;
             case 'Add':
@@ -83,7 +83,7 @@ const TabNavigator = () => {
       <Tab.Screen name="Lịch trình" component={CalendarNavigator} />
       <Tab.Screen name="Add" component={AddNewScreen} />
       <Tab.Screen name="Lịch học" component={TeamworkNavigator} />
-      <Tab.Screen name="Của tôi" component={ProfileNavigator} />
+      <Tab.Screen name="Thông kê" component={ProfileNavigator} />
     </Tab.Navigator>
   );
 };
