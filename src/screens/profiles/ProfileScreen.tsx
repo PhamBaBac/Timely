@@ -1,78 +1,75 @@
-import React, {useEffect, useState} from 'react';
+import { addDays, endOfWeek, format, startOfWeek } from 'date-fns';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
   Dimensions,
-  TouchableOpacity,
   FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
-import {BarChart} from 'react-native-chart-kit';
+import { BarChart } from 'react-native-chart-kit';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { useSelector } from 'react-redux';
+import { RowComponent, TextComponent } from '../../components';
+import { RootState } from '../../redux/store';
+import { appColors } from '../../constants';
 
 const ProfileScreen = ({navigation}: {navigation: any}) => {
-  const user = auth().currentUser;
   const [completedTasks, setCompletedTasks] = useState(0);
   const [incompleteTasks, setIncompleteTasks] = useState(0);
   const [categories, setCategories] = useState<{name: string; count: number}[]>(
     [],
   );
-
+  const getWeekRange = (offset: number) => {
+    const today = new Date();
+    const start = startOfWeek(addDays(today, offset * 7), {weekStartsOn: 1});
+    const end = endOfWeek(addDays(today, offset * 7), {weekStartsOn: 1});
+    return `${format(start, 'dd/MM')} - ${format(end, 'dd/MM')}`;
+  };
+  const [weekOffset, setWeekOffset] = useState(0);
+  const tasks = useSelector((state: RootState) => state.tasks.tasks);
   useEffect(() => {
-    const unsubscribe = firestore()
-      .collection('tasks')
-      .where('uid', '==', user?.uid)
-      .onSnapshot(snapshot => {
-        let completed = 0;
-        let incomplete = 0;
-        const categoryCount: {[key: string]: number} = {};
-        let uncategorizedCount = 0;
+    let completed = 0;
+    let incomplete = 0;
+    const categoryCount: {[key: string]: number} = {};
+    let uncategorizedCount = 0;
 
-        snapshot.forEach(doc => {
-          const task = doc.data();
-          if (task.isCompleted) {
-            completed++;
-          } else {
-            incomplete++;
-          }
+    tasks.forEach(task => {
+      if (task.isCompleted) {
+        completed++;
+      } else {
+        incomplete++;
+      }
 
-          if (task.category) {
-            if (!categoryCount[task.category]) {
-              categoryCount[task.category] = 0;
-            }
-            categoryCount[task.category]++;
-          } else {
-            uncategorizedCount++;
-          }
-        });
+      if (task.category) {
+        if (!categoryCount[task.category]) {
+          categoryCount[task.category] = 0;
+        }
+        categoryCount[task.category]++;
+      } else {
+        uncategorizedCount++;
+      }
+    });
 
-        setCompletedTasks(completed);
-        setIncompleteTasks(incomplete);
-        setCategories([
-          ...Object.keys(categoryCount).map(name => ({
-            name,
-            count: categoryCount[name],
-          })),
-          {name: 'Chưa phân loại', count: uncategorizedCount},
-        ]);
-      });
+    setCompletedTasks(completed);
+    setIncompleteTasks(incomplete);
+    setCategories([
+      ...Object.keys(categoryCount).map(name => ({
+        name,
+        count: categoryCount[name],
+      })),
+      {name: 'Chưa phân loại', count: uncategorizedCount},
+    ]);
+  }, [tasks]);
 
-    return () => unsubscribe();
-  }, [user]);
-
-  const data = {
-    labels: ['Hoàn thành', 'Chưa hoàn thành'],
-    datasets: [
-      {
-        data: [completedTasks, incompleteTasks],
-        colors: [
-          (opacity = 1) => `rgba(75, 181, 67, ${opacity})`, // Màu xanh lá đậm cho nhiệm vụ hoàn thành
-          (opacity = 1) => `rgba(255, 164, 0, ${opacity})`, // Màu cam cho nhiệm vụ chưa hoàn thành
-        ],
-      },
-    ],
+  const isWithinWeek = (date: number, offset: number) => {
+    const taskDate = new Date(date);
+    const start = startOfWeek(addDays(new Date(), offset * 7), {
+      weekStartsOn: 1,
+    });
+    const end = endOfWeek(addDays(new Date(), offset * 7), {weekStartsOn: 1});
+    return taskDate >= start && taskDate <= end;
   };
 
   const handleViewTasks = (isCompleted: boolean) => {
@@ -123,10 +120,92 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.sectionTitle}>Biểu đồ thống kê</Text>
+      <RowComponent>
+        <TextComponent
+          styles={{
+            fontSize: 16,
+            fontWeight: 'bold',
+            color: '#000',
+            flex: 1,
+            textAlign: 'left',
+            paddingLeft: 10,
+          }}
+          text="Hoàn thành hằng ngày"
+        />
+        <TouchableOpacity onPress={() => setWeekOffset(weekOffset - 1)}>
+          <MaterialIcons name="keyboard-arrow-left" size={24} color="#000" />
+        </TouchableOpacity>
+        <Text
+          style={{
+            color: appColors.text,
+          }}>
+          {getWeekRange(weekOffset)}
+        </Text>
+        <TouchableOpacity onPress={() => setWeekOffset(weekOffset + 1)}>
+          <MaterialIcons name="keyboard-arrow-right" size={24} color="#000" />
+        </TouchableOpacity>
+      </RowComponent>
       <BarChart
-        data={data}
-        width={Dimensions.get('window').width - 30}
+        data={{
+          labels: [
+            'Thứ 2',
+            'Thứ 3',
+            'Thứ 4',
+            'Thứ 5',
+            'Thứ 6',
+            'Thứ 7',
+            'Chủ nhật',
+          ],
+          datasets: [
+            {
+              data: [
+                tasks.filter(
+                  task =>
+                    task.isCompleted &&
+                    isWithinWeek(task.updatedAt, weekOffset) &&
+                    new Date(task.updatedAt ?? '').getDay() === 1,
+                ).length,
+                tasks.filter(
+                  task =>
+                    task.isCompleted &&
+                    isWithinWeek(task.updatedAt, weekOffset) &&
+                    new Date(task.updatedAt ?? '').getDay() === 2,
+                ).length,
+                tasks.filter(
+                  task =>
+                    task.isCompleted &&
+                    isWithinWeek(task.updatedAt, weekOffset) &&
+                    new Date(task.updatedAt ?? '').getDay() === 3,
+                ).length,
+                tasks.filter(
+                  task =>
+                    task.isCompleted &&
+                    isWithinWeek(task.updatedAt, weekOffset) &&
+                    new Date(task.updatedAt ?? '').getDay() === 4,
+                ).length,
+                tasks.filter(
+                  task =>
+                    task.isCompleted &&
+                    isWithinWeek(task.updatedAt, weekOffset) &&
+                    new Date(task.updatedAt ?? '').getDay() === 5,
+                ).length,
+                tasks.filter(
+                  task =>
+                    task.isCompleted &&
+                    isWithinWeek(task.updatedAt, weekOffset) &&
+                    new Date(task.updatedAt ?? '').getDay() === 6,
+                ).length,
+                tasks.filter(
+                  task =>
+                    task.isCompleted &&
+                    isWithinWeek(task.updatedAt, weekOffset) &&
+                    new Date(task.updatedAt ?? '').getDay() === 0,
+                ).length,
+              ],
+            },
+          ],
+        }}
+        width={Dimensions.get('window').width - 46}
         height={220}
         yAxisLabel=""
         yAxisSuffix=""
@@ -135,20 +214,25 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
           backgroundGradientFrom: '#ffffff',
           backgroundGradientTo: '#ffffff',
           decimalPlaces: 0,
-          color: (opacity = 1, index) =>
-            data.datasets[0].colors[index ?? 0](opacity),
-          labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+          color: () => appColors.primary,
           style: {
-            borderRadius: 16,
+            borderRadius: 8,
+            justifyContent: 'center',
           },
-          barPercentage: 0.5,
+          propsForBackgroundLines: {
+            strokeDasharray: '', // Loại bỏ các đường gạch ngang
+            strokeWidth: 0, // Đặt độ dày đường kẻ ngang về 0
+          },
+          barPercentage: 0.4,
+          formatYLabel: () => '',
           propsForLabels: {
             fontSize: 14,
           },
-          formatYLabel: value => Math.round(Number(value)).toString(),
         }}
         style={{
-          marginVertical: 8,
+          paddingLeft: 8,
+          paddingRight: 12,
+          marginVertical: 10,
           borderRadius: 16,
         }}
         showValuesOnTopOfBars={true}
@@ -176,7 +260,7 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: appColors.whitesmoke,
     padding: 16,
   },
   header: {
@@ -215,13 +299,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     padding: 10,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: appColors.white,
     borderRadius: 10,
     marginHorizontal: 5,
   },
   statNumber: {
     fontSize: 24,
     fontWeight: 'bold',
+    color: appColors.text,
   },
   statLabel: {
     fontSize: 14,
