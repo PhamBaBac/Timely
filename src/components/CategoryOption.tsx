@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
   categoryOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 10,
+    padding: 10,
   },
   categoryOptionText: {
     marginLeft: 10,
