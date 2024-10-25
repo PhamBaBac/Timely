@@ -6,7 +6,7 @@ import {
   Repeat,
   Tag,
 } from 'iconsax-react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {
   Alert,
   FlatList,
@@ -17,11 +17,11 @@ import {
   TextInputComponent,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View
+  View,
 } from 'react-native';
 
-import { format } from 'date-fns';
-import { Modalize } from 'react-native-modalize';
+import {format} from 'date-fns';
+import {Modalize} from 'react-native-modalize';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {
   ButtonComponent,
@@ -30,9 +30,9 @@ import {
   RowComponent,
   SectionComponent,
   SpaceComponent,
-  TextComponent
+  TextComponent,
 } from '../components';
-import { appColors } from '../constants';
+import {appColors} from '../constants';
 import LoadingModal from '../modal/LoadingModal';
 import ModalizeDate from '../modal/modalizaDate';
 import ModalizeCategory from '../modal/ModalizeCategory';
@@ -91,7 +91,7 @@ const AddNewScreen = ({navigation}: any) => {
   const [modalTimeVisible, setModalTimeVisible] = useState(false);
   const [modalDateVisible, setModalDateVisible] = useState(false);
   const [repeatModalVisible, setRepeatModalVisible] = useState(false);
-    const [categoryModalVisible, setCategoryModalVisible] = useState(false);
+  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [isNewCategoryModalVisible, setNewCategoryModalVisible] =
     useState(false);
   const [selectedTime, setSelectedTime] = useState(new Date());
@@ -135,7 +135,7 @@ const AddNewScreen = ({navigation}: any) => {
       ...taskDetail,
       uid: user?.uid,
       subtasks, // Include subtasks in the task data
-      repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat, 
+      repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat,
     };
 
     const taskRef = firestore().collection('tasks').doc();
@@ -165,7 +165,7 @@ const AddNewScreen = ({navigation}: any) => {
         setIsLoading(false);
       });
   };
-  
+
   const handleNewCategoryCreate = async () => {
     try {
       setIsLoading(true);
@@ -478,7 +478,7 @@ const AddNewScreen = ({navigation}: any) => {
         <ButtonComponent
           text="Thêm công việc"
           onPress={handleAddNewTask}
-          type='primary'
+          type="primary"
         />
       </SectionComponent>
       <LoadingModal visible={isLoading} />
@@ -494,7 +494,7 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flexDirection: 'column',
-    
+
     marginBottom: 20,
   },
   input: {
