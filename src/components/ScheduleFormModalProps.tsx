@@ -30,13 +30,12 @@ interface ScheduleFormModalProps {
 }
 
 const PERIOD_OPTIONS = [
-  {label: 'Tiết 1-3', value: '1-3'},
-  {label: 'Tiết 4-6', value: '4-6'},
-  {label: 'Tiết 7-9', value: '7-9'},
-  {label: 'Tiết 10-12', value: '10-12'},
-  {label: 'Tiết 13-15', value: '13-15'},
+  {label: 'Tiết 1-3', value: '1-3', time: '6:45-9:00'},
+  {label: 'Tiết 4-6', value: '4-6', time: '9:15-11:30'},
+  {label: 'Tiết 7-9', value: '7-9', time: '12:30-14:45'},
+  {label: 'Tiết 10-12', value: '10-12', time: '15:00-17:15'},
+  {label: 'Tiết 13-15', value: '13-15', time: '17:45-20:00'},
 ];
-
 export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
   visible,
   schedule,
@@ -66,7 +65,10 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
           }
           style={styles.picker}
           mode="dropdown">
-          <Picker.Item label="Chọn tiết học" value="" />
+          <Picker.Item
+            label={schedule.isExam ? 'Chọn ca thi' : 'Chọn tiết học'}
+            value=""
+          />
           {PERIOD_OPTIONS.map(option => (
             <Picker.Item
               key={option.value}
@@ -163,18 +165,7 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
               <Text style={styles.label}>
                 {schedule.isExam ? 'Ca thi' : 'Tiết học'}
               </Text>
-              {schedule.isExam ? (
-                <TextInput
-                  style={styles.input}
-                  value={schedule.period}
-                  onChangeText={text =>
-                    onScheduleChange({...schedule, period: text})
-                  }
-                  placeholder="Nhập ca thi"
-                />
-              ) : (
-                renderPeriodPicker()
-              )}
+              {renderPeriodPicker()}
             </View>
 
             <View style={styles.formGroup}>

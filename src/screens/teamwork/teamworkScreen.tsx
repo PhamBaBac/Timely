@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback, useMemo} from 'react';
 import {
   View,
   FlatList,
@@ -20,67 +20,70 @@ import {ScheduleModel} from '../../models/ScheduleModel';
 import {WeekDayModel} from '../../models/WeekDayModel';
 import LoadingModal from '../../modal/LoadingModal';
 import {DateTime} from '../../utils/DateTime';
+import {compareSchedule} from '../../utils/compareSchedule';
+
+// Định nghĩa period order ở ngoài component để tránh tạo lại mỗi lần render
+const PERIOD_ORDER: {[key: string]: number} = {
+  '1-3': 1,
+  '4-6': 2,
+  '7-9': 3,
+  '10-12': 4,
+  '13-15': 5,
+};
+
+const DEFAULT_SCHEDULE: ScheduleModel = {
+  id: '',
+  startDate: new Date(),
+  endDate: new Date(),
+  course: '',
+  period: '',
+  group: '',
+  room: '',
+  instructor: '',
+  isExam: false,
+  day: new Date(),
+};
 
 const Teamwork = () => {
   const user = auth().currentUser;
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [lastDisplayedDate, setLastDisplayedDate] = useState<string>('');
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  const [newSchedule, setNewSchedule] = useState<ScheduleModel>({
-    id: '',
-    startDate: new Date(),
-    endDate: new Date(),
-    course: '',
-    period: '',
-    group: '',
-    room: '',
-    instructor: '',
-    isExam: false,
-    day: new Date(),
-  });
+  const [newSchedule, setNewSchedule] =
+    useState<ScheduleModel>(DEFAULT_SCHEDULE);
   const [schedules, setSchedules] = useState<ScheduleModel[]>([]);
   const [loading, setLoading] = useState(false);
-  const [currentWeekStart, setCurrentWeekStart] = useState(new Date());
+  const [currentWeekStart, setCurrentWeekStart] = useState(
+    getMonday(new Date()),
+  );
 
-  useEffect(() => {
-    fetchSchedules();
-    setCurrentWeekToToday();
-  }, []);
+  // Chuyển getMonday thành pure function ở ngoài component
+  function getMonday(d: Date) {
+    const date = new Date(d);
+    const day = date.getDay();
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(date.setDate(diff));
+  }
 
-  const getMonday = (d: Date) => {
-    d = new Date(d);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    return new Date(d.setDate(diff));
-  };
+  const fetchSchedules = useCallback(async () => {
+    if (!user?.uid) return;
 
-  const setCurrentWeekToToday = () => {
-    setCurrentWeekStart(getMonday(new Date()));
-    setSelectedDay(null);
-  };
-
-  const fetchSchedules = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
       const snapshot = await firestore()
         .collection('schedules')
-        .where('uid', '==', user?.uid)
+        .where('uid', '==', user.uid)
         .get();
-      const schedulesList = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          ...data,
-          id: doc.id,
-          startDate: data.startDate ? data.startDate.toDate() : new Date(),
-          endDate: data.endDate ? data.endDate.toDate() : new Date(),
-        } as ScheduleModel;
-      });
 
-      schedulesList.sort(
-        (a, b) => a.startDate.getTime() - b.startDate.getTime(),
-      );
+      const schedulesList = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id,
+        startDate: doc.data().startDate?.toDate() || new Date(),
+        endDate: doc.data().endDate?.toDate() || new Date(),
+      })) as ScheduleModel[];
+
+      schedulesList.sort(compareSchedule);
       setSchedules(schedulesList);
     } catch (error) {
       console.error('Error fetching schedules:', error);
@@ -88,15 +91,24 @@ const Teamwork = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.uid]);
 
-  const generateWeekDays = (startDate: Date): WeekDayModel[] => {
-    const weekDays = [];
+  useEffect(() => {
+    fetchSchedules();
+  }, [fetchSchedules]);
+
+  const setCurrentWeekToToday = useCallback(() => {
+    setCurrentWeekStart(getMonday(new Date()));
+    setSelectedDay(null);
+  }, []);
+
+  const weekDays = useMemo(() => {
+    const days: WeekDayModel[] = [];
     for (let i = 0; i < 7; i++) {
-      const dateOffset = new Date(startDate);
-      dateOffset.setDate(startDate.getDate() + i);
+      const dateOffset = new Date(currentWeekStart);
+      dateOffset.setDate(currentWeekStart.getDate() + i);
 
-      weekDays.push({
+      days.push({
         day: DateTime.GetWeekday(dateOffset.getTime()),
         date: dateOffset.toISOString().split('T')[0],
         fullDate: dateOffset,
@@ -104,93 +116,115 @@ const Teamwork = () => {
         isSunday: dateOffset.getDay() === 0,
       });
     }
-    return weekDays;
-  };
+    return days;
+  }, [currentWeekStart]);
 
-  const weekDays = generateWeekDays(currentWeekStart);
-
-  const navigateWeek = (direction: 'prev' | 'next') => {
-    const newWeekStart = new Date(currentWeekStart);
-    newWeekStart.setDate(
-      newWeekStart.getDate() + (direction === 'next' ? 7 : -7),
-    );
-    setCurrentWeekStart(newWeekStart);
-    setSelectedDay(null);
-  };
-
-  const calculateRepeatedDates = (startDate: Date, endDate: Date) => {
-    const dates = [];
-    let currentDate = new Date(startDate);
-    while (
-      isBefore(currentDate, endDate) ||
-      currentDate.getTime() === endDate.getTime()
-    ) {
-      dates.push(new Date(currentDate));
-      currentDate = addDays(currentDate, 7);
-    }
-    return dates;
-  };
-
-  const filteredScheduleItems = schedules
-    .flatMap(item => {
-      const repeatedDates = calculateRepeatedDates(
-        item.startDate,
-        item.endDate,
+  const navigateWeek = useCallback(
+    (direction: 'prev' | 'next') => {
+      const newWeekStart = new Date(currentWeekStart);
+      newWeekStart.setDate(
+        newWeekStart.getDate() + (direction === 'next' ? 7 : -7),
       );
-      return repeatedDates.map(date => ({
-        ...item,
-        startDate: date,
-        endDate: new Date(date.getTime() + 24 * 60 * 60 * 1000),
-      }));
-    })
-    .filter(item => {
-      const itemDate = item.startDate.toISOString().split('T')[0];
-      return selectedDay
-        ? itemDate === selectedDay
-        : weekDays.some(day => itemDate === day.date);
-    });
+      setCurrentWeekStart(newWeekStart);
+      setSelectedDay(null);
+    },
+    [currentWeekStart],
+  );
 
-  const handleDeleteSchedule = (scheduleId: string) => {
-    Alert.alert('Xóa lịch học', 'Bạn có chắc chắn muốn xóa lịch học này?', [
-      {
-        text: 'Hủy',
-        style: 'cancel',
-      },
-      {
-        text: 'Xóa',
-        onPress: () => confirmDeleteSchedule(scheduleId),
-        style: 'destructive',
-      },
-    ]);
-  };
+  const calculateRepeatedDates = useCallback(
+    (startDate: Date, endDate: Date) => {
+      const dates = [];
+      let currentDate = new Date(startDate);
+      while (
+        isBefore(currentDate, endDate) ||
+        currentDate.getTime() === endDate.getTime()
+      ) {
+        dates.push(new Date(currentDate));
+        currentDate = addDays(currentDate, 7);
+      }
+      return dates;
+    },
+    [],
+  );
 
-  const confirmDeleteSchedule = async (scheduleId: string) => {
-    setLoading(true);
-    try {
-      await firestore().collection('schedules').doc(scheduleId).delete();
-      console.log('Schedule deleted:', scheduleId);
-      fetchSchedules();
-    } catch (error) {
-      console.error('Error deleting schedule:', error);
-      Alert.alert('Lỗi', 'Không thể xóa lịch học. Vui lòng thử lại sau.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const filteredScheduleItems = useMemo(() => {
+    return schedules
+      .flatMap(item => {
+        const repeatedDates = calculateRepeatedDates(
+          item.startDate,
+          item.endDate,
+        );
+        return repeatedDates.map(date => ({
+          ...item,
+          startDate: date,
+          endDate: new Date(date.getTime() + 24 * 60 * 60 * 1000),
+        }));
+      })
+      .filter(item => {
+        const itemDate = item.startDate.toISOString().split('T')[0];
+        return selectedDay
+          ? itemDate === selectedDay
+          : weekDays.some(day => day.date === itemDate);
+      })
+      .sort((a, b) => {
+        if (a.startDate.getTime() !== b.startDate.getTime()) {
+          return a.startDate.getTime() - b.startDate.getTime();
+        }
+        const periodA = PERIOD_ORDER[a.period] || 999;
+        const periodB = PERIOD_ORDER[b.period] || 999;
+        return periodA - periodB;
+      });
+  }, [schedules, selectedDay, weekDays, calculateRepeatedDates]);
 
-  const handleSaveSchedule = async () => {
+  const handleDeleteSchedule = useCallback(
+    (scheduleId: string) => {
+      Alert.alert('Xóa lịch học', 'Bạn có chắc chắn muốn xóa lịch học này?', [
+        {
+          text: 'Hủy',
+          style: 'cancel',
+        },
+        {
+          text: 'Xóa',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              await firestore()
+                .collection('schedules')
+                .doc(scheduleId)
+                .delete();
+              await fetchSchedules();
+            } catch (error) {
+              console.error('Error deleting schedule:', error);
+              Alert.alert(
+                'Lỗi',
+                'Không thể xóa lịch học. Vui lòng thử lại sau.',
+              );
+            } finally {
+              setLoading(false);
+            }
+          },
+          style: 'destructive',
+        },
+      ]);
+    },
+    [fetchSchedules],
+  );
+
+  const handleSaveSchedule = useCallback(async () => {
+    if (!user?.uid) return;
+
     setLoading(true);
     try {
       const scheduleRef = newSchedule.id
         ? firestore().collection('schedules').doc(newSchedule.id)
         : firestore().collection('schedules').doc();
-      const schedule = {
+
+      await scheduleRef.set({
         ...newSchedule,
-        uid: user?.uid,
-      };
-      await scheduleRef.set(schedule);
-      console.log('Schedule saved/updated:', schedule);
-      fetchSchedules();
+        uid: user.uid,
+      });
+
+      await fetchSchedules();
       setModalVisible(false);
     } catch (error) {
       console.error('Error saving schedule:', error);
@@ -198,33 +232,49 @@ const Teamwork = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [newSchedule, user?.uid, fetchSchedules]);
 
-  const EmptySchedule = () => (
-    <View style={styles.emptyContainer}>
-      <Text style={styles.emptyText}>Không có lịch học</Text>
-    </View>
+  const handleAddNewSchedule = useCallback(() => {
+    setNewSchedule(DEFAULT_SCHEDULE);
+    setModalVisible(true);
+  }, []);
+
+  const handleSchedulePress = useCallback((schedule: ScheduleModel) => {
+    setNewSchedule(schedule);
+    setModalVisible(true);
+  }, []);
+
+  const handleDatePickerChange = useCallback(
+    (type: 'start' | 'end', event: any, date?: Date) => {
+      if (Platform.OS === 'ios') {
+        type === 'start'
+          ? setShowStartDatePicker(false)
+          : setShowEndDatePicker(false);
+      }
+      if (date) {
+        setNewSchedule(prev => ({
+          ...prev,
+          [type === 'start' ? 'startDate' : 'endDate']: date,
+        }));
+      }
+    },
+    [],
+  );
+
+  const EmptySchedule = useCallback(
+    () => (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>Không có lịch học</Text>
+      </View>
+    ),
+    [],
   );
 
   return (
     <SafeAreaView style={styles.container}>
       <ScheduleHeader
         onTodayPress={setCurrentWeekToToday}
-        onAddPress={() => {
-          setNewSchedule({
-            id: '',
-            startDate: new Date(),
-            endDate: new Date(),
-            course: '',
-            period: '',
-            group: '',
-            room: '',
-            instructor: '',
-            isExam: false,
-            day: new Date(),
-          });
-          setModalVisible(true);
-        }}
+        onAddPress={handleAddNewSchedule}
       />
 
       <WeekNavigator
@@ -258,15 +308,7 @@ const Teamwork = () => {
         <FlatList
           data={filteredScheduleItems}
           renderItem={({item}) => (
-            <View style={styles.scheduleItemContainer}>
-              <ScheduleItem
-                item={item}
-                onPress={(schedule: React.SetStateAction<ScheduleModel>) => {
-                  setNewSchedule(schedule);
-                  setModalVisible(true);
-                }}
-              />
-            </View>
+            <ScheduleItem item={item} onPress={handleSchedulePress} />
           )}
           keyExtractor={(item, index) => `${item.id}-${index}`}
           style={styles.scheduleContainer}
@@ -284,14 +326,12 @@ const Teamwork = () => {
         onScheduleChange={setNewSchedule}
         showStartDatePicker={showStartDatePicker}
         showEndDatePicker={showEndDatePicker}
-        onStartDatePickerChange={(event, date) => {
-          setShowStartDatePicker(Platform.OS === 'ios');
-          if (date) setNewSchedule({...newSchedule, startDate: date});
-        }}
-        onEndDatePickerChange={(event, date) => {
-          setShowEndDatePicker(Platform.OS === 'ios');
-          if (date) setNewSchedule({...newSchedule, endDate: date});
-        }}
+        onStartDatePickerChange={(event, date) =>
+          handleDatePickerChange('start', event, date)
+        }
+        onEndDatePickerChange={(event, date) =>
+          handleDatePickerChange('end', event, date)
+        }
         setShowStartDatePicker={setShowStartDatePicker}
         setShowEndDatePicker={setShowEndDatePicker}
       />
