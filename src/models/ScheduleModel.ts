@@ -1,4 +1,5 @@
 export interface ScheduleModel {
+    [x: string]: any;
     id : string;
     course: string;
     period: string;
@@ -9,4 +10,5 @@ export interface ScheduleModel {
     isExam: boolean;
     startDate: Date;
     endDate: Date;
+    
 }
