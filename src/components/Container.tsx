@@ -19,18 +19,17 @@ const Container = (props: Props) => {
   const {title, back, right, children, isScroll} = props;
   const navigation: any = useNavigation();
   return (
-    <SafeAreaView style={{flex: 1, backgroundColor: appColors.bgColor}}>
+    <SafeAreaView style={{flex: 1}}>
       <View style={[globalStyles.container, {flex: 1}]}>
         <RowComponent
           styles={{
-            paddingHorizontal: 16,
             paddingBottom: 16,
             justifyContent: 'center',
             alignItems: 'center',
           }}>
           {back && (
             <TouchableOpacity onPress={() => navigation.goBack()}>
-              <ArrowLeft size={24} color={appColors.text} />
+              <ArrowLeft2 size={24} color={appColors.text} />
             </TouchableOpacity>
           )}
           <View style={{flex: 1, zIndex: -1}}>
