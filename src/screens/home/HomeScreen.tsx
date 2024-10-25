@@ -336,7 +336,6 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
                     ? formatTime(item.startTime)
                     : 'No start time'}
                 </Text>
-                
               </View>
               <Pressable
                 style={{
