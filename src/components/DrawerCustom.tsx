@@ -1,4 +1,4 @@
-import React, {act, useState} from 'react';
+import React, {useState} from 'react';
 import {
   View,
   FlatList,
@@ -17,51 +17,26 @@ import firestore from '@react-native-firebase/firestore';
 const DrawerCustom = ({navigation}: any) => {
   const size = 24;
   const color = appColors.gray;
-  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
-
-  const categorioption = [
-    {
-      id: 1,
-      name: 'Công việc',
-      icon: 'work',
-      color: appColors.red,
-    },
-    {
-      id: 2,
-      name: 'Con người',
-      icon: 'person',
-      color: appColors.blue,
-    },
-    {
-      id: 3,
-      name: 'Học tập',
-      icon: 'school',
-      color: appColors.green,
-    },
-  ];
 
   const profileMenu = [
     {
       key: 'StartTask',
-      title: 'Start Task',
+      title: 'Nhiệm vụ nổi bật',
       icon: (
         <MaterialIcons name="play-circle-outline" size={size} color={color} />
       ),
       action: () => navigation.navigate('StartTaskScreen'),
     },
     {
+      key: 'CompletedTasks',
+      title: 'Nhiệm vụ đã hoàn thành', // Added new menu item for completed tasks
+      icon: <MaterialIcons name="done" size={size} color={color} />,
+      action: () => navigation.navigate('CompletedScreen'), // Add navigation action here
+    },
+    {
       key: 'Habits',
       title: 'Thói quen',
       icon: <MaterialIcons name="auto-graph" size={size} color={color} />,
-    },
-    {
-      key: 'Categories',
-      title: 'Thể loại',
-      icon: <MaterialIcons name="category" size={size} color={color} />,
-      action: () =>
-        setExpandedCategory(
-          expandedCategory === 'Categories' ? null : 'Categories',
-        ),
     },
     {
       key: 'Logout',
@@ -76,31 +51,14 @@ const DrawerCustom = ({navigation}: any) => {
   }: {
     item: {key: string; title: string; icon: JSX.Element; action?: () => void};
   }) => (
-    <>
-      <RowComponent
-        styles={localStyles.listItem}
-        onPress={item.action ? item.action : () => navigation.closeDrawer()}>
-        {item.icon}
-        <TextComponent text={item.title} styles={localStyles.listItemText} />
-      </RowComponent>
-      {item.key === 'Categories' && expandedCategory === 'Categories' && (
-        <FlatList
-          data={categorioption}
-          keyExtractor={item => item.id.toString()}
-          renderItem={({item}) => (
-            <RowComponent styles={localStyles.categoryItem}>
-              <MaterialIcons name={item.icon} size={size} color={item.color} />
-              <TextComponent
-                text={item.name}
-                styles={localStyles.categoryItemText}
-              />
-            </RowComponent>
-          )}
-          contentContainerStyle={localStyles.categoryList}
-        />
-      )}
-    </>
+    <RowComponent
+      styles={localStyles.listItem}
+      onPress={item.action ? item.action : () => navigation.closeDrawer()}>
+      {item.icon}
+      <TextComponent text={item.title} styles={localStyles.listItemText} />
+    </RowComponent>
   );
+
   const handleSingout = async () => {
     const token = await AsyncStorage.getItem('fcmtoken');
     const currentUser = auth().currentUser;
@@ -133,7 +91,6 @@ const DrawerCustom = ({navigation}: any) => {
         });
     }
     await auth().signOut();
-
     await AsyncStorage.removeItem('fcmtoken');
     await AsyncStorage.removeItem('completedTasks');
     await AsyncStorage.removeItem('importantTasks');
@@ -167,19 +124,5 @@ const localStyles = StyleSheet.create({
   },
   listItemText: {
     paddingLeft: 12,
-  },
-  categoryItem: {
-    paddingVertical: 8,
-    paddingLeft: 24,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'flex-start',
-  },
-  categoryItemText: {
-    paddingLeft: 12,
-  },
-  categoryList: {
-    marginTop: 0,
-    paddingVertical: 0,
   },
 });

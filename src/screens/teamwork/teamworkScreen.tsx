@@ -1,37 +1,48 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback, useMemo} from 'react';
 import {
   View,
-  Text,
-  TouchableOpacity,
   FlatList,
   SafeAreaView,
-  Modal,
-  TextInput,
-  Switch,
-  Platform,
   StyleSheet,
-  StatusBar,
+  Alert,
+  Platform,
+  Text,
 } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {DateTime} from '../../utils/DateTime';
+import {addDays, isBefore} from 'date-fns';
+import {ScheduleHeader} from '../../components/ScheduleHeader';
+import {WeekNavigator} from '../../components/WeekNavigator';
+import {ScheduleDayItem} from '../../components/ScheduleDayItem';
+import {ScheduleItem} from '../../components/ScheduleItemProps ';
+import {ScheduleFormModal} from '../../components/ScheduleFormModalProps';
+import {ScheduleModel} from '../../models/ScheduleModel';
+import {WeekDayModel} from '../../models/WeekDayModel';
 import LoadingModal from '../../modal/LoadingModal';
-import { appColors } from '../../constants';
+import {DateTime} from '../../utils/DateTime';
+import ScheduleByPeriod from '../../components/ScheduleByPeriod';
 
+// Định nghĩa period order ở ngoài component để tránh tạo lại mỗi lần render
+const PERIOD_ORDER: {[key: string]: number} = {
+  '1-3': 1,
+  '4-6': 2,
+  '7-9': 3,
+  '10-12': 4,
+  '13-15': 5,
+};
 
-interface ScheduleModel {
-  id: string;
-  startDate: Date;
-  endDate: Date;
-  course: string;
-  period: string;
-  group: string;
-  room: string;
-  instructor: string;
-  isExam: boolean;
-}
+const DEFAULT_SCHEDULE: ScheduleModel = {
+  id: '',
+  startDate: new Date(),
+  endDate: new Date(),
+  course: '',
+  period: '',
+  group: '',
+  room: '',
+  instructor: '',
+  isExam: false,
+  day: new Date(),
+};
 
 const Teamwork = () => {
   const user = auth().currentUser;
@@ -39,265 +50,263 @@ const Teamwork = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  const [newSchedule, setNewSchedule] = useState<ScheduleModel>({
-    id: '',
-    startDate: new Date(),
-    endDate: new Date(),
-    course: '',
-    period: '',
-    group: '',
-    room: '',
-    instructor: '',
-    isExam: false,
-  });
+  const [newSchedule, setNewSchedule] =
+    useState<ScheduleModel>(DEFAULT_SCHEDULE);
   const [schedules, setSchedules] = useState<ScheduleModel[]>([]);
   const [loading, setLoading] = useState(false);
-  const [currentWeekStart, setCurrentWeekStart] = useState(new Date());
+  const [currentWeekStart, setCurrentWeekStart] = useState(
+    getMonday(new Date()),
+  );
 
-  useEffect(() => {
-    fetchSchedules();
-    setCurrentWeekStart(getMonday(new Date()));
+  // Chuyển getMonday thành pure function ở ngoài component
+  function getMonday(d: Date) {
+    const date = new Date(d);
+    const day = date.getDay();
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(date.setDate(diff));
+  }
+  // Thêm hàm này sau hàm getMonday
+  const getTodayString = useCallback(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
   }, []);
 
+  const fetchSchedules = useCallback(async () => {
+    if (!user?.uid) return;
 
-  const getMonday = (d: Date) => {
-    d = new Date(d);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    return new Date(d.setDate(diff));
-  };
-
-  const fetchSchedules = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
       const snapshot = await firestore()
         .collection('schedules')
-        .where('uid', '==', user?.uid)
+        .where('uid', '==', user.uid)
         .get();
-      const schedulesList = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          ...data,
-          id: doc.id,
-          startDate: data.startDate ? data.startDate.toDate() : new Date(),
-          endDate: data.endDate ? data.endDate.toDate() : new Date(),
-        } as ScheduleModel;
-      });
 
-      schedulesList.sort(
-        (a, b) => a.startDate.getTime() - b.startDate.getTime(),
-      );
+      const schedulesList = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id,
+        startDate: doc.data().startDate?.toDate() || new Date(),
+        endDate: doc.data().endDate?.toDate() || new Date(),
+      })) as ScheduleModel[];
+
       setSchedules(schedulesList);
     } catch (error) {
       console.error('Error fetching schedules:', error);
+      Alert.alert('Lỗi', 'Không thể tải lịch học. Vui lòng thử lại sau.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.uid]);
 
-  const generateWeekDays = (startDate: Date) => {
-    const weekDays = [];
+  useEffect(() => {
+    fetchSchedules();
+  }, [fetchSchedules]);
+
+  const setCurrentWeekToToday = useCallback(() => {
+    const today = new Date();
+    setCurrentWeekStart(getMonday(today));
+    setSelectedDay(getTodayString()); // Set selected day to today
+  }, [getTodayString]);
+
+  const weekDays = useMemo(() => {
+    const days: WeekDayModel[] = [];
     for (let i = 0; i < 7; i++) {
-      const dateOffset = new Date(startDate);
-      dateOffset.setDate(startDate.getDate() + i);
+      const dateOffset = new Date(currentWeekStart);
+      dateOffset.setDate(currentWeekStart.getDate() + i);
 
-      const dayName = DateTime.GetWeekday(dateOffset.getTime());
-      const dayDate = dateOffset.toISOString().split('T')[0];
-
-      weekDays.push({
-        day: dayName,
-        date: dayDate,
+      days.push({
+        day: DateTime.GetWeekday(dateOffset.getTime()),
+        date: dateOffset.toISOString().split('T')[0],
         fullDate: dateOffset,
         isSaturday: dateOffset.getDay() === 6,
         isSunday: dateOffset.getDay() === 0,
       });
     }
-    return weekDays;
-  };
+    return days;
+  }, [currentWeekStart]);
 
-  const weekDays = generateWeekDays(currentWeekStart);
+  const navigateWeek = useCallback(
+    (direction: 'prev' | 'next') => {
+      const newWeekStart = new Date(currentWeekStart);
+      newWeekStart.setDate(
+        newWeekStart.getDate() + (direction === 'next' ? 7 : -7),
+      );
+      setCurrentWeekStart(newWeekStart);
+      setSelectedDay(null);
+    },
+    [currentWeekStart],
+  );
 
-  const navigateWeek = (direction: 'prev' | 'next') => {
-    const newWeekStart = new Date(currentWeekStart);
-    newWeekStart.setDate(
-      newWeekStart.getDate() + (direction === 'next' ? 7 : -7),
-    );
-    setCurrentWeekStart(newWeekStart);
-    setSelectedDay(null);
-  };
+  const calculateRepeatedDates = useCallback(
+    (startDate: Date, endDate: Date) => {
+      const dates = [];
+      let currentDate = new Date(startDate);
+      while (
+        isBefore(currentDate, endDate) ||
+        currentDate.getTime() === endDate.getTime()
+      ) {
+        dates.push(new Date(currentDate));
+        currentDate = addDays(currentDate, 7);
+      }
+      return dates;
+    },
+    [],
+  );
 
-  const filteredScheduleItems = schedules.filter(item => {
-    const itemStartDate = item.startDate.toISOString().split('T')[0];
-    const itemEndDate = item.endDate.toISOString().split('T')[0];
-    return selectedDay
-      ? itemStartDate <= selectedDay && itemEndDate >= selectedDay
-      : weekDays.some(
-          day => itemStartDate <= day.date && itemEndDate >= day.date,
+  const filteredScheduleItems = useMemo(() => {
+    return schedules
+      .flatMap(item => {
+        const repeatedDates = calculateRepeatedDates(
+          item.startDate,
+          item.endDate,
         );
-  });
+        return repeatedDates.map(date => ({
+          ...item,
+          startDate: date,
+          endDate: new Date(date.getTime() + 24 * 60 * 60 * 1000),
+        }));
+      })
+      .filter(item => {
+        const itemDate = item.startDate.toISOString().split('T')[0];
+        return selectedDay
+          ? itemDate === selectedDay
+          : weekDays.some(day => day.date === itemDate);
+      })
+      .sort((a, b) => {
+        if (a.startDate.getTime() !== b.startDate.getTime()) {
+          return a.startDate.getTime() - b.startDate.getTime();
+        }
+        const periodA = PERIOD_ORDER[a.period] || 999;
+        const periodB = PERIOD_ORDER[b.period] || 999;
+        return periodA - periodB;
+      });
+  }, [schedules, selectedDay, weekDays, calculateRepeatedDates]);
 
-  const renderDayItem = ({
-    item,
-  }: {
-    item: {
-      day: string;
-      date: string;
-      fullDate: Date;
-      isSaturday: boolean;
-      isSunday: boolean;
-    };
-  }) => (
-    <TouchableOpacity
-      style={[
-        styles.dayButton,
-        item.date === selectedDay && styles.selectedDayButton,
-        (item.isSaturday || item.isSunday) && styles.weekendDayButton,
-      ]}
-      onPress={() =>
-        setSelectedDay(item.date === selectedDay ? null : item.date)
-      }>
-      <View style={styles.dayContent}>
-        <Text
-          style={[
-            styles.dayText,
-            item.date === selectedDay && styles.selectedDayText,
-            (item.isSaturday || item.isSunday) && styles.weekendDayText,
-          ]}>
-          {item.day}
-        </Text>
-        <Text
-          style={[
-            styles.dateText,
-            item.date === selectedDay && styles.selectedDateText,
-            (item.isSaturday || item.isSunday) && styles.weekendDateText,
-          ]}>
-          {item.fullDate.getDate()}
-        </Text>
-        {item.date === selectedDay && <View style={styles.selectedDot} />}
-      </View>
-    </TouchableOpacity>
+  const handleDeleteSchedule = useCallback(
+    (scheduleId: string) => {
+      Alert.alert('Xóa lịch học', 'Bạn có chắc chắn muốn xóa lịch học này?', [
+        {
+          text: 'Hủy',
+          style: 'cancel',
+        },
+        {
+          text: 'Xóa',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              await firestore()
+                .collection('schedules')
+                .doc(scheduleId)
+                .delete();
+              await fetchSchedules();
+            } catch (error) {
+              console.error('Error deleting schedule:', error);
+              Alert.alert(
+                'Lỗi',
+                'Không thể xóa lịch học. Vui lòng thử lại sau.',
+              );
+            } finally {
+              setLoading(false);
+            }
+          },
+          style: 'destructive',
+        },
+      ]);
+    },
+    [fetchSchedules],
   );
 
-  const renderScheduleItem = ({item}: {item: ScheduleModel}) => (
-    <TouchableOpacity
-      onPress={() => handleEditSchedule(item)}
-      style={styles.scheduleItem}>
-      <Text style={styles.scheduleDate}>
-        {`${item.startDate.toLocaleDateString(
-          'en-GB',
-        )} - ${item.endDate.toLocaleDateString('en-GB')}`}
-      </Text>
-      <View
-        style={[
-          styles.scheduleItemContent,
-          item.isExam && styles.examScheduleItemContent,
-        ]}>
-        <Text style={styles.scheduleItemTitle}>{item.course}</Text>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Tiết :</Text>
-          <Text style={styles.detailValue}>{item.period}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Nhóm :</Text>
-          <Text style={styles.detailValue}>{item.group}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Phòng :</Text>
-          <Text style={styles.detailValue}>{item.room}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Giảng viên :</Text>
-          <Text style={styles.detailValue}>{item.instructor}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+  const handleSaveSchedule = useCallback(async () => {
+    if (!user?.uid) return;
 
-  const handleEditSchedule = (schedule: ScheduleModel) => {
-    setNewSchedule(schedule);
-    setModalVisible(true);
-  };
-
-  const handleAddSchedule = () => {
-    setNewSchedule({
-      id: '',
-      startDate: new Date(),
-      endDate: new Date(),
-      course: '',
-      period: '',
-      group: '',
-      room: '',
-      instructor: '',
-      isExam: false,
-    });
-    setModalVisible(true);
-  };
-
-  const handleCloseModal = () => {
-    setModalVisible(false);
-  };
-
-  const handleSaveSchedule = async () => {
+    setLoading(true);
     try {
       const scheduleRef = newSchedule.id
         ? firestore().collection('schedules').doc(newSchedule.id)
         : firestore().collection('schedules').doc();
-      const schedule = {
+
+      await scheduleRef.set({
         ...newSchedule,
-        uid: user?.uid,
-      };
-      await scheduleRef.set(schedule);
-      console.log('Schedule saved/updated:', schedule);
-      fetchSchedules();
+        uid: user.uid,
+      });
+
+      await fetchSchedules();
+      setModalVisible(false);
     } catch (error) {
       console.error('Error saving schedule:', error);
+      Alert.alert('Lỗi', 'Không thể lưu lịch học. Vui lòng thử lại sau.');
     } finally {
       setLoading(false);
-      handleCloseModal();
     }
-  };
+  }, [newSchedule, user?.uid, fetchSchedules]);
 
-  const handleStartDateChange = (event: any, selectedDate?: Date) => {
-    const currentDate = selectedDate || newSchedule.startDate;
-    setShowStartDatePicker(Platform.OS === 'ios');
-    setNewSchedule({...newSchedule, startDate: currentDate});
-  };
+  const handleAddNewSchedule = useCallback(() => {
+    setNewSchedule(DEFAULT_SCHEDULE);
+    setModalVisible(true);
+  }, []);
 
-  const handleEndDateChange = (event: any, selectedDate?: Date) => {
-    const currentDate = selectedDate || newSchedule.endDate;
-    setShowEndDatePicker(Platform.OS === 'ios');
-    setNewSchedule({...newSchedule, endDate: currentDate});
-  };
+  const handleSchedulePress = useCallback((schedule: ScheduleModel) => {
+    setNewSchedule(schedule);
+    setModalVisible(true);
+  }, []);
+
+  const handleDatePickerChange = useCallback(
+    (type: 'start' | 'end', event: any, date?: Date) => {
+      if (Platform.OS === 'ios') {
+        type === 'start'
+          ? setShowStartDatePicker(false)
+          : setShowEndDatePicker(false);
+      }
+      if (date) {
+        setNewSchedule(prev => ({
+          ...prev,
+          [type === 'start' ? 'startDate' : 'endDate']: date,
+        }));
+      }
+    },
+    [],
+  );
+
+  const EmptySchedule = useCallback(
+    () => (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>Không có lịch học</Text>
+      </View>
+    ),
+    [],
+  );
+
+  // Thêm useEffect này
+  useEffect(() => {
+    setSelectedDay(getTodayString());
+  }, [getTodayString]);
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Lịch học/ Lịch</Text>
-        <TouchableOpacity onPress={handleAddSchedule} style={styles.addButton}>
-          <Text style={styles.addButtonText}>+</Text>
-        </TouchableOpacity>
-      </View>
+      <ScheduleHeader
+        onTodayPress={setCurrentWeekToToday}
+        onAddPress={handleAddNewSchedule}
+      />
 
-      <View style={styles.weekNavigation}>
-        <TouchableOpacity
-          onPress={() => navigateWeek('prev')}
-          style={styles.navButton}>
-          <MaterialIcons name="chevron-left" size={24} color="#8A2BE2" />
-        </TouchableOpacity>
-        <Text style={styles.weekLabel}>
-          {`${weekDays[0].fullDate.toLocaleDateString()} - ${weekDays[6].fullDate.toLocaleDateString()}`}
-        </Text>
-        <TouchableOpacity
-          onPress={() => navigateWeek('next')}
-          style={styles.navButton}>
-          <MaterialIcons name="chevron-right" size={24} color="#8A2BE2" />
-        </TouchableOpacity>
-      </View>
+      <WeekNavigator
+        weekDays={weekDays}
+        onPrevWeek={() => navigateWeek('prev')}
+        onNextWeek={() => navigateWeek('next')}
+      />
 
       <View style={styles.weekDaysWrapper}>
         <FlatList
           data={weekDays}
-          renderItem={renderDayItem}
+          renderItem={({item}) => (
+            <View style={styles.dayItemContainer}>
+              <ScheduleDayItem
+                item={item}
+                selectedDay={selectedDay}
+                onPress={date =>
+                  setSelectedDay(date === selectedDay ? null : date)
+                }
+              />
+            </View>
+          )}
           keyExtractor={item => item.date}
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -305,131 +314,35 @@ const Teamwork = () => {
         />
       </View>
 
-      <FlatList
-        data={filteredScheduleItems}
-        renderItem={renderScheduleItem}
-        keyExtractor={item => item.id}
-        style={styles.scheduleContainer}
+      <View style={styles.scheduleListContainer}>
+        <View style={styles.scheduleListContainer}>
+          <ScheduleByPeriod
+            schedules={filteredScheduleItems}
+            onSchedulePress={handleSchedulePress}
+          />
+        </View>
+      </View>
+
+      <ScheduleFormModal
+        visible={modalVisible}
+        schedule={newSchedule}
+        onClose={() => setModalVisible(false)}
+        onSave={handleSaveSchedule}
+        onDelete={handleDeleteSchedule}
+        onScheduleChange={setNewSchedule}
+        showStartDatePicker={showStartDatePicker}
+        showEndDatePicker={showEndDatePicker}
+        onStartDatePickerChange={(event, date) =>
+          handleDatePickerChange('start', event, date)
+        }
+        onEndDatePickerChange={(event, date) =>
+          handleDatePickerChange('end', event, date)
+        }
+        setShowStartDatePicker={setShowStartDatePicker}
+        setShowEndDatePicker={setShowEndDatePicker}
       />
 
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={handleCloseModal}>
-        <View style={styles.centeredView}>
-          <View style={styles.modalView}>
-            <Text style={styles.modalTitle}>
-              {newSchedule.id ? 'Chỉnh sửa lịch học' : 'Thêm lịch học mới'}
-            </Text>
-
-            <TouchableOpacity
-              style={styles.datePickerButton}
-              onPress={() => setShowStartDatePicker(true)}>
-              <Text>
-                Ngày bắt đầu:{' '}
-                {newSchedule.startDate.toLocaleDateString('en-GB')}
-              </Text>
-            </TouchableOpacity>
-
-            {showStartDatePicker && (
-              <DateTimePicker
-                value={newSchedule.startDate}
-                mode="date"
-                display="default"
-                onChange={handleStartDateChange}
-              />
-            )}
-
-            <TouchableOpacity
-              style={styles.datePickerButton}
-              onPress={() => setShowEndDatePicker(true)}>
-              <Text>
-                Ngày kết thúc: {newSchedule.endDate.toLocaleDateString('en-GB')}
-              </Text>
-            </TouchableOpacity>
-
-            {showEndDatePicker && (
-              <DateTimePicker
-                value={newSchedule.endDate}
-                mode="date"
-                display="default"
-                onChange={handleEndDateChange}
-              />
-            )}
-
-            <TextInput
-              style={styles.input}
-              placeholder="Môn học"
-              value={newSchedule.course}
-              onChangeText={text =>
-                setNewSchedule({...newSchedule, course: text})
-              }
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Tiết"
-              value={newSchedule.period}
-              onChangeText={text =>
-                setNewSchedule({...newSchedule, period: text})
-              }
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Nhóm"
-              value={newSchedule.group}
-              onChangeText={text =>
-                setNewSchedule({...newSchedule, group: text})
-              }
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Phòng"
-              value={newSchedule.room}
-              onChangeText={text =>
-                setNewSchedule({...newSchedule, room: text})
-              }
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Giảng viên"
-              value={newSchedule.instructor}
-              onChangeText={text =>
-                setNewSchedule({...newSchedule, instructor: text})
-              }
-            />
-
-            <View style={styles.switchContainer}>
-              <Text>Thi :</Text>
-              <Switch
-                value={newSchedule.isExam}
-                onValueChange={value =>
-                  setNewSchedule({...newSchedule, isExam: value})
-                }
-              />
-            </View>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.button}
-                onPress={handleCloseModal}>
-                <Text style={styles.buttonText}>Hủy</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.button, styles.saveButton]}
-                onPress={handleSaveSchedule}>
-                <Text style={styles.buttonText}>Lưu</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {loading && <LoadingModal visible={loading} />}
+      <LoadingModal visible={loading} />
     </SafeAreaView>
   );
 };
@@ -437,215 +350,75 @@ const Teamwork = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: appColors.lightPurple,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#8A2BE2',
-    padding: 16,
-  },
-  headerTitle: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  addButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'white',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addButtonText: {
-    color: '#8A2BE2',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  weekNavigation: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: 'white',
-  },
-  navButton: {
-    padding: 8,
-  },
-  weekLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#8A2BE2',
+    backgroundColor: '#f0f0f0',
   },
   weekDaysWrapper: {
-    height: 80,
-    backgroundColor: 'white',
-    justifyContent: 'center',
-  },
-  weekDaysContainer: {
-    paddingVertical: 4,
-  },
-  dayButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 5,
-    marginHorizontal: 2,
-    borderRadius: 6,
-    height: 70,
-  },
-  selectedDayButton: {
-    backgroundColor: '#8A2BE2',
-  },
-  weekendDayButton: {
-    // You can add specific styles for weekend days if needed
-  },
-  dayContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dayText: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    marginTop: 2,
-  },
-  dateText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginTop: 2,
-  },
-  selectedDayText: {
-    color: 'white',
-  },
-  selectedDateText: {
-    color: 'white',
-  },
-  weekendDayText: {
-    color: 'red',
-  },
-  weekendDateText: {
-    color: 'red',
-  },
-  selectedDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'white',
-    marginTop: 2,
-  },
-  scheduleContainer: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  scheduleItem: {
-    marginBottom: 16,
-  },
-  scheduleDate: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#8A2BE2',
-    marginBottom: 8,
-  },
-  scheduleItemContent: {
-    backgroundColor: 'white',
-    borderRadius: 8,
-    padding: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#8A2BE2',
-  },
-  examScheduleItemContent: {
-    borderLeftColor: 'red',
-  },
-  scheduleItemTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    marginBottom: 4,
-  },
-  detailLabel: {
-    flex: 1,
-    color: '#8A2BE2',
-  },
-  detailValue: {
-    flex: 2,
-    fontWeight: '500',
-  },
-  centeredView: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalView: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 35,
-    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 10,
+    borderRadius: 15,
+    margin: 10,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 5,
-    width: '80%',
+    elevation: 3,
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-  },
-  input: {
-    height: 40,
-    borderColor: 'gray',
-    borderWidth: 1,
-    borderRadius: 5,
-    width: '100%',
-    marginBottom: 10,
+  weekDaysContainer: {
     paddingHorizontal: 10,
   },
-  datePickerButton: {
-    borderWidth: 1,
-    borderColor: 'gray',
-    borderRadius: 5,
-    padding: 10,
-    marginBottom: 10,
-    width: '100%',
-    alignItems: 'center',
+  dayItemContainer: {
+    marginHorizontal: 4,
+    borderRadius: 10,
+    overflow: 'hidden',
   },
-  switchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 20,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  button: {
-    borderRadius: 5,
-    padding: 10,
-    elevation: 2,
-    backgroundColor: '#2196F3',
+  scheduleListContainer: {
     flex: 1,
-    marginHorizontal: 5,
+
+    // backgroundColor: '#fff',
+    // margin: 10,
+    // borderRadius: 15,
+    // shadowColor: '#000',
+    // shadowOffset: {
+    //   width: 0,
+    //   height: 2,
+    // },
+    // shadowOpacity: 0.1,
+    // shadowRadius: 4,
+    // elevation: 3,
   },
-  saveButton: {
-    backgroundColor: '#4CAF50',
+  scheduleContainer: {
+    flex: 1,
   },
-  buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
+  scheduleContentContainer: {
+    padding: 10,
+    height: 300,
+  },
+  scheduleItemContainer: {
+    marginVertical: 5,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#f8f8f8',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
     textAlign: 'center',
   },
 });

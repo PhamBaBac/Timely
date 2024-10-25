@@ -60,7 +60,6 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
 
     setCompletedTasks(completed);
     setIncompleteTasks(incomplete);
-
   }, [tasks]);
 
   const isWithinWeek = (date: number, offset: number) => {
@@ -75,7 +74,6 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
   const handleViewTasks = (isCompleted: boolean) => {
     navigation.navigate('TaskListScreen', {isCompleted});
   };
-
 
   return (
     <View style={styles.container}>
@@ -246,7 +244,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: appColors.lightPurple,
     padding: 16,
-    paddingBottom: 40
+    paddingBottom: 40,
   },
   header: {
     flexDirection: 'row',
@@ -321,4 +319,3 @@ const styles = StyleSheet.create({
 });
 
 export default ProfileScreen;
-
