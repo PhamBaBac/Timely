@@ -10,6 +10,7 @@ import {
   Switch,
   Platform,
   StyleSheet,
+  StatusBar,
 } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
@@ -17,6 +18,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {DateTime} from '../../utils/DateTime';
 import LoadingModal from '../../modal/LoadingModal';
+import { appColors } from '../../constants';
 
 
 interface ScheduleModel {
@@ -236,7 +238,6 @@ const Teamwork = () => {
   };
 
   const handleSaveSchedule = async () => {
-    setLoading(true);
     try {
       const scheduleRef = newSchedule.id
         ? firestore().collection('schedules').doc(newSchedule.id)
@@ -436,7 +437,7 @@ const Teamwork = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: appColors.lightPurple,
   },
   header: {
     flexDirection: 'row',

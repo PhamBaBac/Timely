@@ -9,6 +9,7 @@ import HomeScreen from "./home/HomeScreen";
 import ProfileScreen from "./profiles/ProfileScreen";
 import Teamwork from "./teamwork/teamworkScreen";
 import TaskDetailsScreen from "./TaskDetailScreen";
+import IsCompleTaskScreen from "./IsCompleTaskScreen";
 
 export {
   ForgotPassword,
@@ -22,4 +23,5 @@ export {
   Teamwork,
   CategoryScreen,
   TaskDetailsScreen,
+  IsCompleTaskScreen,
 };
