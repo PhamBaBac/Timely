@@ -38,6 +38,7 @@ import {
   handleToggleImportant,
   handleUpdateRepeat,
 } from '../../utils/taskUtil';
+import SearchScreen from '../../components/SearchScreen';
 
 const HomeScreen = ({navigation}: {navigation: any}) => {
   const user = auth().currentUser;
@@ -46,6 +47,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
   const dispatch = useDispatch();
   const [showToday, setShowToday] = useState(true);
   const tasks = useSelector((state: RootState) => state.tasks.tasks);
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
   const categories = useSelector(
     (state: RootState) => state.categories.categories,
   );
@@ -325,7 +327,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
                     styles.taskTitle,
                     item.isCompleted && styles.completedTaskTitle,
                   ]}>
-                    {item.title ? item.title : item.description}
+                  {item.title ? item.title : item.description}
                 </Text>
                 <Text style={styles.taskDate}>
                   {item.dueDate
@@ -369,7 +371,9 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
           <MaterialIcons name="menu" size={24} color="#000" />
         </Pressable>
         <Text style={styles.headerTitle}>Home</Text>
-        <Pressable style={styles.iconButton}>
+        <Pressable
+          style={styles.iconButton}
+          onPress={() => setIsSearchVisible(true)}>
           <MaterialIcons name="search" size={24} color={appColors.black} />
         </Pressable>
       </View>
@@ -484,6 +488,15 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
         )}
       </ScrollView>
       <SpaceComponent height={28} />
+
+      <SearchScreen
+        visible={isSearchVisible}
+        onClose={() => setIsSearchVisible(false)}
+        onSelectTask={task => {
+          handleTaskPress(task);
+          setIsSearchVisible(false);
+        }}
+      />
     </View>
   );
 };

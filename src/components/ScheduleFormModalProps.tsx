@@ -30,11 +30,11 @@ interface ScheduleFormModalProps {
 }
 
 const PERIOD_OPTIONS = [
-  {label: 'Tiết 1-3', value: '1-3', time: '6:45-9:00'},
-  {label: 'Tiết 4-6', value: '4-6', time: '9:15-11:30'},
-  {label: 'Tiết 7-9', value: '7-9', time: '12:30-14:45'},
-  {label: 'Tiết 10-12', value: '10-12', time: '15:00-17:15'},
-  {label: 'Tiết 13-15', value: '13-15', time: '17:45-20:00'},
+  {label: 'Tiết 1-3', value: '1-3', time: '6:30-9:00'},
+  {label: 'Tiết 4-6', value: '4-6', time: '9:05-11:30'},
+  {label: 'Tiết 7-9', value: '7-9', time: '12:30-15:00'},
+  {label: 'Tiết 10-12', value: '10-12', time: '15:00-17:40'},
+  {label: 'Tiết 13-15', value: '13-15', time: '18:00-20:30'},
 ];
 
 export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
