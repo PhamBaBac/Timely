@@ -8,6 +8,7 @@ import SectionComponent from "./SectionComponent";
 import TitleComponent from "./TitleComponent";
 import DrawerCustom from "./DrawerCustom";
 import CategoryOption from "./CategoryOption";
+import CardComponent from "./CardComponent";
 
 export {
   TextComponent,
@@ -20,5 +21,6 @@ export {
   TitleComponent,
   DrawerCustom,
   CategoryOption,
+  CardComponent,
 };
 

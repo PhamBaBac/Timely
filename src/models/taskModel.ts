@@ -1,6 +1,7 @@
 export interface TaskModel {
   id: string;
   uid: string;
+  title: string;
   description: string;
   dueDate?: Date;
   startDate?: string;
@@ -12,9 +13,13 @@ export interface TaskModel {
   isImportant: boolean;
   createdAt: number;
   updatedAt: number;
-  subtasks: Subtask[];
 }
-export interface Subtask {
+export interface SubTask {
+  createdAt: number;
   description: string;
+  id: string;
   isCompleted: boolean;
+  taskId: string;
+  title: string;
+  updatedAt: number;
 }
