@@ -26,5 +26,5 @@ export const appColors = {
   green: '#4CAF50',
   lightGray: '#F5F5F5',
   blue: '#2196F3',
-
+  success: '#00733B',
 };

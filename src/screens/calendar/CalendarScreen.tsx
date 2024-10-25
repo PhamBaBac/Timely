@@ -188,7 +188,7 @@ const CalendarScreen = ({navigation}: any) => {
                     styles.taskTitle,
                     item.isCompleted && styles.completedTaskTitle,
                   ]}>
-                  {item.description}
+                  {item.title ? item.title : item.description}
                 </Text>
                 <Text style={styles.taskDate}>
                   {item.dueDate

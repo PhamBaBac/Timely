@@ -11,7 +11,6 @@ const CalendarNavigator = () => {
         headerShown: false,
       }}>
       <Stack.Screen name="CalendarScreen" component={CalendarScreen} />
-      <Stack.Screen name="TaskDetailsScreen" component={TaskDetailsScreen} />
     </Stack.Navigator>
   );
 };
