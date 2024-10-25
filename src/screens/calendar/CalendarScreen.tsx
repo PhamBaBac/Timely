@@ -166,7 +166,15 @@ const CalendarScreen = ({navigation}: any) => {
         renderRightActions={() => renderRightActions(item)}
         key={item.id}>
         <Pressable onPress={() => {}}>
-          <View style={styles.taskItem}>
+          <View
+            style={[
+              styles.taskItem,
+              {
+                borderLeftColor: item.isCompleted
+                  ? appColors.gray
+                  : appColors.primary,
+              },
+            ]}>
             <Pressable
               style={styles.roundButton}
               onPress={() => handleToggleCompleteTask(item.id)}>
@@ -174,13 +182,13 @@ const CalendarScreen = ({navigation}: any) => {
                 <MaterialIcons
                   name="check-circle"
                   size={24}
-                  color={appColors.primary}
+                  color={appColors.gray}
                 />
               ) : (
                 <MaterialIcons
                   name="radio-button-unchecked"
                   size={24}
-                  color={appColors.gray}
+                  color={appColors.primary}
                 />
               )}
             </Pressable>
@@ -249,7 +257,11 @@ const CalendarScreen = ({navigation}: any) => {
       <View style={{flex: 1, paddingTop: 10}}>
         {filteredTasks.length > 0 ? (
           <FlatList
-            data={filteredTasks}
+            data={filteredTasks.sort((a, b) => {
+          const dateA = a.startTime ? new Date(a.startTime).getTime() : 0;
+          const dateB = b.startTime ? new Date(b.startTime).getTime() : 0;
+          return dateB - dateA;
+        })}
             renderItem={({item}) => renderTask(item)}
             keyExtractor={item => item.id}
           />
@@ -280,6 +292,7 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 2,
     marginHorizontal: 8,
+    borderLeftWidth: 2,
   },
   roundButton: {
     marginRight: 10,
