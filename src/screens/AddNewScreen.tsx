@@ -26,6 +26,11 @@ import {appColors} from '../constants';
 import LoadingModal from '../modal/LoadingModal';
 import {CategoryModel} from '../models/categoryModel';
 import {TaskModel} from '../models/taskModel';
+import {DateModal} from '../components/DateModal';
+import {RepeatModal} from '../components/RepeatModal';
+import {CategoryModal} from '../components/CategoryModal';
+import {NewCategoryModal} from '../components/NewCategoryModal';
+import {TimeModal} from '../components/TimeModal';
 
 const now = new Date();
 const initValue: TaskModel = {
@@ -305,38 +310,29 @@ const AddNewScreen = ({navigation}: any) => {
       </View>
 
       {/* Date Selection Modal */}
-      <Modal
-        transparent={true}
-        visible={isDateModalVisible}
-        animationType="slide"
-        onRequestClose={() => setDateModalVisible(false)}>
-        <TouchableWithoutFeedback onPress={() => setDateModalVisible(false)}>
-          <View style={styles.modalContainer}>
-            <TouchableWithoutFeedback>
-              <View style={styles.modalContent}>
-                <RNCalendar
-                  style={styles.calendar}
-                  onDayPress={handleDateSelection}
-                  markedDates={{
-                    [selectedDate
-                      ? selectedDate.toISOString().split('T')[0]
-                      : '']: {
-                      selected: true,
-                      selectedColor: appColors.primary,
-                    },
-                  }}
-                />
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+      <DateModal
+        isVisible={isDateModalVisible}
+        onClose={() => setDateModalVisible(false)}
+        selectedDate={selectedDate}
+        onDateSelect={handleDateSelection}
+      />
+
+      {/* Repeat Selection Modal */}
+      <RepeatModal
+        isVisible={isRepeatModalVisible}
+        onClose={() => setRepeatModalVisible(false)}
+        onSelectRepeat={(repeat, label) => {
+          handleChangeValue('repeat', repeat);
+          setRepeatModalVisible(false);
+          setSelectedRepeat(label);
+        }}
+      />
 
       {/* Time Selection Modal */}
-      <DateTimePickerModal
+      <TimeModal
         isVisible={isTimeModalVisible}
-        mode="time"
-        onConfirm={time => {
+        onClose={() => setTimeModalVisible(false)}
+        onTimeSelect={time => {
           setSelectedTime(
             time.toLocaleTimeString('vi-VN', {
               hour: '2-digit',
@@ -346,153 +342,31 @@ const AddNewScreen = ({navigation}: any) => {
           handleChangeValue('startTime', time);
           setTimeModalVisible(false);
         }}
-        onCancel={() => setTimeModalVisible(false)}
       />
 
       {/* Repeat Selection Modal */}
-      <Modal
-        transparent={true}
-        visible={isRepeatModalVisible}
-        animationType="slide"
-        onRequestClose={() => setRepeatModalVisible(false)}>
-        <TouchableWithoutFeedback onPress={() => setRepeatModalVisible(false)}>
-          <View style={styles.modalContainer}>
-            <TouchableWithoutFeedback>
-              <View style={styles.repeatModalContent}>
-                <Text
-                  style={styles.repeatOptionText}
-                  onPress={() => {
-                    handleChangeValue('repeat', 'no');
-                    setRepeatModalVisible(false);
-                    setSelectedRepeat('Không');
-                  }}>
-                  Không lặp lại
-                </Text>
-                <Text
-                  style={styles.repeatOptionText}
-                  onPress={() => {
-                    handleChangeValue('repeat', 'day');
-                    setRepeatModalVisible(false);
-                    setSelectedRepeat('Ngày');
-                  }}>
-                  Lặp lại mỗi ngày
-                </Text>
-                <Text
-                  style={styles.repeatOptionText}
-                  onPress={() => {
-                    handleChangeValue('repeat', 'week');
-                    setRepeatModalVisible(false);
-                    setSelectedRepeat('Tuần');
-                  }}>
-                  Lặp lại mỗi tuần
-                </Text>
-                <Text
-                  style={styles.repeatOptionText}
-                  onPress={() => {
-                    handleChangeValue('repeat', 'month');
-                    setRepeatModalVisible(false);
-                    setSelectedRepeat('Tháng');
-                  }}>
-                  Lặp lại mỗi tháng
-                </Text>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
 
       {/* Category Selection Modal */}
-      <Modal
-        transparent={true}
-        visible={isCategoryModalVisible}
-        animationType="slide"
-        onRequestClose={() => setCategoryModalVisible(false)}>
-        <TouchableWithoutFeedback
-          onPress={() => setCategoryModalVisible(false)}>
-          <View style={styles.modalContainer}>
-            <TouchableWithoutFeedback>
-              <View style={styles.categoryModalContent}>
-                <TouchableOpacity
-                  style={styles.categoryOption}
-                  onPress={() => {
-                    handleChangeValue('category', 'Công việc');
-                    setSelectedCategory('Công việc');
-                    setCategoryModalVisible(false);
-                  }}>
-                  <MaterialIcons
-                    name="work"
-                    size={24}
-                    color={appColors.primary}
-                  />
-                  <Text style={styles.categoryOptionText}>Công việc</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.categoryOption}
-                  onPress={() => {
-                    handleChangeValue('category', 'Cá nhân');
-                    setSelectedCategory('Cá nhân');
-                    setCategoryModalVisible(false);
-                  }}>
-                  <MaterialIcons
-                    name="person"
-                    size={24}
-                    color={appColors.primary}
-                  />
-                  <Text style={styles.categoryOptionText}>Cá nhân</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.categoryOption}
-                  onPress={() => {
-                    handleChangeValue('category', 'Gia đình');
-                    setSelectedCategory('Gia đình');
-                    setCategoryModalVisible(false);
-                  }}>
-                  <MaterialIcons
-                    name="family-restroom"
-                    size={24}
-                    color={appColors.primary}
-                  />
-                  <Text style={styles.categoryOptionText}>Gia đình</Text>
-                </TouchableOpacity>
-                <FlatList
-                  data={categories}
-                  keyExtractor={item => item.name}
-                  renderItem={({item}) => (
-                    <CategoryOption
-                      name={item.name}
-                      icon={item.icon}
-                      color={item.color}
-                      onPress={() => {
-                        handleChangeValue('category', item.name);
-                        setSelectedCategory(item.name);
-                        setCategoryModalVisible(false);
-                      }}
-                    />
-                  )}
-                />
-                <TouchableOpacity
-                  style={styles.categoryOption}
-                  onPress={() => {
-                    setNewCategoryModalVisible(true);
-                    setCategoryModalVisible(false);
-                    setTempCategory('');
-                    setSelectedColor(appColors.primary);
-                    setSelectedIcon(availableIcons[0]);
-                  }}>
-                  <MaterialIcons
-                    name="add-box"
-                    size={24}
-                    color={appColors.primary}
-                  />
-                  <Text style={styles.categoryOptionText}>
-                    Tạo loại công việc mới
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+      {/* Category Selection Modal */}
+      <CategoryModal
+        isVisible={isCategoryModalVisible}
+        onClose={() => setCategoryModalVisible(false)}
+        categories={categories}
+        onSelectCategory={category => {
+          handleChangeValue('category', category);
+          setSelectedCategory(category);
+          setCategoryModalVisible(false);
+        }}
+        onNewCategory={() => {
+          setNewCategoryModalVisible(true);
+          setCategoryModalVisible(false);
+          setTempCategory('');
+          setSelectedColor(appColors.primary);
+          setSelectedIcon(availableIcons[0]);
+        }}
+      />
+
+      {/* New Category Modal */}
 
       {/* New Category Modal */}
       <Modal
@@ -752,4 +626,3 @@ const styles = StyleSheet.create({
 });
 
 export default AddNewScreen;
-  
