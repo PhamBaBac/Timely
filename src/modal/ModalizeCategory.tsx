@@ -66,12 +66,12 @@ const ModalizeCategory: React.FC<ModalizeCategoryProps> = ({
           <TouchableOpacity
             style={styles.categoryOption}
             onPress={() => {
-              handleChangeValue('category', 'Công việc');
-              setSelectedCategory('Công việc');
+              handleChangeValue('category', 'Du lịch');
+              setSelectedCategory('Du lịch');
               modalizeRef.current?.close();
             }}>
             <MaterialIcons name="work" size={24} color={appColors.green} />
-            <Text style={styles.categoryOptionText}>Công việc</Text>
+            <Text style={styles.categoryOptionText}>Du lịch</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.categoryOption}

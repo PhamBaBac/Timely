@@ -32,8 +32,11 @@ import {format} from 'date-fns';
 import ModalAddSubTask from '../modal/ModalAddSubTask';
 import {useSelector} from 'react-redux';
 import {RootState} from '../redux/store';
+import useCustomStatusBar from '../hooks/useCustomStatusBar';
 
 const TaskDetailScreen = ({navigation, route}: any) => {
+  useCustomStatusBar('light-content', appColors.primary);
+
   const id = route.params;
   const taskId = id.id;
   const [taskDetail, setTaskDetail] = useState<TaskModel>();
@@ -113,27 +116,25 @@ const TaskDetailScreen = ({navigation, route}: any) => {
     return format(date, 'HH:mm');
   };
   const fomatDate = (date: Date) => {
-    return format(date, 'dd/MM');
+    return format(date, 'dd/MM/yyyy');
   };
 
   return taskDetail ? (
     <>
       <ScrollView style={{flex: 1, backgroundColor: appColors.white}}>
-        <StatusBar hidden />
         <SectionComponent
           styles={{
-            paddingTop: 60,
-            paddingBottom: 18,
+            paddingBottom: 28,
             borderBottomLeftRadius: 20,
             borderBottomRightRadius: 20,
             backgroundColor: appColors.primary,
           }}>
-          <RowComponent styles={{alignItems: 'center'}}>
+          <RowComponent styles={{alignItems: 'center', justifyContent:'center'}}>
             <TouchableOpacity onPress={() => navigation.goBack()}>
               <ArrowLeft2
                 size={28}
                 color={appColors.white}
-                style={{marginTop: -8, marginRight: 12}}
+                style={{marginRight: 12}}
               />
             </TouchableOpacity>
             <TitleComponent
@@ -145,8 +146,7 @@ const TaskDetailScreen = ({navigation, route}: any) => {
             />
           </RowComponent>
           <View style={{marginTop: 20, marginHorizontal: 12}}>
-            <TextComponent text="Bắt đầu" color={appColors.white} />
-            <SpaceComponent height={14} />
+  
             <RowComponent>
               <RowComponent
                 styles={{

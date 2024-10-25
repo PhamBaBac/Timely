@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Pressable,
   StyleSheet,
+  StatusBar,
 } from 'react-native';
 import React, {useState, useEffect, useCallback} from 'react';
 import {Calendar, LocaleConfig} from 'react-native-calendars';
@@ -27,6 +28,7 @@ import {
   handleToggleImportant,
 } from '../../utils/taskUtil';
 import {useDispatch} from 'react-redux';
+import useCustomStatusBar from '../../hooks/useCustomStatusBar';
 
 // Set Vietnamese locale for the calendar
 LocaleConfig.locales['vi'] = {
@@ -73,6 +75,7 @@ LocaleConfig.locales['vi'] = {
 LocaleConfig.defaultLocale = 'vi';
 
 const CalendarScreen = ({navigation}: any) => {
+  useCustomStatusBar('dark-content', appColors.white);
   const dispatch = useDispatch();
   const deletedTaskIds = useSelector(
     (state: RootState) => state.tasks.deletedTaskIds,
@@ -219,7 +222,7 @@ const CalendarScreen = ({navigation}: any) => {
   };
 
   return (
-    <View style={{flex: 1}}>
+    <View style={{flex: 1, backgroundColor: appColors.lightPurple}}>
       <Calendar
         onDayPress={(day: {dateString: string}) => {
           setSelected(day.dateString);
