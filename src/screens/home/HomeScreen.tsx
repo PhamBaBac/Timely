@@ -269,7 +269,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
   const uniqueTasks = Array.from(uniqueTasksMap.values());
 
   const handleTaskPress = (task: TaskModel) => {
-    navigation.navigate('TaskDetailScreen', {task: task});
+    navigation.navigate('TaskDetailsScreen', {id: task.id});
   };
 
   const renderTask = (item: TaskModel) => {
@@ -325,7 +325,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
                     styles.taskTitle,
                     item.isCompleted && styles.completedTaskTitle,
                   ]}>
-                  {item.description}
+                    {item.title ? item.title : item.description}
                 </Text>
                 <Text style={styles.taskDate}>
                   {item.dueDate

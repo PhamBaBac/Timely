@@ -14,6 +14,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TextInputComponent,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
@@ -22,7 +23,15 @@ import {
 import {format} from 'date-fns';
 import {Modalize} from 'react-native-modalize';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {RowComponent, SpaceComponent, TextComponent} from '../components';
+import {
+  ButtonComponent,
+  Container,
+  InputComponent,
+  RowComponent,
+  SectionComponent,
+  SpaceComponent,
+  TextComponent,
+} from '../components';
 import {appColors} from '../constants';
 import LoadingModal from '../modal/LoadingModal';
 import ModalizeDate from '../modal/modalizaDate';
@@ -36,6 +45,7 @@ const now = new Date();
 const initValue: TaskModel = {
   id: '',
   uid: '',
+  title: '',
   description: '',
   dueDate: new Date(),
   startTime: new Date(),
@@ -46,7 +56,6 @@ const initValue: TaskModel = {
   isImportant: false,
   createdAt: Date.now(),
   updatedAt: Date.now(),
-  subtasks: [],
 };
 
 const availableIcons = [
@@ -201,15 +210,6 @@ const AddNewScreen = ({navigation}: any) => {
     }));
   };
 
-  const handleAddSubtask = () => {
-    const hasEmptySubtask = subtasks.some(
-      subtask => subtask.description === '' && subtask.isCompleted === false,
-    );
-    if (!hasEmptySubtask) {
-      setSubtasks([...subtasks, {description: '', isCompleted: false}]);
-    }
-  };
-
   const handleSubtaskChange = (index: number, value: string) => {
     const updatedSubtasks = [...subtasks];
     updatedSubtasks[index].description = value;
@@ -238,24 +238,29 @@ const AddNewScreen = ({navigation}: any) => {
   };
 
   return (
-    <View style={styles.container}>
+    <Container back title="Thêm nhiệm vụ mới" isScroll>
       <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Nhập tên công việc"
-          value={taskDetail.description}
-          onChangeText={val => handleChangeValue('description', val)}
-        />
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => {
-            handleAddNewTask();
-            setSelectedCategory('');
-            setSelectedRepeat('');
-            setSelectedTime(new Date());
+        <View
+          style={{
+            flexDirection: 'column',
           }}>
-          <MaterialIcons name="check" size={24} color="#ffffff" />
-        </TouchableOpacity>
+          <InputComponent
+            value={taskDetail.title}
+            onChange={val => handleChangeValue('title', val)}
+            title="tiêu đề"
+            allowClear
+            placeholder="nhập tiêu đề"
+          />
+          <InputComponent
+            value={taskDetail.description}
+            onChange={val => handleChangeValue('description', val)}
+            title="Nội dung"
+            allowClear
+            placeholder="Nhập nội dung"
+            multiple
+            numberOfLine={3}
+          />
+        </View>
       </View>
       {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
       {subtasks.map((subtask, index) => (
@@ -338,14 +343,6 @@ const AddNewScreen = ({navigation}: any) => {
           <Repeat size={24} color={appColors.primary} />
           <Text style={styles.modalOptionText}>Chọn lặp lại</Text>
           <Text style={styles.selectedRepeatText}>{selectedRepeat}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.option} onPress={handleAddSubtask}>
-          <MaterialIcons
-            name="playlist-add"
-            size={24}
-            color={appColors.primary}
-          />
-          <Text style={styles.optionText}>Thêm nhiệm vụ phụ</Text>
         </TouchableOpacity>
       </View>
       <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
@@ -473,8 +470,16 @@ const AddNewScreen = ({navigation}: any) => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+      <SpaceComponent height={20} />
+      <SectionComponent>
+        <ButtonComponent
+          text="Thêm công việc"
+          onPress={handleAddNewTask}
+          type="primary"
+        />
+      </SectionComponent>
       <LoadingModal visible={isLoading} />
-    </View>
+    </Container>
   );
 };
 
@@ -485,8 +490,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
+
     marginBottom: 20,
   },
   input: {
