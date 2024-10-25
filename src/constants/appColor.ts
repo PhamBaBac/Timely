@@ -27,4 +27,5 @@ export const appColors = {
   lightGray: '#F5F5F5',
   blue: '#2196F3',
   success: '#00733B',
+  lightPurple: '#F0F2FF', // Added light purple color
 };

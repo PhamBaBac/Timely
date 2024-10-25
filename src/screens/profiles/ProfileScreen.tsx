@@ -4,6 +4,7 @@ import {
   Dimensions,
   FlatList,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -17,8 +18,11 @@ import {RootState} from '../../redux/store';
 import {appColors} from '../../constants';
 import CicularComponent from '../../components/CicularComponent';
 import auth from '@react-native-firebase/auth';
+import useCustomStatusBar from '../../hooks/useCustomStatusBar';
 
 const ProfileScreen = ({navigation}: {navigation: any}) => {
+  useCustomStatusBar('dark-content', appColors.lightPurple);
+
   const currentUser = auth().currentUser?.email;
   const [completedTasks, setCompletedTasks] = useState(0);
   const [incompleteTasks, setIncompleteTasks] = useState(0);
@@ -240,7 +244,7 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: appColors.whitesmoke,
+    backgroundColor: appColors.lightPurple,
     padding: 16,
     paddingBottom: 40
   },
