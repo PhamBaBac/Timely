@@ -212,36 +212,39 @@ const TaskDetailScreen = ({navigation, route}: any) => {
             <SpaceComponent height={12} />
             {subTasks.length > 0 ? (
               subTasks.map((item, index) => (
-              <CardComponent
-                key={`subtask${index}`}
-                styles={{marginBottom: 12}}>
-                <RowComponent
-                onPress={() =>
-                  handleUpdateSubTask(item.id, item.isCompleted)
-                }>
-                <TickCircle
-                  variant={item.isCompleted ? 'Bold' : 'Outline'}
-                  color={appColors.primary}
-                  size={22}
-                />
-                <View style={{flex: 1, marginLeft: 12}}>
-                  <TextComponent text={item.description} />
-                  <SpaceComponent height={4} />
-                  <TextComponent
-                  size={12}
-                  text={fomatDate(new Date(item.createdAt || ''))}
-                  />
-                </View>
-                </RowComponent>
-              </CardComponent>
+                <CardComponent
+                  key={`subtask${index}`}
+                  styles={{marginBottom: 12}}>
+                  <RowComponent
+                    onPress={() =>
+                      handleUpdateSubTask(item.id, item.isCompleted)
+                    }>
+                    <TickCircle
+                      variant={item.isCompleted ? 'Bold' : 'Outline'}
+                      color={appColors.primary}
+                      size={22}
+                    />
+                    <View style={{flex: 1, marginLeft: 12}}>
+                      <TextComponent text={item.description} />
+                      <SpaceComponent height={4} />
+                      <TextComponent
+                        size={12}
+                        text={fomatDate(new Date(item.createdAt || ''))}
+                      />
+                    </View>
+                  </RowComponent>
+                </CardComponent>
               ))
             ) : (
-              <TextComponent text="Không có nhiệm vụ phụ" styles={{
-                textAlign: 'center',
-                color: appColors.gray4,
-                fontFamily: fontFamilies.regular,
-                fontSize: 16,
-              }}/>
+              <TextComponent
+                text="Không có nhiệm vụ phụ"
+                styles={{
+                  textAlign: 'center',
+                  color: appColors.gray4,
+                  fontFamily: fontFamilies.regular,
+                  fontSize: 16,
+                }}
+              />
             )}
           </SectionComponent>
         </View>
