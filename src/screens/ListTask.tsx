@@ -56,13 +56,31 @@ const ListTasks = ({navigation, route}: any) => {
     <SectionComponent key={item.id}>
       <Pressable
         onPress={() => navigation.navigate('TaskDetailsScreen', {id: item.id})}>
-        <View style={styles.taskItem}>
-          <Pressable style={styles.roundButton}>
-            <MaterialIcons
-              name="check-circle"
-              size={24}
-              color={appColors.primary}
-            />
+        <View
+          style={[
+            styles.taskItem,
+            {
+              borderLeftColor: item.isCompleted
+                ? appColors.gray
+                : appColors.primary,
+            },
+          ]}>
+          <Pressable
+            style={styles.roundButton}
+            >
+            {item.isCompleted ? (
+              <MaterialIcons
+                name="check-circle"
+                size={24}
+                color={appColors.gray}
+              />
+            ) : (
+              <MaterialIcons
+                name="radio-button-unchecked"
+                size={24}
+                color={appColors.primary}
+              />
+            )}
           </Pressable>
           <RowComponent>
             <View style={styles.taskContent}>
@@ -111,10 +129,16 @@ const ListTasks = ({navigation, route}: any) => {
       <FlatList
         style={{flex: 1}}
         showsVerticalScrollIndicator={false}
-        data={searchKey ? results : tasks}
+        data={searchKey ? results : [...tasks].sort((a, b) => {
+          const dateA = a.startTime ? new Date(a.startTime).getTime() : 0;
+          const dateB = b.startTime ? new Date(b.startTime).getTime() : 0;
+          return dateB - dateA;
+        })}
         ListEmptyComponent={
           <SectionComponent>
-            <TextComponent text="Data not found!!!" />
+            <TextComponent text="Không tìm thấy công việc " styles={{
+                textAlign:'center'
+            }}/>
           </SectionComponent>
         }
         renderItem={({item}) => renderTask(item)}
