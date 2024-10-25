@@ -16,18 +16,6 @@ interface ScheduleItemProps {
   onPress: (schedule: ScheduleModel) => void;
 }
 
-// sắp xếp theo period và startDate
-// const compareSchedule = (a: ScheduleModel, b: ScheduleModel) => {
-//   // Lấy số đầu tiên của period range
-//   const periodA = Number(a.period.split('-')[0]); // Ví dụ "1-3" -> 1
-//   const periodB = Number(b.period.split('-')[0]); // Ví dụ "4-6" -> 4
-
-//   if (periodA === periodB) {
-//     return a.startDate.getTime() - b.startDate.getTime();
-//   }
-//   return periodA - periodB;
-// };
-
 export const ScheduleItem: React.FC<ScheduleItemProps> = ({item, onPress}) => {
   const formattedDate = `${DateTime.GetWeekday(
     item.startDate.getTime(),
@@ -38,11 +26,6 @@ export const ScheduleItem: React.FC<ScheduleItemProps> = ({item, onPress}) => {
       onPress={() => onPress(item)}
       style={[styles.scheduleItem, item.isExam && styles.examItem]}
       activeOpacity={0.7}>
-      <View style={styles.dateContainer}>
-        <Icon name="calendar" size={20} color={appColors.primary} />
-        <Text style={styles.scheduleDate}>{formattedDate}</Text>
-      </View>
-
       <View style={styles.scheduleItemContent}>
         <View style={styles.scheduleHeader}>
           <View style={styles.headerContent}>
@@ -103,13 +86,14 @@ const styles = StyleSheet.create({
   scheduleItem: {
     marginHorizontal: 16,
     marginBottom: 16,
-    borderRadius: 12,
+    borderRadius: 8,
     backgroundColor: 'white',
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+    overflow: 'hidden', // Đảm bảo các góc bo tròn được hiển thị đúng
   },
   examItem: {
     borderLeftWidth: 4,
@@ -151,7 +135,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 6,
   },
   examBadgeText: {
     color: appColors.danger || 'red',

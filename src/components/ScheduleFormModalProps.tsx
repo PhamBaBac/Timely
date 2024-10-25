@@ -36,6 +36,7 @@ const PERIOD_OPTIONS = [
   {label: 'Tiết 10-12', value: '10-12', time: '15:00-17:15'},
   {label: 'Tiết 13-15', value: '13-15', time: '17:45-20:00'},
 ];
+
 export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
   visible,
   schedule,
@@ -55,6 +56,66 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
     onClose();
   };
 
+  const renderDatePicker = (
+    isStart: boolean,
+    show: boolean,
+    onShow: (show: boolean) => void,
+    onChange: (event: any, date?: Date) => void,
+  ) => {
+    const currentDate = isStart ? schedule.startDate : schedule.endDate;
+    const minimumDate = isStart ? new Date() : schedule.startDate;
+
+    if (Platform.OS === 'ios') {
+      return (
+        <View>
+          <TouchableOpacity
+            onPress={() => onShow(true)}
+            style={styles.dateButton}>
+            <Text>{currentDate.toLocaleDateString('vi-VN')}</Text>
+          </TouchableOpacity>
+          {show && (
+            <View style={styles.iosPickerContainer}>
+              <DateTimePicker
+                value={currentDate}
+                mode="date"
+                display="spinner"
+                onChange={onChange}
+                minimumDate={minimumDate}
+              />
+              <TouchableOpacity
+                style={styles.iosPickerButton}
+                onPress={() => onShow(false)}>
+                <Text style={styles.iosPickerButtonText}>Xong</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      );
+    }
+
+    return (
+      <View>
+        <TouchableOpacity
+          onPress={() => onShow(true)}
+          style={styles.dateButton}>
+          <Text>{currentDate.toLocaleDateString('vi-VN')}</Text>
+        </TouchableOpacity>
+        {show && (
+          <DateTimePicker
+            value={currentDate}
+            mode="date"
+            display="default"
+            onChange={(event, date) => {
+              onShow(false);
+              onChange(event, date);
+            }}
+            minimumDate={minimumDate}
+          />
+        )}
+      </View>
+    );
+  };
+
   const renderPeriodPicker = () => {
     return (
       <View style={styles.pickerContainer}>
@@ -72,7 +133,7 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
           {PERIOD_OPTIONS.map(option => (
             <Picker.Item
               key={option.value}
-              label={option.label}
+              label={`${option.label} (${option.time})`}
               value={option.value}
             />
           ))}
@@ -129,35 +190,21 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Thời gian bắt đầu</Text>
-              <TouchableOpacity
-                onPress={() => setShowStartDatePicker(true)}
-                style={styles.dateButton}>
-                <Text>{schedule.startDate.toLocaleDateString()}</Text>
-              </TouchableOpacity>
-              {showStartDatePicker && (
-                <DateTimePicker
-                  value={schedule.startDate}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={onStartDatePickerChange}
-                />
+              {renderDatePicker(
+                true,
+                showStartDatePicker,
+                setShowStartDatePicker,
+                onStartDatePickerChange,
               )}
             </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Thời gian kết thúc</Text>
-              <TouchableOpacity
-                onPress={() => setShowEndDatePicker(true)}
-                style={styles.dateButton}>
-                <Text>{schedule.endDate.toLocaleDateString()}</Text>
-              </TouchableOpacity>
-              {showEndDatePicker && (
-                <DateTimePicker
-                  value={schedule.endDate}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={onEndDatePickerChange}
-                />
+              {renderDatePicker(
+                false,
+                showEndDatePicker,
+                setShowEndDatePicker,
+                onEndDatePickerChange,
               )}
             </View>
 
@@ -326,5 +373,20 @@ const styles = StyleSheet.create({
     height: 50,
     width: '100%',
     backgroundColor: 'white',
+  },
+  iosPickerContainer: {
+    backgroundColor: 'white',
+    width: '100%',
+    padding: 5,
+    borderRadius: 10,
+    marginTop: 5,
+  },
+  iosPickerButton: {
+    alignSelf: 'flex-end',
+    padding: 10,
+  },
+  iosPickerButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
   },
 });
