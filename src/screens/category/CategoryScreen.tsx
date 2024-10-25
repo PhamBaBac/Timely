@@ -12,6 +12,7 @@ import {
   Modal,
   TextInput,
   Switch,
+  FlatList,
 } from 'react-native';
 import {Container} from '../../components';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -30,20 +31,38 @@ interface Category {
   uid?: string;
 }
 
+const availableIcons = [
+  'work',
+  'celebration',
+  'sports-esports',
+  'home',
+  'school',
+  'fitness-center',
+  'restaurant',
+  'shopping-cart',
+  'local-hospital',
+  'directions-car',
+  'flight',
+  'beach-access',
+];
+
+const rainbowColors = [
+  '#E57373',
+  '#FFB74D',
+  '#FFF176',
+  '#81C784',
+  '#64B5F6',
+  '#9575CD',
+  '#BA68C8',
+];
+
 interface CategoryWithoutCount extends Omit<Category, 'count'> {}
 
 const DEFAULT_CATEGORIES: Omit<Category, 'id' | 'count'>[] = [
   {
     name: 'Cá nhân',
     color: 'default',
-    icon: '',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  },
-  {
-    name: 'Gia đình',
-    color: 'default',
-    icon: '',
+    icon: 'person',
     createdAt: Date.now(),
     updatedAt: Date.now(),
   },
@@ -211,6 +230,21 @@ const CategoryScreen: React.FC = () => {
     );
   };
 
+  const renderColorItem = ({item}: {item: string}) => (
+    <TouchableOpacity
+      style={[
+        styles.colorItem,
+        {backgroundColor: item},
+        editingCategory.color === item && styles.selectedColorItem,
+      ]}
+      onPress={() => {
+        setEditingCategory({...editingCategory, color: item});
+        setIsDefaultColor(false);
+      }}
+      disabled={isLoading || isDefaultColor}
+    />
+  );
+
   const showModal = (category: Category, event: any) => {
     const {pageY, pageX} = event.nativeEvent;
     setModalPosition({top: pageY, right: pageX});
@@ -231,6 +265,24 @@ const CategoryScreen: React.FC = () => {
     }).start(() => setModalVisible(false));
   };
 
+  const renderIconItem = ({item}: {item: string}) => (
+    <TouchableOpacity
+      style={[
+        styles.iconItem,
+        editingCategory.icon === item && styles.selectedIconItem,
+      ]}
+      onPress={() => setEditingCategory({...editingCategory, icon: item})}
+      disabled={isLoading}>
+      <Icon
+        name={item}
+        size={24}
+        color={
+          editingCategory.icon === item ? appColors.white : appColors.primary
+        }
+      />
+    </TouchableOpacity>
+  );
+
   const saveCategory = async () => {
     if (!user?.uid) return;
     if (!editingCategory.name.trim()) {
@@ -243,12 +295,12 @@ const CategoryScreen: React.FC = () => {
       const categoryData = {
         name: editingCategory.name.trim(),
         color: isDefaultColor ? 'default' : editingCategory.color,
+        icon: editingCategory.icon,
         uid: user.uid,
         updatedAt: Date.now(),
       };
 
       if (isCreating) {
-        // Check for duplicate names
         const existingCategory = await firestore()
           .collection('categories')
           .where('name', '==', categoryData.name)
@@ -296,7 +348,7 @@ const CategoryScreen: React.FC = () => {
           <View key={category.id} style={styles.categoryItem}>
             <View style={styles.categoryLeft}>
               <Icon
-                name="radio-button-checked"
+                name={category.icon || 'radio-button-checked'}
                 size={24}
                 color={
                   category.color === 'default'
@@ -368,6 +420,7 @@ const CategoryScreen: React.FC = () => {
                 ? 'Tạo loại công việc mới'
                 : 'Chỉnh sửa loại công việc'}
             </Text>
+
             <TextInput
               style={styles.input}
               value={editingCategory.name}
@@ -381,6 +434,53 @@ const CategoryScreen: React.FC = () => {
             <Text style={styles.editModalSubtitle}>
               {editingCategory.name.length}/50
             </Text>
+
+            <Text style={styles.sectionTitle}>Chọn biểu tượng</Text>
+            <FlatList
+              data={availableIcons}
+              renderItem={renderIconItem}
+              keyExtractor={item => item}
+              horizontal={true}
+              showsHorizontalScrollIndicator={false}
+              style={styles.iconList}
+            />
+
+            <View style={styles.colorSection}>
+              <Text style={styles.sectionTitle}>Màu sắc</Text>
+              <View style={styles.colorSwitch}>
+                <Text>Màu mặc định</Text>
+                <Switch
+                  value={isDefaultColor}
+                  onValueChange={value => {
+                    setIsDefaultColor(value);
+                    if (value) {
+                      setEditingCategory({
+                        ...editingCategory,
+                        color: 'default',
+                      });
+                    } else {
+                      setEditingCategory({
+                        ...editingCategory,
+                        color: rainbowColors[0],
+                      });
+                    }
+                  }}
+                  disabled={isLoading}
+                />
+              </View>
+              <FlatList
+                data={rainbowColors}
+                renderItem={renderColorItem}
+                keyExtractor={item => item}
+                horizontal={true}
+                showsHorizontalScrollIndicator={false}
+                style={[
+                  styles.colorList,
+                  isDefaultColor && styles.disabledColorList,
+                ]}
+              />
+            </View>
+
             <View style={styles.editModalButtons}>
               <TouchableOpacity
                 onPress={() => setEditModalVisible(false)}
@@ -409,7 +509,6 @@ const CategoryScreen: React.FC = () => {
     </Container>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -504,10 +603,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  colorSwitch: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+
   editModalButtons: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -522,6 +618,58 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.5,
+  },
+
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 15,
+    marginBottom: 10,
+  },
+  iconList: {
+    maxHeight: 80,
+    marginBottom: 15,
+  },
+  iconItem: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: appColors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  selectedIconItem: {
+    backgroundColor: appColors.primary,
+  },
+  colorSection: {
+    marginTop: 15,
+  },
+  colorSwitch: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  colorList: {
+    maxHeight: 50,
+    marginBottom: 15,
+  },
+  disabledColorList: {
+    opacity: 0.5,
+  },
+  colorItem: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  selectedColorItem: {
+    borderWidth: 2,
+    borderColor: appColors.primary,
   },
 });
 
