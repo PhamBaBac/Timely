@@ -20,7 +20,7 @@ import {ScheduleModel} from '../../models/ScheduleModel';
 import {WeekDayModel} from '../../models/WeekDayModel';
 import LoadingModal from '../../modal/LoadingModal';
 import {DateTime} from '../../utils/DateTime';
-import {compareSchedule} from '../../utils/compareSchedule';
+import ScheduleByPeriod from '../../components/ScheduleByPeriod';
 
 // Định nghĩa period order ở ngoài component để tránh tạo lại mỗi lần render
 const PERIOD_ORDER: {[key: string]: number} = {
@@ -65,6 +65,11 @@ const Teamwork = () => {
     const diff = date.getDate() - day + (day === 0 ? -6 : 1);
     return new Date(date.setDate(diff));
   }
+  // Thêm hàm này sau hàm getMonday
+  const getTodayString = useCallback(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  }, []);
 
   const fetchSchedules = useCallback(async () => {
     if (!user?.uid) return;
@@ -83,7 +88,6 @@ const Teamwork = () => {
         endDate: doc.data().endDate?.toDate() || new Date(),
       })) as ScheduleModel[];
 
-      schedulesList.sort(compareSchedule);
       setSchedules(schedulesList);
     } catch (error) {
       console.error('Error fetching schedules:', error);
@@ -98,9 +102,10 @@ const Teamwork = () => {
   }, [fetchSchedules]);
 
   const setCurrentWeekToToday = useCallback(() => {
-    setCurrentWeekStart(getMonday(new Date()));
-    setSelectedDay(null);
-  }, []);
+    const today = new Date();
+    setCurrentWeekStart(getMonday(today));
+    setSelectedDay(getTodayString()); // Set selected day to today
+  }, [getTodayString]);
 
   const weekDays = useMemo(() => {
     const days: WeekDayModel[] = [];
@@ -270,6 +275,11 @@ const Teamwork = () => {
     [],
   );
 
+  // Thêm useEffect này
+  useEffect(() => {
+    setSelectedDay(getTodayString());
+  }, [getTodayString]);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScheduleHeader
@@ -305,16 +315,12 @@ const Teamwork = () => {
       </View>
 
       <View style={styles.scheduleListContainer}>
-        <FlatList
-          data={filteredScheduleItems}
-          renderItem={({item}) => (
-            <ScheduleItem item={item} onPress={handleSchedulePress} />
-          )}
-          keyExtractor={(item, index) => `${item.id}-${index}`}
-          style={styles.scheduleContainer}
-          ListEmptyComponent={EmptySchedule}
-          contentContainerStyle={styles.scheduleContentContainer}
-        />
+        <View style={styles.scheduleListContainer}>
+          <ScheduleByPeriod
+            schedules={filteredScheduleItems}
+            onSchedulePress={handleSchedulePress}
+          />
+        </View>
       </View>
 
       <ScheduleFormModal
@@ -370,23 +376,25 @@ const styles = StyleSheet.create({
   },
   scheduleListContainer: {
     flex: 1,
-    backgroundColor: '#fff',
-    margin: 10,
-    borderRadius: 15,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+
+    // backgroundColor: '#fff',
+    // margin: 10,
+    // borderRadius: 15,
+    // shadowColor: '#000',
+    // shadowOffset: {
+    //   width: 0,
+    //   height: 2,
+    // },
+    // shadowOpacity: 0.1,
+    // shadowRadius: 4,
+    // elevation: 3,
   },
   scheduleContainer: {
     flex: 1,
   },
   scheduleContentContainer: {
     padding: 10,
+    height: 300,
   },
   scheduleItemContainer: {
     marginVertical: 5,
