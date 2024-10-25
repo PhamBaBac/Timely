@@ -5,7 +5,7 @@ import { appColors } from '../constants';
 export const globalStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: appColors.white,
+    backgroundColor: appColors.lightPurple,
     padding: 16,
   },
   row: {

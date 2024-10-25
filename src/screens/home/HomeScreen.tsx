@@ -1,34 +1,20 @@
 import auth, {firebase} from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import {addDays, addMonths, addWeeks, format} from 'date-fns';
+import {Category, SearchNormal1} from 'iconsax-react-native';
 import React, {useEffect, useState} from 'react';
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import {useDispatch, useSelector} from 'react-redux';
 import {RowComponent, SpaceComponent} from '../../components';
 import {appColors} from '../../constants/appColor';
+import useCustomStatusBar from '../../hooks/useCustomStatusBar';
 import {CategoryModel} from '../../models/categoryModel';
 import {TaskModel} from '../../models/taskModel';
-import {DateTime} from '../../utils/DateTime';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {Category} from 'iconsax-react-native';
-import {useDispatch, useSelector} from 'react-redux';
-import {RootState} from '../../redux/store';
 import {setCategories} from '../../redux/reducers/categoriesSlice';
-import {
-  deleteTask,
-  setCompletedTasks,
-  setDeletedTaskIds,
-  setTasks,
-} from '../../redux/reducers/tasksSlice';
+import {setTasks} from '../../redux/reducers/tasksSlice';
+import {RootState} from '../../redux/store';
 import {
   fetchCompletedTasks,
   fetchDeletedTasks,
@@ -38,16 +24,16 @@ import {
   handleToggleImportant,
   handleUpdateRepeat,
 } from '../../utils/taskUtil';
-import SearchScreen from '../../components/SearchScreen';
 
 const HomeScreen = ({navigation}: {navigation: any}) => {
   const user = auth().currentUser;
+  useCustomStatusBar('light-content', appColors.primary);
+
   const [activeFilter, setActiveFilter] = useState('Tất cả');
   const [showBeforeToday, setShowBeforeToday] = useState(true);
   const dispatch = useDispatch();
   const [showToday, setShowToday] = useState(true);
   const tasks = useSelector((state: RootState) => state.tasks.tasks);
-  const [isSearchVisible, setIsSearchVisible] = useState(false);
   const categories = useSelector(
     (state: RootState) => state.categories.categories,
   );
@@ -83,7 +69,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     },
     [
       'Tất cả',
-      'Công việc',
+      'Du lịch',
       'Sinh nhật',
       ...categories.map(category => category.name),
     ],
@@ -302,7 +288,15 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
         renderRightActions={() => renderRightActions(item)}
         key={item.id}>
         <Pressable onPress={() => handleTaskPress(item)}>
-          <View style={styles.taskItem}>
+          <View
+            style={[
+              styles.taskItem,
+              {
+                borderLeftColor: item.isCompleted
+                  ? appColors.gray
+                  : appColors.primary,
+              },
+            ]}>
             <Pressable
               style={styles.roundButton}
               onPress={() => handleToggleCompleteTask(item.id)}>
@@ -310,13 +304,13 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
                 <MaterialIcons
                   name="check-circle"
                   size={24}
-                  color={appColors.primary}
+                  color={appColors.gray}
                 />
               ) : (
                 <MaterialIcons
                   name="radio-button-unchecked"
                   size={24}
-                  color={appColors.gray}
+                  color={appColors.primary}
                 />
               )}
             </Pressable>
@@ -359,25 +353,23 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor={appColors.whitesmoke}
-      />
-
       <View style={styles.header}>
         <Pressable
           style={styles.iconButton}
           onPress={() => navigation.openDrawer()}>
-          <MaterialIcons name="menu" size={24} color="#000" />
+          <MaterialIcons name="menu" size={24} color={appColors.white} />
         </Pressable>
-        <Text style={styles.headerTitle}>Home</Text>
+        <Text style={styles.headerTitle}>TimeLy</Text>
         <Pressable
           style={styles.iconButton}
-          onPress={() => setIsSearchVisible(true)}>
-          <MaterialIcons name="search" size={24} color={appColors.black} />
+          onPress={() =>
+            navigation.navigate('ListTasks', {
+              tasks,
+            })
+          }>
+          <SearchNormal1 size={20} color={appColors.white} />
         </Pressable>
       </View>
-
       <View style={styles.filtersContainer}>
         <ScrollView
           horizontal={true}
@@ -410,7 +402,6 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
           <Category size="24" color={appColors.primary} />
         </Pressable>
       </View>
-
       <ScrollView style={styles.tasksContainer}>
         {tasksBeforeToday.length > 0 && (
           <View style={styles.section}>
@@ -486,17 +477,19 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
                 .map(renderTask)}
           </View>
         )}
+        <SpaceComponent height={20} />
+        <Pressable
+          onPress={() =>
+            navigation.navigate('IsCompleTaskScreen', {
+              tasks: tasks.filter(task => task.isCompleted),
+            })
+          }>
+          <Text style={{textDecorationLine: 'underline', textAlign: 'center'}}>
+            Xem tất cả các nhiệm vụ đã hoàn thành
+          </Text>
+        </Pressable>
       </ScrollView>
       <SpaceComponent height={28} />
-
-      <SearchScreen
-        visible={isSearchVisible}
-        onClose={() => setIsSearchVisible(false)}
-        onSelectTask={task => {
-          handleTaskPress(task);
-          setIsSearchVisible(false);
-        }}
-      />
     </View>
   );
 };
@@ -504,28 +497,31 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: appColors.whitesmoke,
-    paddingHorizontal: 10,
+    backgroundColor: appColors.lightPurple,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
     paddingHorizontal: 10,
-    backgroundColor: appColors.white,
+    paddingTop: -10,
+    paddingBottom: 20,
+    backgroundColor: appColors.primary,
     borderBottomWidth: 1,
     borderBottomColor: appColors.lightGray,
+    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: 20,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: appColors.black,
+    color: appColors.white,
   },
   iconButton: {
     padding: 8,
   },
   filtersContainer: {
+    paddingHorizontal: 10,
     paddingBottom: 4,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -557,6 +553,7 @@ const styles = StyleSheet.create({
   },
   tasksContainer: {
     flex: 1,
+    paddingHorizontal: 10,
   },
   section: {
     marginVertical: 4,
@@ -589,7 +586,6 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 2,
     borderLeftWidth: 2,
-    borderLeftColor: appColors.primary,
   },
   roundButton: {
     marginRight: 10,

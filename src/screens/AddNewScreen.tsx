@@ -38,8 +38,9 @@ import ModalizeDate from '../modal/modalizaDate';
 import ModalizeCategory from '../modal/ModalizeCategory';
 import ModalizeRepeat from '../modal/ModalizeRepeat';
 import ModalizeTime from '../modal/ModalizeTime';
-import {CategoryModel} from '../models/categoryModel';
-import {TaskModel} from '../models/taskModel';
+import { CategoryModel } from '../models/categoryModel';
+import { TaskModel } from '../models/taskModel';
+import useCustomStatusBar from '../hooks/useCustomStatusBar';
 
 const now = new Date();
 const initValue: TaskModel = {
@@ -84,6 +85,8 @@ const rainbowColors = [
 ];
 
 const AddNewScreen = ({navigation}: any) => {
+  useCustomStatusBar('dark-content', appColors.lightPurple);
+
   const user = auth().currentUser;
   const [modalTimeVisible, setModalTimeVisible] = useState(false);
   const [modalDateVisible, setModalDateVisible] = useState(false);
@@ -112,7 +115,7 @@ const AddNewScreen = ({navigation}: any) => {
 
   const handleAddNewTask = async () => {
     if (!taskDetail.description) {
-      setErrorText('Description is required');
+      setErrorText('Nội dung là bắt buộc');
       return;
     }
 
@@ -123,14 +126,14 @@ const AddNewScreen = ({navigation}: any) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    if (startDate < today) {
-      setErrorText('Due date cannot be in the past');
+    if (startDate <= today) {
+      setErrorText('Ngày đến hạn không thể là ngày trong quá khứ');
       return;
     }
 
     const data = {
       ...taskDetail,
-      uid: user?.uid, // Ensure uid is included
+      uid: user?.uid,
       subtasks, // Include subtasks in the task data
       repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat,
     };
