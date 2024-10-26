@@ -23,7 +23,8 @@ import useCustomStatusBar from '../../hooks/useCustomStatusBar';
 const ProfileScreen = ({navigation}: {navigation: any}) => {
   useCustomStatusBar('dark-content', appColors.lightPurple);
 
-  const currentUser = auth().currentUser?.email;
+  const currentUser =
+    auth().currentUser?.displayName || auth().currentUser?.email;
   const [completedTasks, setCompletedTasks] = useState(0);
   const [incompleteTasks, setIncompleteTasks] = useState(0);
 
