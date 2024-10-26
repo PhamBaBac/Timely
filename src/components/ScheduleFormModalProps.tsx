@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   TextInput,
   ScrollView,
   Switch,
+  Alert,
 } from 'react-native';
 import {Picker} from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -27,6 +28,13 @@ interface ScheduleFormModalProps {
   onEndDatePickerChange: (event: any, date?: Date) => void;
   setShowStartDatePicker: (show: boolean) => void;
   setShowEndDatePicker: (show: boolean) => void;
+}
+
+interface ValidationErrors {
+  course: string;
+  period: string;
+  room: string;
+  instructor: string;
 }
 
 const PERIOD_OPTIONS = [
@@ -51,9 +59,75 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
   setShowStartDatePicker,
   setShowEndDatePicker,
 }) => {
+  const [errors, setErrors] = useState<ValidationErrors>({
+    course: '',
+    period: '',
+    room: '',
+    instructor: '',
+  });
+
+  const validateForm = (): boolean => {
+    const newErrors: ValidationErrors = {
+      course: '',
+      period: '',
+      room: '',
+      instructor: '',
+    };
+    let isValid = true;
+
+    if (!schedule.course.trim()) {
+      newErrors.course = schedule.isExam
+        ? 'Vui lòng nhập môn thi'
+        : 'Vui lòng nhập môn học';
+      isValid = false;
+    }
+
+    if (!schedule.period) {
+      newErrors.period = schedule.isExam
+        ? 'Vui lòng chọn ca thi'
+        : 'Vui lòng chọn tiết học';
+      isValid = false;
+    }
+
+    if (!schedule.room.trim()) {
+      newErrors.room = schedule.isExam
+        ? 'Vui lòng nhập phòng thi'
+        : 'Vui lòng nhập phòng học';
+      isValid = false;
+    }
+
+    if (!schedule.instructor.trim()) {
+      newErrors.instructor = schedule.isExam
+        ? 'Vui lòng nhập tên giám thị'
+        : 'Vui lòng nhập tên giảng viên';
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
+  const handleSave = () => {
+    if (validateForm()) {
+      onSave();
+    }
+  };
+
   const handleDelete = (id: string) => {
-    onDelete(id);
-    onClose();
+    Alert.alert('Xác nhận xóa', 'Bạn có chắc chắn muốn xóa lịch này không?', [
+      {
+        text: 'Hủy',
+        style: 'cancel',
+      },
+      {
+        text: 'Xóa',
+        onPress: () => {
+          onDelete(id);
+          onClose();
+        },
+        style: 'destructive',
+      },
+    ]);
   };
 
   const renderDatePicker = (
@@ -118,26 +192,38 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
 
   const renderPeriodPicker = () => {
     return (
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={schedule.period}
-          onValueChange={(itemValue: any) =>
-            onScheduleChange({...schedule, period: itemValue})
-          }
-          style={styles.picker}
-          mode="dropdown">
-          <Picker.Item
-            label={schedule.isExam ? 'Chọn ca thi' : 'Chọn tiết học'}
-            value=""
-          />
-          {PERIOD_OPTIONS.map(option => (
+      <View>
+        <View
+          style={[
+            styles.pickerContainer,
+            errors.period ? styles.inputError : null,
+          ]}>
+          <Picker
+            selectedValue={schedule.period}
+            onValueChange={(itemValue: any) => {
+              onScheduleChange({...schedule, period: itemValue});
+              if (itemValue) {
+                setErrors(prev => ({...prev, period: ''}));
+              }
+            }}
+            style={styles.picker}
+            mode="dropdown">
             <Picker.Item
-              key={option.value}
-              label={`${option.label} (${option.time})`}
-              value={option.value}
+              label={schedule.isExam ? 'Chọn ca thi' : 'Chọn tiết học'}
+              value=""
             />
-          ))}
-        </Picker>
+            {PERIOD_OPTIONS.map(option => (
+              <Picker.Item
+                key={option.value}
+                label={`${option.label} (${option.time})`}
+                value={option.value}
+              />
+            ))}
+          </Picker>
+        </View>
+        {errors.period ? (
+          <Text style={styles.errorText}>{errors.period}</Text>
+        ) : null}
       </View>
     );
   };
@@ -177,15 +263,21 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
                 {schedule.isExam ? 'Môn thi' : 'Môn học'}
               </Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.course ? styles.inputError : null]}
                 value={schedule.course}
-                onChangeText={text =>
-                  onScheduleChange({...schedule, course: text})
-                }
+                onChangeText={text => {
+                  onScheduleChange({...schedule, course: text});
+                  if (text.trim()) {
+                    setErrors(prev => ({...prev, course: ''}));
+                  }
+                }}
                 placeholder={
                   schedule.isExam ? 'Nhập tên môn thi' : 'Nhập tên môn học'
                 }
               />
+              {errors.course ? (
+                <Text style={styles.errorText}>{errors.course}</Text>
+              ) : null}
             </View>
 
             <View style={styles.formGroup}>
@@ -232,15 +324,21 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
                 {schedule.isExam ? 'Phòng thi' : 'Phòng học'}
               </Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.room ? styles.inputError : null]}
                 value={schedule.room}
-                onChangeText={text =>
-                  onScheduleChange({...schedule, room: text})
-                }
+                onChangeText={text => {
+                  onScheduleChange({...schedule, room: text});
+                  if (text.trim()) {
+                    setErrors(prev => ({...prev, room: ''}));
+                  }
+                }}
                 placeholder={
                   schedule.isExam ? 'Nhập phòng thi' : 'Nhập phòng học'
                 }
               />
+              {errors.room ? (
+                <Text style={styles.errorText}>{errors.room}</Text>
+              ) : null}
             </View>
 
             <View style={styles.formGroup}>
@@ -248,21 +346,30 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
                 {schedule.isExam ? 'Giám thị' : 'Giảng viên'}
               </Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  errors.instructor ? styles.inputError : null,
+                ]}
                 value={schedule.instructor}
-                onChangeText={text =>
-                  onScheduleChange({...schedule, instructor: text})
-                }
+                onChangeText={text => {
+                  onScheduleChange({...schedule, instructor: text});
+                  if (text.trim()) {
+                    setErrors(prev => ({...prev, instructor: ''}));
+                  }
+                }}
                 placeholder={
                   schedule.isExam ? 'Nhập tên giám thị' : 'Nhập tên giảng viên'
                 }
               />
+              {errors.instructor ? (
+                <Text style={styles.errorText}>{errors.instructor}</Text>
+              ) : null}
             </View>
 
             <View style={styles.buttonContainer}>
               <TouchableOpacity
                 style={[styles.button, styles.saveButton]}
-                onPress={onSave}>
+                onPress={handleSave}>
                 <Text style={styles.buttonText}>Lưu</Text>
               </TouchableOpacity>
 
@@ -280,7 +387,6 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
     </Modal>
   );
 };
-
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
@@ -340,6 +446,9 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     padding: 10,
   },
+  inputError: {
+    borderColor: 'red',
+  },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -368,6 +477,11 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     borderRadius: 5,
     overflow: 'hidden',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 14,
+    marginTop: 5,
   },
   picker: {
     height: 50,
