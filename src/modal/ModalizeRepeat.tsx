@@ -1,11 +1,22 @@
 // src/components/ModalizeRepeat.tsx
-import React, {useRef, useEffect} from 'react';
-import {View, StyleSheet, Text} from 'react-native';
+import React, {useRef, useEffect, useState} from 'react';
+import {
+  View,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+} from 'react-native';
 import {Portal} from 'react-native-portalize';
 import {Modalize} from 'react-native-modalize';
-import { RowComponent, SpaceComponent, TextComponent } from '../components';
-import { appColors } from '../constants';
-import { Switch } from 'react-native-gesture-handler';
+import {
+  RowComponent,
+  SectionComponent,
+  SpaceComponent,
+  TextComponent,
+} from '../components';
+import {appColors} from '../constants';
+import {Switch} from 'react-native-gesture-handler';
 
 interface ModalizeRepeatProps {
   visible: boolean;
@@ -31,6 +42,8 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
       modalizeRef.current?.close();
     }
   }, [visible]);
+
+  const [isWeek, setIsWeek] = useState(false);
 
   return (
     <Portal>
@@ -68,7 +81,6 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
               style={styles.repeatOptionText}
               onPress={() => {
                 handleChangeValue('repeat', 'day');
-                modalizeRef.current?.close();
                 setSelectedRepeat('Ngày');
               }}>
               Hằng ngày
@@ -82,7 +94,8 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
               style={styles.repeatOptionText}
               onPress={() => {
                 handleChangeValue('repeat', 'week');
-                modalizeRef.current?.close();
+                setIsWeek(true);
+
                 setSelectedRepeat('Tuần');
               }}>
               Hằng tuần
@@ -102,6 +115,59 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
               Hằng tháng
             </Text>
           </View>
+          <SpaceComponent height={20} />
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: 20,
+              marginHorizontal: 10,
+            }}>
+            <TextComponent text="Số lần lặp" />
+            <SpaceComponent width={10} />
+            <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              onChangeText={text => handleChangeValue('repeatCount', text)}
+              value={
+                taskDetail.repeatCount
+                  ? taskDetail.repeatCount.toString()
+                  : undefined
+              }
+            />
+          </View>
+          {taskDetail.repeat === 'week' && (
+            <View>
+              <SectionComponent>
+                <TextComponent text="Chọn ngày trong tuần" />
+                <View style={styles.weekDaysContainer}>
+                  {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map(
+                    (day, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={[
+                          styles.weekDay,
+                          taskDetail.repeatDays?.includes(index) &&
+                            styles.selectedDay,
+                        ]}
+                        onPress={() => {
+                          const newRepeatDays = taskDetail.repeatDays?.includes(
+                            index,
+                          )
+                            ? taskDetail.repeatDays.filter(
+                                (d: number) => d !== index,
+                              )
+                            : [...(taskDetail.repeatDays || []), index];
+                          handleChangeValue('repeatDays', newRepeatDays);
+                        }}>
+                        <TextComponent text={day} />
+                      </TouchableOpacity>
+                    ),
+                  )}
+                </View>
+              </SectionComponent>
+            </View>
+          )}
         </View>
       </Modalize>
     </Portal>
@@ -125,6 +191,31 @@ const styles = StyleSheet.create({
   repeatOptionText: {
     fontSize: 16,
     color: appColors.primary,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: appColors.gray,
+    borderRadius: 8,
+    padding: 12,
+    height: 40,
+    
+  },
+  weekDaysContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  weekDay: {
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: appColors.gray,
+    marginBottom: 10,
+  },
+  selectedDay: {
+    backgroundColor: appColors.primary,
+    borderColor: appColors.primary,
   },
 });
 
