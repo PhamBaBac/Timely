@@ -1,28 +1,20 @@
-import auth, { firebase } from '@react-native-firebase/auth';
+import auth, {firebase} from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import { addDays, addMonths, addWeeks, format } from 'date-fns';
-import { Category, SearchNormal1 } from 'iconsax-react-native';
-import React, { useEffect, useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View
-} from 'react-native';
+import {addDays, addMonths, addWeeks, format} from 'date-fns';
+import {Category, SearchNormal1} from 'iconsax-react-native';
+import React, {useEffect, useState} from 'react';
+import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { useDispatch, useSelector } from 'react-redux';
-import { RowComponent, SpaceComponent } from '../../components';
-import { appColors } from '../../constants/appColor';
+import {useDispatch, useSelector} from 'react-redux';
+import {RowComponent, SpaceComponent} from '../../components';
+import {appColors} from '../../constants/appColor';
 import useCustomStatusBar from '../../hooks/useCustomStatusBar';
-import { CategoryModel } from '../../models/categoryModel';
-import { TaskModel } from '../../models/taskModel';
-import { setCategories } from '../../redux/reducers/categoriesSlice';
-import {
-  setTasks
-} from '../../redux/reducers/tasksSlice';
-import { RootState } from '../../redux/store';
+import {CategoryModel} from '../../models/categoryModel';
+import {TaskModel} from '../../models/taskModel';
+import {setCategories} from '../../redux/reducers/categoriesSlice';
+import {setTasks} from '../../redux/reducers/tasksSlice';
+import {RootState} from '../../redux/store';
 import {
   fetchCompletedTasks,
   fetchDeletedTasks,
@@ -32,7 +24,8 @@ import {
   handleToggleImportant,
   handleUpdateRepeat,
 } from '../../utils/taskUtil';
-
+import {HandleNotification} from '../../utils/handleNotification';
+import messaging from '@react-native-firebase/messaging';
 const HomeScreen = ({navigation}: {navigation: any}) => {
   const user = auth().currentUser;
   useCustomStatusBar('light-content', appColors.primary);
@@ -42,6 +35,15 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
   const dispatch = useDispatch();
   const [showToday, setShowToday] = useState(true);
   const tasks = useSelector((state: RootState) => state.tasks.tasks);
+  useEffect(() => {
+    HandleNotification.checkNotificationPersion();
+    messaging().onMessage((mess: any) => {
+      // getNofiticationsUnRead;
+      console.log('mess:', mess);
+    });
+  }, []);
+  
+
   const categories = useSelector(
     (state: RootState) => state.categories.categories,
   );
@@ -141,7 +143,8 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
           const repeatedDates = calculateRepeatedDates(
             task.startDate,
             task.repeat as 'day' | 'week' | 'month',
-            7,
+            task.repeatCount as number,
+            task.repeatDays as number[],
           );
 
           return repeatedDates.map(date => ({
@@ -187,6 +190,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     startDate: string,
     repeat: 'day' | 'week' | 'month',
     count: number,
+    repeatDays: number[],
   ) => {
     const dates = [];
     let currentDate = new Date(startDate);
@@ -196,8 +200,17 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
 
       if (repeat === 'day') {
         currentDate = addDays(currentDate, 1);
-      } else if (repeat === 'week') {
-        currentDate = addWeeks(currentDate, 1);
+      } else if (repeat === 'week' && repeatDays.length > 0) {
+        repeatDays.forEach(day => {
+          let tempDate = new Date(currentDate);
+          tempDate.setDate(
+            tempDate.getDate() + ((day + 7 - tempDate.getDay()) % 7),
+          );
+          if (tempDate > currentDate) {
+            dates.push(tempDate.toISOString());
+          }
+        });
+        currentDate = addWeeks(currentDate, 1); // Move to the next week
       } else if (repeat === 'month') {
         currentDate = addMonths(currentDate, 1);
       }

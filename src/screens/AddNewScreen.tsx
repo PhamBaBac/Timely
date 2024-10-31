@@ -38,8 +38,8 @@ import ModalizeDate from '../modal/modalizaDate';
 import ModalizeCategory from '../modal/ModalizeCategory';
 import ModalizeRepeat from '../modal/ModalizeRepeat';
 import ModalizeTime from '../modal/ModalizeTime';
-import { CategoryModel } from '../models/categoryModel';
-import { TaskModel } from '../models/taskModel';
+import {CategoryModel} from '../models/categoryModel';
+import {TaskModel} from '../models/taskModel';
 import useCustomStatusBar from '../hooks/useCustomStatusBar';
 
 const now = new Date();
@@ -52,6 +52,8 @@ const initValue: TaskModel = {
   startTime: new Date(),
   remind: '',
   repeat: 'no' as 'no' | 'day' | 'week' | 'month',
+  repeatDays: [],
+  repeatCount: 0,
   category: '',
   isCompleted: false,
   isImportant: false,
@@ -114,7 +116,7 @@ const AddNewScreen = ({navigation}: any) => {
   }, [user]);
 
   const handleAddNewTask = async () => {
-    if (!taskDetail.description) {
+    if (!taskDetail.title) {
       setErrorText('Nội dung là bắt buộc');
       return;
     }
@@ -147,7 +149,6 @@ const AddNewScreen = ({navigation}: any) => {
       startTime: selectedTime.getTime(),
     };
 
-    setIsLoading(true);
     await taskRef
       .set(task)
       .then(() => {
@@ -155,6 +156,7 @@ const AddNewScreen = ({navigation}: any) => {
         setIsLoading(false);
         setTaskDetail(initValue);
         setSubtasks([]);
+        setSelectedRepeat('');
         setErrorText('');
         navigation.navigate('Trang chủ', {
           screen: 'HomeScreen',
@@ -206,7 +208,10 @@ const AddNewScreen = ({navigation}: any) => {
     }
   };
 
-  const handleChangeValue = (id: string, value: string | Date) => {
+  const handleChangeValue = (
+    id: string,
+    value: string | Date | number | number[],
+  ) => {
     setTaskDetail(prevState => ({
       ...prevState,
       [id]: value,
@@ -241,7 +246,7 @@ const AddNewScreen = ({navigation}: any) => {
   };
 
   return (
-    <Container back title="Thêm nhiệm vụ mới" isScroll>
+    <Container back title="Thêm công việc mới" isScroll>
       <View style={styles.inputContainer}>
         <View
           style={{
@@ -250,16 +255,16 @@ const AddNewScreen = ({navigation}: any) => {
           <InputComponent
             value={taskDetail.title}
             onChange={val => handleChangeValue('title', val)}
-            title="tiêu đề"
+            title="Tên công việc"
             allowClear
-            placeholder="nhập tiêu đề"
+            placeholder="Nhập tên công việc"
           />
           <InputComponent
             value={taskDetail.description}
             onChange={val => handleChangeValue('description', val)}
-            title="Nội dung"
+            title="Mô tả công việc"
             allowClear
-            placeholder="Nhập nội dung"
+            placeholder="Nhập mô tả công việc"
             multiple
             numberOfLine={3}
           />
@@ -298,6 +303,21 @@ const AddNewScreen = ({navigation}: any) => {
                 ? `${
                     selectedDate
                       ? fomatDate(selectedDate)
+                      : taskDetail.repeatDays.length > 0 && selectedRepeat === 'Tuần'
+                      ? fomatDate(
+                          new Date(
+                            Math.min(
+                              ...taskDetail.repeatDays.map(day => {
+                                const date = new Date();
+                                date.setDate(
+                                  date.getDate() +
+                                    ((day + 7 - date.getDay()) % 7),
+                                );
+                                return date.getTime();
+                              }),
+                            ),
+                          ),
+                        )
                       : fomatDate(new Date())
                   }`
                 : 'Chọn ngày/giờ'}
@@ -355,7 +375,7 @@ const AddNewScreen = ({navigation}: any) => {
           selectedDate={selectedDate}
           onDateChange={date => {
             setSelectedDate(date);
-            handleChangeValue('dueDate', date);
+             handleChangeValue('dueDate', date);
           }}
           taskDetail={taskDetail}
         />
