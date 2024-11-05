@@ -1,6 +1,6 @@
 import React from 'react';
 import {View, Text, StyleSheet, ScrollView} from 'react-native';
-import {ScheduleItem} from './ScheduleItemProps '; // Fix the import statement
+import {ScheduleItem} from './ScheduleItemProps ';
 
 const TIME_PERIODS = {
   MORNING: {
@@ -37,7 +37,7 @@ interface Schedule {
   room: string;
   instructor: string;
   isExam: boolean;
-  day: Date; // Added missing property
+  day: Date;
 }
 
 interface ScheduleByPeriodProps {
@@ -49,7 +49,6 @@ const ScheduleByPeriod = ({
   schedules,
   onSchedulePress,
 }: ScheduleByPeriodProps) => {
-  // Group schedules by time period
   const groupedSchedules = React.useMemo(() => {
     const groups: {[key: string]: Schedule[]} = {
       MORNING: [],
@@ -64,7 +63,6 @@ const ScheduleByPeriod = ({
       }
     });
 
-    // Sort within each group by period
     Object.keys(groups).forEach(key => {
       groups[key].sort((a, b) => {
         const periodA = parseInt(a.period.split('-')[0]);
@@ -77,7 +75,9 @@ const ScheduleByPeriod = ({
   }, [schedules]);
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}>
       {Object.entries(TIME_PERIODS).map(([key, period]) => (
         <View
           key={key}
@@ -90,7 +90,6 @@ const ScheduleByPeriod = ({
           </View>
 
           <ScrollView
-            horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.scheduleList}>
             {groupedSchedules[key].length > 0 ? (
@@ -102,7 +101,9 @@ const ScheduleByPeriod = ({
                 </View>
               ))
             ) : (
-              <Text style={styles.emptyText}>Không có lịch học</Text>
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>Không có lịch học</Text>
+              </View>
             )}
           </ScrollView>
         </View>
@@ -115,15 +116,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  contentContainer: {
+    flexGrow: 1,
+    alignItems: 'center', // Center content horizontally
+  },
   periodSection: {
     marginVertical: 8,
-    marginHorizontal: 16,
+    width: '92%', // Slightly smaller than screen width
     borderRadius: 12,
     padding: 12,
   },
   periodHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center', // Center header content
     marginBottom: 8,
   },
   periodTitle: {
@@ -138,10 +144,18 @@ const styles = StyleSheet.create({
   },
   scheduleList: {
     paddingVertical: 8,
+    alignItems: 'center', // Center items vertically
+    justifyContent: 'center', // Center items horizontally
+    minWidth: '100%', // Ensure the ScrollView takes full width
   },
   scheduleItem: {
     width: 300,
-    marginRight: 12,
+    marginHorizontal: 6, // Equal spacing on both sides
+  },
+  emptyContainer: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyText: {
     color: '#666',
