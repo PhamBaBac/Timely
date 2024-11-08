@@ -1,134 +1,320 @@
-import React from 'react';
-import {View, Text, ScrollView, StyleSheet} from 'react-native';
+import {addDays, endOfWeek, format, startOfWeek} from 'date-fns';
+import React, {useEffect, useState} from 'react';
+import {
+  Dimensions,
+  FlatList,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import {BarChart} from 'react-native-chart-kit';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import {useSelector} from 'react-redux';
+import {RowComponent, TextComponent} from '../../components';
+import {RootState} from '../../redux/store';
+import {appColors} from '../../constants';
+import CicularComponent from '../../components/CicularComponent';
+import auth from '@react-native-firebase/auth';
+import useCustomStatusBar from '../../hooks/useCustomStatusBar';
 
-const ProfileScreen = () => {
+const ProfileScreen = ({navigation}: {navigation: any}) => {
+  useCustomStatusBar('dark-content', appColors.lightPurple);
+
+  const currentUser = auth().currentUser?.email;
+  const [completedTasks, setCompletedTasks] = useState(0);
+  const [incompleteTasks, setIncompleteTasks] = useState(0);
+
+  const getWeekRange = (offset: number) => {
+    const today = new Date();
+    const start = startOfWeek(addDays(today, offset * 7), {weekStartsOn: 1});
+    const end = endOfWeek(addDays(today, offset * 7), {weekStartsOn: 1});
+    return `${format(start, 'dd/MM')} - ${format(end, 'dd/MM')}`;
+  };
+  const [weekOffset, setWeekOffset] = useState(0);
+  const tasks = useSelector((state: RootState) => state.tasks.tasks);
+  useEffect(() => {
+    let completed = 0;
+    let incomplete = 0;
+    const categoryCount: {[key: string]: number} = {};
+    let uncategorizedCount = 0;
+
+    tasks.forEach(task => {
+      if (task.isCompleted) {
+        completed++;
+      } else {
+        incomplete++;
+      }
+
+      if (task.category) {
+        if (!categoryCount[task.category]) {
+          categoryCount[task.category] = 0;
+        }
+        categoryCount[task.category]++;
+      } else {
+        uncategorizedCount++;
+      }
+    });
+
+    setCompletedTasks(completed);
+    setIncompleteTasks(incomplete);
+  }, [tasks]);
+
+  const isWithinWeek = (date: number, offset: number) => {
+    const taskDate = new Date(date);
+    const start = startOfWeek(addDays(new Date(), offset * 7), {
+      weekStartsOn: 1,
+    });
+    const end = endOfWeek(addDays(new Date(), offset * 7), {weekStartsOn: 1});
+    return taskDate >= start && taskDate <= end;
+  };
+
+  const handleViewTasks = (isCompleted: boolean) => {
+    navigation.navigate('TaskListScreen', {isCompleted});
+  };
+
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.avatar} />
+        <View style={styles.avatar}>
+          <MaterialIcons name="person" size={50} color="#ffffff" />
+        </View>
+
         <View style={styles.headerText}>
-          <Text style={styles.title}>Username</Text>
-          <Text style={styles.subtitle}>Bấm để đăng nhập</Text>
+          <Text style={styles.title}>{currentUser}</Text>
         </View>
       </View>
-
-      <Text style={styles.sectionTitle}>Tổng quan về Nhiệm vụ</Text>
-
-      <View style={styles.statsContainer}>
-        <View style={styles.statBox}>
-          <Text style={styles.statNumber}>0</Text>
-          <Text style={styles.statLabel}>Nhiệm vụ đã hoàn thành</Text>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.statsContainer}>
+          <TouchableOpacity
+            style={styles.statBox}
+            onPress={() => handleViewTasks(true)}>
+            <Text style={styles.statNumber}>{completedTasks}</Text>
+            <Text style={styles.statLabel}>Nhiệm vụ đã hoàn thành</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.statBox}
+            onPress={() => handleViewTasks(false)}>
+            <Text style={styles.statNumber}>{incompleteTasks}</Text>
+            <Text style={styles.statLabel}>Nhiệm vụ chưa hoàn thành</Text>
+          </TouchableOpacity>
         </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statNumber}>1</Text>
-          <Text style={styles.statLabel}>nhiệm vụ chưa hoàn thành</Text>
+
+        <RowComponent>
+          <TextComponent
+            styles={{
+              fontSize: 16,
+              fontWeight: 'bold',
+              color: '#000',
+              flex: 1,
+              textAlign: 'left',
+              paddingLeft: 10,
+            }}
+            text="Hoàn thành hằng ngày"
+          />
+          <TouchableOpacity onPress={() => setWeekOffset(weekOffset - 1)}>
+            <MaterialIcons name="keyboard-arrow-left" size={24} color="#000" />
+          </TouchableOpacity>
+          <Text
+            style={{
+              color: appColors.text,
+            }}>
+            {getWeekRange(weekOffset)}
+          </Text>
+          <TouchableOpacity onPress={() => setWeekOffset(weekOffset + 1)}>
+            <MaterialIcons name="keyboard-arrow-right" size={24} color="#000" />
+          </TouchableOpacity>
+        </RowComponent>
+        <BarChart
+          data={{
+            labels: [
+              'Thứ 2',
+              'Thứ 3',
+              'Thứ 4',
+              'Thứ 5',
+              'Thứ 6',
+              'Thứ 7',
+              'Chủ nhật',
+            ],
+            datasets: [
+              {
+                data: [
+                  tasks.filter(
+                    task =>
+                      task.isCompleted &&
+                      isWithinWeek(task.updatedAt, weekOffset) &&
+                      new Date(task.updatedAt ?? '').getDay() === 1,
+                  ).length,
+                  tasks.filter(
+                    task =>
+                      task.isCompleted &&
+                      isWithinWeek(task.updatedAt, weekOffset) &&
+                      new Date(task.updatedAt ?? '').getDay() === 2,
+                  ).length,
+                  tasks.filter(
+                    task =>
+                      task.isCompleted &&
+                      isWithinWeek(task.updatedAt, weekOffset) &&
+                      new Date(task.updatedAt ?? '').getDay() === 3,
+                  ).length,
+                  tasks.filter(
+                    task =>
+                      task.isCompleted &&
+                      isWithinWeek(task.updatedAt, weekOffset) &&
+                      new Date(task.updatedAt ?? '').getDay() === 4,
+                  ).length,
+                  tasks.filter(
+                    task =>
+                      task.isCompleted &&
+                      isWithinWeek(task.updatedAt, weekOffset) &&
+                      new Date(task.updatedAt ?? '').getDay() === 5,
+                  ).length,
+                  tasks.filter(
+                    task =>
+                      task.isCompleted &&
+                      isWithinWeek(task.updatedAt, weekOffset) &&
+                      new Date(task.updatedAt ?? '').getDay() === 6,
+                  ).length,
+                  tasks.filter(
+                    task =>
+                      task.isCompleted &&
+                      isWithinWeek(task.updatedAt, weekOffset) &&
+                      new Date(task.updatedAt ?? '').getDay() === 0,
+                  ).length,
+                ],
+              },
+            ],
+          }}
+          width={Dimensions.get('window').width - 46}
+          height={220}
+          yAxisLabel=""
+          yAxisSuffix=""
+          chartConfig={{
+            backgroundColor: '#ffffff',
+            backgroundGradientFrom: '#ffffff',
+            backgroundGradientTo: '#ffffff',
+            decimalPlaces: 0,
+            color: () => appColors.primary,
+            style: {
+              borderRadius: 8,
+              justifyContent: 'center',
+            },
+            propsForBackgroundLines: {
+              strokeDasharray: '', // Loại bỏ các đường gạch ngang
+              strokeWidth: 0, // Đặt độ dày đường kẻ ngang về 0
+            },
+            barPercentage: 0.4,
+            formatYLabel: () => '',
+            propsForLabels: {
+              fontSize: 14,
+            },
+          }}
+          style={{
+            paddingLeft: 8,
+            paddingRight: 12,
+            marginVertical: 10,
+            borderRadius: 16,
+          }}
+          showValuesOnTopOfBars={true}
+          fromZero={true}
+        />
+        <TextComponent
+          text="Công việc chưa hoàn thành"
+          styles={{
+            fontSize: 16,
+            fontWeight: 'bold',
+            color: '#000',
+            flex: 1,
+            textAlign: 'left',
+            paddingLeft: 10,
+          }}
+        />
+        <View style={{padding: 10}}>
+          <CicularComponent tasks={tasks} />
         </View>
-      </View>
-
-      <Text style={styles.chartTitle}>Hoàn thành nhiệm vụ hàng ngày</Text>
-      <Text style={styles.chartSubtitle}>9/22-9/28</Text>
-
-      <View style={styles.chart}>
-        <Text style={styles.noDataText}>Không có dữ liệu nhiệm vụ</Text>
-      </View>
-
-      <Text style={styles.sectionTitle}>Nhiệm vụ trong 7 ngày tới</Text>
-
-      <View style={styles.taskTypeContainer}>
-        <Text style={styles.taskTypeTitle}>
-          Phân loại nhiệm vụ chưa hoàn thành
-        </Text>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: appColors.lightPurple,
+    padding: 16,
+    paddingBottom: 40,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    marginBottom: 20,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#DDD',
-    marginRight: 12,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 20,
   },
   headerText: {
     flex: 1,
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-  },
-
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    margin: 16,
+    marginBottom: 10,
+    marginTop: 20,
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    margin: 16,
+    marginBottom: 20,
   },
   statBox: {
     flex: 1,
-    backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 8,
-    marginRight: 8,
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: appColors.white,
+    borderRadius: 10,
+    marginHorizontal: 5,
   },
   statNumber: {
     fontSize: 24,
     fontWeight: 'bold',
+    color: appColors.text,
   },
   statLabel: {
     fontSize: 14,
-    color: '#666',
-    marginTop: 4,
+    color: '#888',
   },
-
-  chartTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 16,
-  },
-  chartSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 16,
-    marginBottom: 8,
-  },
-  chart: {
-    height: 200,
-    margin: 16,
-    backgroundColor: '#FFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  noDataText: {
-    color: '#999',
-  },
-  taskTypeContainer: {
+  categoryItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    margin: 16,
+    padding: 10,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 10,
+    marginBottom: 10,
   },
-  taskTypeTitle: {
+  categoryName: {
+    fontSize: 16,
+  },
+  categoryCount: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#888',
+    textAlign: 'center',
+    marginTop: 20,
   },
 });
 

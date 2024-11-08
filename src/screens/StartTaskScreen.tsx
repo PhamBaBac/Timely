@@ -5,26 +5,29 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {TaskModel} from '../models/taskModel';
 import firestore from '@react-native-firebase/firestore';
 
-const StartTaskScreen = () => {
+const StartTaskScreen = ({navigation}: {navigation: any}) => {
   const [tasks, setTasks] = useState<TaskModel[]>([]);
-  const navigation = useNavigation();
 
   useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        const taskList: TaskModel[] = [];
-        const snapshot = await firestore().collection('tasks').get();
-        snapshot.forEach(doc => {
-          const task = doc.data() as TaskModel;
-          taskList.push({...task, id: doc.id});
-        });
-        setTasks(taskList);
-      } catch (error) {
-        console.error('Error fetching tasks: ', error);
-      }
-    };
+    const unsubscribe = firestore()
+      .collection('tasks')
+      .onSnapshot(
+        snapshot => {
+          const taskList: TaskModel[] = [];
+          snapshot.forEach(doc => {
+            const task = doc.data() as TaskModel;
+            taskList.push({...task, id: doc.id});
+          });
+          console.log('Fetched tasks:', taskList); // Thêm console log để kiểm tra dữ liệu
+          setTasks(taskList);
+        },
+        error => {
+          console.error('Error fetching tasks: ', error);
+        },
+      );
 
-    fetchTasks();
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
 
   const renderTaskItem = ({item}: {item: TaskModel}) => (
@@ -37,17 +40,29 @@ const StartTaskScreen = () => {
         color={item.isImportant ? '#FFD700' : '#ccc'}
       />
       <View style={styles.taskContent}>
+        {/* <Text style={styles.taskTitle}>{item.title}</Text> */}
         <Text style={styles.taskDescription}>{item.description}</Text>
         <Text style={styles.taskDate}>
           {item.dueDate
-            ? new Date(item.createdAt).toLocaleDateString()
+            ? new Date(item.dueDate).toLocaleDateString()
             : 'No due date'}
         </Text>
+        {item.isCompleted && (
+          <View style={styles.completedLabel}>
+            <Text style={styles.completedLabelText}>Hoàn thành</Text>
+          </View>
+        )}
       </View>
+      <MaterialIcons
+        name={item.isCompleted ? 'check-circle' : 'radio-button-unchecked'}
+        size={24}
+        color={item.isCompleted ? '#4CAF50' : '#ccc'}
+      />
     </TouchableOpacity>
   );
 
   const importantTasks = tasks.filter(task => task.isImportant);
+  console.log('Important tasks:', importantTasks); // Thêm console log để kiểm tra nhiệm vụ nổi bật
 
   return (
     <View style={styles.container}>
@@ -99,18 +114,45 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
+    marginVertical: 8,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   taskContent: {
     marginLeft: 16,
+    flex: 1,
+  },
+  taskTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
   },
   taskDescription: {
     fontSize: 16,
+    color: '#666',
+    marginTop: 4,
   },
   taskDate: {
     fontSize: 14,
     color: '#888',
+    marginTop: 4,
+  },
+  completedLabel: {
+    marginTop: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: '#4CAF50',
+    borderRadius: 4,
+  },
+  completedLabelText: {
+    fontSize: 12,
+    color: '#fff',
+    fontWeight: 'bold',
   },
   listContent: {
     paddingBottom: 16,

@@ -4,10 +4,9 @@ import {
   Calendar as CalendarIcon,
   Clock,
   Repeat,
-  Share,
   Tag,
 } from 'iconsax-react-native';
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {
   Alert,
   FlatList,
@@ -15,40 +14,51 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TextInputComponent,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import {Calendar as RNCalendar} from 'react-native-calendars';
-import DateTimePickerModal from 'react-native-modal-datetime-picker';
+
+import {format} from 'date-fns';
+import {Modalize} from 'react-native-modalize';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {
   ButtonComponent,
-  CategoryOption,
+  Container,
   InputComponent,
+  RowComponent,
+  SectionComponent,
   SpaceComponent,
   TextComponent,
 } from '../components';
 import {appColors} from '../constants';
 import LoadingModal from '../modal/LoadingModal';
-import {TaskModel} from '../models/taskModel';
+import ModalizeDate from '../modal/modalizaDate';
+import ModalizeCategory from '../modal/ModalizeCategory';
+import ModalizeRepeat from '../modal/ModalizeRepeat';
+import ModalizeTime from '../modal/ModalizeTime';
 import {CategoryModel} from '../models/categoryModel';
+import {TaskModel} from '../models/taskModel';
+import useCustomStatusBar from '../hooks/useCustomStatusBar';
 
 const now = new Date();
 const initValue: TaskModel = {
   id: '',
   uid: '',
+  title: '',
   description: '',
   dueDate: new Date(),
   startTime: new Date(),
   remind: '',
-  repeat: 'day' || 'week' || 'month',
+  repeat: 'no' as 'no' | 'day' | 'week' | 'month',
+  repeatDays: [],
+  repeatCount: 0,
   category: '',
   isCompleted: false,
   isImportant: false,
   createdAt: Date.now(),
   updatedAt: Date.now(),
-  subtasks: [],
 };
 
 const availableIcons = [
@@ -76,15 +86,17 @@ const rainbowColors = [
   '#BA68C8',
 ];
 
-const AddNewScreen = () => {
+const AddNewScreen = ({navigation}: any) => {
+  useCustomStatusBar('dark-content', appColors.lightPurple);
+
   const user = auth().currentUser;
-  const [modalVisible, setModalVisible] = useState(false);
-  const [isTimePickerVisible, setTimePickerVisibility] = useState(false);
-  const [isRepeatModalVisible, setRepeatModalVisible] = useState(false);
-  const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
+  const [modalTimeVisible, setModalTimeVisible] = useState(false);
+  const [modalDateVisible, setModalDateVisible] = useState(false);
+  const [repeatModalVisible, setRepeatModalVisible] = useState(false);
+  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [isNewCategoryModalVisible, setNewCategoryModalVisible] =
     useState(false);
-  const [selectedTime, setSelectedTime] = useState('');
+  const [selectedTime, setSelectedTime] = useState(new Date());
   const [selectedRepeat, setSelectedRepeat] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [taskDetail, setTaskDetail] = useState<TaskModel>(initValue);
@@ -95,63 +107,110 @@ const AddNewScreen = () => {
   const [selectedColor, setSelectedColor] = useState(appColors.primary);
   const [categories, setCategories] = useState<CategoryModel[]>([]);
   const [tempCategory, setTempCategory] = useState('');
-  const [subtasks, setSubtasks] = useState<string[]>([]); // New state for subtasks
-
+  const [subtasks, setSubtasks] = useState<
+    {description: string; isCompleted: boolean}[]
+  >([]); // Updated state for subtasks
   useEffect(() => {
     user && setTaskDetail({...taskDetail, uid: user.uid});
   }, [user]);
 
   const handleAddNewTask = async () => {
-    if (!taskDetail.description) {
-      setErrorText('Description is required');
+    if (!taskDetail.title) {
+      setErrorText('Tiêu đề là bắt buộc');
+      return;
+    }
+
+    let startDate = selectedDate ? new Date(selectedDate) : new Date();
+
+    // Weekly repeat logic
+    if (taskDetail.repeat === 'week' && taskDetail.repeatDays.length > 0) {
+      const currentDay = startDate.getDay(); // Get the current day based on selected start date
+      const sortedRepeatDays = [
+        ...taskDetail.repeatDays.filter(day => day >= currentDay),
+        ...taskDetail.repeatDays.filter(day => day < currentDay),
+      ];
+
+      const nextRepeatDay = sortedRepeatDays[0];
+      startDate.setDate(
+        startDate.getDate() +
+          (nextRepeatDay - currentDay + (nextRepeatDay < currentDay ? 7 : 0)),
+      );
+    }
+
+    // Monthly repeat logic
+    else if (
+      taskDetail.repeat === 'month' &&
+      taskDetail.repeatDays.length > 0
+    ) {
+      const currentDay = startDate.getDate();
+      const sortedRepeatDays = [
+        ...taskDetail.repeatDays.filter(day => day >= currentDay),
+        ...taskDetail.repeatDays.filter(day => day < currentDay),
+      ];
+
+      let nextRepeatDay = sortedRepeatDays[0]; // Get the first valid repeat day
+
+      if (nextRepeatDay < currentDay) {
+        startDate.setMonth(startDate.getMonth() + 1); // Move to next month
+      }
+
+      startDate.setDate(nextRepeatDay);
+
+      if (startDate.getDate() !== nextRepeatDay) {
+        startDate = new Date(
+          startDate.getFullYear(),
+          startDate.getMonth() + 1,
+          0,
+        );
+      }
+    } else if (
+      (taskDetail.repeat === 'week' || taskDetail.repeat === 'month') &&
+      taskDetail.repeatDays.length === 0
+    ){
+      startDate = selectedDate ? new Date(selectedDate) : new Date();
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (startDate <= today) {
+      setErrorText('Ngày đến hạn không thể là ngày trong quá khứ');
       return;
     }
 
     const data = {
       ...taskDetail,
+      uid: user?.uid,
       subtasks, // Include subtasks in the task data
+      repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat,
     };
-
-    const repeat = taskDetail.repeat;
-    const startDate = taskDetail.dueDate
-      ? new Date(taskDetail.dueDate)
-      : new Date();
 
     const taskRef = firestore().collection('tasks').doc();
     const task = {
       ...data,
       id: taskRef.id,
-      category: taskDetail.category,
-      repeat,
+      category: selectedCategory,
       startDate: startDate.toISOString(),
-      startTime: taskDetail.startTime?.getTime(),
+      startTime: selectedTime.getTime(),
     };
-    setIsLoading(true);
+
     await taskRef
       .set(task)
       .then(() => {
         console.log('New task added with repeat information!!');
         setIsLoading(false);
         setTaskDetail(initValue);
-        setSubtasks([]); // Reset subtasks
+        setSubtasks([]);
+        setSelectedRepeat('');
+        setSelectedDate(null);
         setErrorText('');
+        navigation.navigate('Trang chủ', {
+          screen: 'HomeScreen',
+        });
       })
       .catch(error => {
         console.log(error);
         setIsLoading(false);
       });
-  };
-
-  const handleOutsidePress = () => {
-    setModalVisible(false);
-  };
-
-  const showTimePicker = () => {
-    setTimePickerVisibility(true);
-  };
-
-  const hideTimePicker = () => {
-    setTimePickerVisibility(false);
   };
 
   const handleNewCategoryCreate = async () => {
@@ -194,20 +253,19 @@ const AddNewScreen = () => {
     }
   };
 
-  const handleChangeValue = (id: string, value: string | Date) => {
+  const handleChangeValue = (
+    id: string,
+    value: string | Date | number | number[],
+  ) => {
     setTaskDetail(prevState => ({
       ...prevState,
       [id]: value,
     }));
   };
 
-  const handleAddSubtask = () => {
-    setSubtasks([...subtasks, '']);
-  };
-
   const handleSubtaskChange = (index: number, value: string) => {
     const updatedSubtasks = [...subtasks];
-    updatedSubtasks[index] = value;
+    updatedSubtasks[index].description = value;
     setSubtasks(updatedSubtasks);
   };
 
@@ -225,262 +283,181 @@ const AddNewScreen = () => {
     return () => unsubscribe();
   }, []);
 
+  const formatTime = (date: Date) => {
+    return format(date, 'HH:mm');
+  };
+  const fomatDate = (date: Date) => {
+    return format(date, 'dd/MM/yyyy');
+  };
+
   return (
-    <View style={styles.container}>
+    <Container back title="Thêm công việc mới" isScroll>
       <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Nhập tên công việc"
-          value={taskDetail.description}
-          onChangeText={val => handleChangeValue('description', val)}
-        />
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => {
-            handleAddNewTask();
-            setSelectedCategory('');
+        <View
+          style={{
+            flexDirection: 'column',
           }}>
-          <MaterialIcons name="check" size={24} color="#ffffff" />
-        </TouchableOpacity>
+          <InputComponent
+            value={taskDetail.title}
+            onChange={val => handleChangeValue('title', val)}
+            title="Tên công việc"
+            allowClear
+            placeholder="Nhập tên công việc"
+          />
+          <InputComponent
+            value={taskDetail.description}
+            onChange={val => handleChangeValue('description', val)}
+            title="Mô tả công việc"
+            allowClear
+            placeholder="Nhập mô tả công việc"
+            multiple
+            numberOfLine={3}
+          />
+        </View>
       </View>
       {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
-
-      {/* Subtasks Section */}
       {subtasks.map((subtask, index) => (
         <TextInput
           key={index}
           style={styles.subtaskInput}
           placeholder={`Nhiệm vụ phụ ${index + 1}`}
-          value={subtask}
+          value={subtask.description}
           onChangeText={value => handleSubtaskChange(index, value)}
         />
       ))}
-
       <SpaceComponent height={20} />
-
       <View style={styles.optionsContainer}>
         <TouchableOpacity
           style={styles.option}
           onPress={() => {
-            setModalVisible(true);
+            setModalDateVisible(true);
             setSelectedDate(new Date());
-            setSelectedTime('');
-            setSelectedRepeat('');
           }}>
           <CalendarIcon size={24} color={appColors.primary} />
-          <Text style={styles.optionText}>Lịch </Text>
+          <View
+            style={{
+              flexDirection: 'row',
+              flex: 1,
+              justifyContent: 'space-between',
+            }}>
+            <Text style={styles.optionText}>Chọn ngày bắt đầu </Text>
+
+            <Text style={styles.selectedRepeatText}>
+              {taskDetail.dueDate
+                ? `${
+                    selectedDate
+                      ? fomatDate(selectedDate)
+                      : taskDetail.repeatDays.length > 0 &&
+                        selectedRepeat === 'Tuần'
+                      ? fomatDate(
+                          new Date(
+                            Math.min(
+                              ...taskDetail.repeatDays.map(day => {
+                                const date = new Date();
+                                date.setDate(
+                                  date.getDate() +
+                                    ((day + 7 - date.getDay()) % 7),
+                                );
+                                return date.getTime();
+                              }),
+                            ),
+                          ),
+                        )
+                      : fomatDate(new Date())
+                  }`
+                : 'Chọn ngày/giờ'}
+            </Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.option}
+          onPress={() => setModalTimeVisible(true)}>
+          <Clock size={24} color={appColors.primary} />
+          <RowComponent>
+            <Text style={styles.modalOptionText}>Chọn giờ bắt đầu</Text>
+          </RowComponent>
+          <Text style={[styles.selectedTimeText]}>
+            {selectedTime
+              ? selectedTime.toLocaleTimeString('vi-VN', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })
+              : null}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.option}
           onPress={() => setCategoryModalVisible(true)}>
           <Tag size={24} color={appColors.primary} />
-          <Text style={styles.optionText}>Danh mục</Text>
-          <Text style={styles.selectedCategoryText}>{selectedCategory}</Text>
+          <View
+            style={{
+              flexDirection: 'row',
+              flex: 1,
+              justifyContent: 'space-between',
+            }}>
+            <Text style={styles.optionText}>Chọn loại công việc</Text>
+            <SpaceComponent width={10} />
+            <Text
+              style={styles.selectedTimeText}
+              numberOfLines={1}
+              ellipsizeMode="tail">
+              {selectedCategory}
+            </Text>
+          </View>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.option} onPress={handleAddSubtask}>
-          <MaterialIcons
-            name="playlist-add"
-            size={24}
-            color={appColors.primary}
-          />
-          <Text style={styles.optionText}>Thêm nhiệm vụ phụ</Text>
+        <TouchableOpacity
+          style={styles.option}
+          onPress={() => setRepeatModalVisible(true)}>
+          <Repeat size={24} color={appColors.primary} />
+          <Text style={styles.modalOptionText}>Chọn lặp lại</Text>
+          <Text style={styles.selectedRepeatText}>{selectedRepeat ? selectedRepeat : 'Không'}</Text>  
         </TouchableOpacity>
       </View>
+      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+        <ModalizeDate
+          visible={modalDateVisible}
+          onClose={() => setModalDateVisible(false)}
+          selectedDate={selectedDate}
+          onDateChange={date => {
+            setSelectedDate(date);
+            handleChangeValue('dueDate', date);
+          }}
+          taskDetail={taskDetail}
+        />
+      </View>
+      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+        <ModalizeRepeat
+          visible={repeatModalVisible}
+          onClose={() => setRepeatModalVisible(false)}
+          taskDetail={taskDetail}
+          handleChangeValue={handleChangeValue}
+          setSelectedRepeat={setSelectedRepeat}
+          startDate={selectedDate ? selectedDate : new Date()}
+        />
+      </View>
+      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+        <ModalizeCategory
+          visible={categoryModalVisible}
+          onClose={() => setCategoryModalVisible(false)}
+          categories={categories}
+          handleChangeValue={handleChangeValue}
+          setSelectedCategory={setSelectedCategory}
+          setNewCategoryModalVisible={setNewCategoryModalVisible}
+          setTempCategory={setTempCategory}
+          setSelectedColor={setSelectedColor}
+          setSelectedIcon={setSelectedIcon}
+          availableIcons={availableIcons}
+        />
+      </View>
 
-      <Modal
-        transparent={true}
-        visible={modalVisible}
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}>
-        <TouchableWithoutFeedback onPress={handleOutsidePress}>
-          <View style={styles.modalContainer}>
-            <TouchableWithoutFeedback>
-              <View style={styles.modalContent}>
-                <RNCalendar
-                  value={taskDetail.dueDate}
-                  style={styles.calendar}
-                  markingType={'custom'}
-                  markedDates={{
-                    [new Date().toISOString().split('T')[0]]: {
-                      marked: true,
-                      dotColor: appColors.primary,
-                      customStyles: {
-                        text: {
-                          color: appColors.primary,
-                          fontWeight: 'bold',
-                        },
-                      },
-                    },
-                    [selectedDate
-                      ? selectedDate.toISOString().split('T')[0]
-                      : '']: {
-                      selected: true,
-                      textColor: appColors.primary,
-                      selectedColor: appColors.primary,
-                    },
-                  }}
-                  onDayPress={({dateString}: {dateString: string}) => {
-                    const selectedDate = new Date(dateString);
-                    setSelectedDate(selectedDate);
-                    handleChangeValue('dueDate', selectedDate);
-                  }}
-                  renderArrow={(direction: 'left' | 'right') => (
-                    <MaterialIcons
-                      name={
-                        direction === 'left'
-                          ? 'arrow-back-ios'
-                          : 'arrow-forward-ios'
-                      }
-                      size={14}
-                      color={appColors.primary}
-                    />
-                  )}
-                />
-
-                <View style={styles.modalOptions}>
-                  <TouchableOpacity
-                    style={styles.modalOption}
-                    onPress={showTimePicker}>
-                    <Clock size={24} color={appColors.primary} />
-                    <Text style={styles.modalOptionText}>Chọn thời gian</Text>
-                    <Text style={styles.selectedTimeText}>{selectedTime}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.modalOption}
-                    onPress={() => setRepeatModalVisible(true)}>
-                    <Repeat size={24} color={appColors.primary} />
-                    <Text style={styles.modalOptionText}>Chọn lặp lại</Text>
-                    <Text style={styles.selectedRepeatText}>
-                      {selectedRepeat}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-
-      <Modal
-        transparent={true}
-        visible={isRepeatModalVisible}
-        animationType="slide"
-        onRequestClose={() => setRepeatModalVisible(false)}>
-        <TouchableWithoutFeedback onPress={() => setRepeatModalVisible(false)}>
-          <View style={styles.modalContainer}>
-            <TouchableWithoutFeedback>
-              <View style={styles.repeatModalContent}>
-                <Text
-                  style={styles.repeatOptionText}
-                  onPress={() => {
-                    handleChangeValue('repeat', 'day');
-                    setRepeatModalVisible(false);
-                    setSelectedRepeat('Ngày');
-                  }}>
-                  Lặp lại mỗi ngày
-                </Text>
-                <Text
-                  style={styles.repeatOptionText}
-                  onPress={() => {
-                    handleChangeValue('repeat', 'week');
-                    setRepeatModalVisible(false);
-                    setSelectedRepeat('Tuần');
-                  }}>
-                  Lặp lại mỗi tuần
-                </Text>
-                <Text
-                  style={styles.repeatOptionText}
-                  onPress={() => {
-                    handleChangeValue('repeat', 'month');
-                    setRepeatModalVisible(false);
-                    setSelectedRepeat('Tháng');
-                  }}>
-                  Lặp lại mỗi tháng
-                </Text>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-
-      <Modal
-        transparent={true}
-        visible={isCategoryModalVisible}
-        animationType="slide"
-        onRequestClose={() => setCategoryModalVisible(false)}>
-        <TouchableWithoutFeedback
-          onPress={() => setCategoryModalVisible(false)}>
-          <View style={styles.modalContainer}>
-            <TouchableWithoutFeedback>
-              <View style={styles.categoryModalContent}>
-                <TouchableOpacity
-                  style={styles.categoryOption}
-                  onPress={() => {
-                    handleChangeValue('category', 'Công việc');
-                    setSelectedCategory('Công việc');
-                    setCategoryModalVisible(false);
-                  }}>
-                  <MaterialIcons
-                    name="work"
-                    size={24}
-                    color={appColors.primary}
-                  />
-                  <Text style={styles.categoryOptionText}>Công việc</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.categoryOption}
-                  onPress={() => {
-                    handleChangeValue('category', 'Sinh nhật');
-                    setSelectedCategory('Sinh nhật');
-                    setCategoryModalVisible(false);
-                  }}>
-                  <MaterialIcons
-                    name="celebration"
-                    size={24}
-                    color={appColors.primary}
-                  />
-                  <Text style={styles.categoryOptionText}>Sinh nhật</Text>
-                </TouchableOpacity>
-                <FlatList
-                  data={categories}
-                  keyExtractor={item => item.name}
-                  renderItem={({item}) => (
-                    <CategoryOption
-                      name={item.name}
-                      icon={item.icon}
-                      color={item.color}
-                      onPress={() => {
-                        handleChangeValue('category', item.name);
-                        setSelectedCategory(item.name);
-                        setCategoryModalVisible(false);
-                      }}
-                    />
-                  )}
-                />
-                <TouchableOpacity
-                  style={styles.categoryOption}
-                  onPress={() => {
-                    setNewCategoryModalVisible(true);
-                    setCategoryModalVisible(false);
-                    setTempCategory('');
-                    setSelectedColor(appColors.primary);
-                    setSelectedIcon(availableIcons[0]);
-                  }}>
-                  <MaterialIcons
-                    name="add-box"
-                    size={24}
-                    color={appColors.primary}
-                  />
-                  <Text style={styles.categoryOptionText}>
-                    Tạo danh mục mới
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-
+      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+        <ModalizeTime
+          visible={modalTimeVisible}
+          onClose={() => setModalTimeVisible(false)}
+          selectedTime={selectedTime}
+          onTimeChange={setSelectedTime}
+        />
+      </View>
       <Modal
         transparent={true}
         visible={isNewCategoryModalVisible}
@@ -525,6 +502,7 @@ const AddNewScreen = () => {
                       />
                     </View>
                   )}
+                  showsHorizontalScrollIndicator={false}
                 />
                 <SpaceComponent height={20} />
                 <TextComponent text="Chọn biểu tượng" color={appColors.gray} />
@@ -544,35 +522,33 @@ const AddNewScreen = () => {
                         name={item}
                         size={18}
                         color={
-                          selectedIcon === item ? selectedColor : appColors.gray
+                          selectedIcon === item
+                            ? selectedColor
+                            : appColors.gray2
                         }
                       />
                     </TouchableOpacity>
                   )}
+                  columnWrapperStyle={{
+                    justifyContent: 'space-between',
+                    paddingVertical: 5,
+                  }}
                 />
               </View>
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-
-      <DateTimePickerModal
-        isVisible={isTimePickerVisible}
-        mode="time"
-        onConfirm={time => {
-          setSelectedTime(
-            time.toLocaleTimeString('vi-VN', {
-              hour: '2-digit',
-              minute: '2-digit',
-            }),
-          );
-          handleChangeValue('startTime', time);
-          hideTimePicker();
-        }}
-        onCancel={hideTimePicker}
-      />
+      <SpaceComponent height={20} />
+      <SectionComponent>
+        <ButtonComponent
+          text="Thêm công việc"
+          onPress={handleAddNewTask}
+          type="primary"
+        />
+      </SectionComponent>
       <LoadingModal visible={isLoading} />
-    </View>
+    </Container>
   );
 };
 
@@ -583,8 +559,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
+
     marginBottom: 20,
   },
   input: {
@@ -643,10 +619,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
-    width: '90%',
+    width: '100%',
     backgroundColor: '#ffffff',
     borderRadius: 10,
     padding: 20,
+    paddingBottom: 80,
     alignItems: 'center',
   },
   calendar: {
@@ -655,7 +632,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   modalOptions: {
-    width: '100%',
+    width: '80%',
   },
   modalOption: {
     flexDirection: 'row',
@@ -670,19 +647,20 @@ const styles = StyleSheet.create({
   selectedTimeText: {
     marginLeft: 'auto',
     fontSize: 16,
-    color: appColors.gray,
+    flexShrink: 1,
   },
   repeatModalContent: {
-    width: '80%',
+    width: '100%',
     backgroundColor: '#ffffff',
     borderRadius: 10,
     padding: 20,
-    alignItems: 'center',
+    paddingBottom: 80,
   },
   repeatOptionText: {
     fontSize: 16,
-    color: appColors.primary,
+    color: appColors.text,
     marginVertical: 10,
+    justifyContent: 'flex-start',
   },
   selectedRepeatText: {
     marginLeft: 'auto',
@@ -690,10 +668,11 @@ const styles = StyleSheet.create({
     color: appColors.gray,
   },
   categoryModalContent: {
-    width: '90%',
+    width: '100%',
     backgroundColor: '#ffffff',
     borderRadius: 10,
     padding: 20,
+    paddingBottom: 80,
   },
   categoryOption: {
     flexDirection: 'row',
@@ -749,13 +728,13 @@ const styles = StyleSheet.create({
     borderColor: 'white',
   },
   iconOption: {
-    width: '16.66%',
+    width: '12%',
     aspectRatio: 1,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'transparent',
-    borderRadius: 8,
+    borderRadius: 100,
   },
   selectedIconOption: {
     borderColor: appColors.primary,

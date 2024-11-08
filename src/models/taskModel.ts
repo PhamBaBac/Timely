@@ -1,17 +1,27 @@
-import {FirebaseFirestoreTypes} from '@react-native-firebase/firestore';
 export interface TaskModel {
   id: string;
   uid: string;
+  title: string;
   description: string;
   dueDate?: Date;
   startDate?: string;
   startTime?: Date;
   remind: string;
-  repeat: "day" | "week" | "month";
+  repeat: 'no' | 'day' | 'week' | 'month' | 'weekday';
+  repeatDays: number[];
+  repeatCount: number;
   category: string;
   isCompleted: boolean;
   isImportant: boolean;
   createdAt: number;
   updatedAt: number;
-  subtasks: string[];
+}
+export interface SubTask {
+  createdAt: number;
+  description: string;
+  id: string;
+  isCompleted: boolean;
+  taskId: string;
+  title: string;
+  updatedAt: number;
 }

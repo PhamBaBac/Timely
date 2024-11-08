@@ -1,11 +1,12 @@
-import {Platform, StyleSheet} from 'react-native';
+import {Dimensions, Platform, StyleSheet} from 'react-native';
 import {fontFamilies} from '../constants/fontFamilies';
 import { appColors } from '../constants';
 
 export const globalStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: appColors.white,
+    backgroundColor: appColors.lightPurple,
+    padding: 16,
   },
   row: {
     flexDirection: 'row',
@@ -32,6 +33,8 @@ export const globalStyles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: Platform.OS === 'ios' ? 12 : 10,
     paddingVertical: 12,
+    borderColor: appColors.primary,
+    borderWidth: 1,
   },
 
   section: {
@@ -56,5 +59,23 @@ export const globalStyles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 100,
+  },
+  modal: {
+    flex: 1,
+  },
+
+  modalContainer: {
+    padding: 20,
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  modalContent: {
+    width: Dimensions.get('window').width * 0.8,
+    padding: 20,
+    borderRadius: 12,
+    backgroundColor: appColors.white,
   },
 });

@@ -1,45 +1,63 @@
-import React, {useEffect, useState} from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  StatusBar,
-  Alert,
-} from 'react-native';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {SpaceComponent} from '../../components';
-import auth from '@react-native-firebase/auth';
+import auth, {firebase} from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import {addDays, addMonths, addWeeks, format} from 'date-fns';
+import {Category, Repeat, SearchNormal1} from 'iconsax-react-native';
+import React, {useEffect, useState} from 'react';
+import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import {useDispatch, useSelector} from 'react-redux';
+import {RowComponent, SpaceComponent} from '../../components';
 import {appColors} from '../../constants/appColor';
-import {TaskModel} from '../../models/taskModel';
+import useCustomStatusBar from '../../hooks/useCustomStatusBar';
 import {CategoryModel} from '../../models/categoryModel';
-import {DateTime} from '../../utils/DateTime';
-
+import {TaskModel} from '../../models/taskModel';
+import {setCategories} from '../../redux/reducers/categoriesSlice';
+import {setTasks} from '../../redux/reducers/tasksSlice';
+import {RootState} from '../../redux/store';
+import {
+  fetchCompletedTasks,
+  fetchDeletedTasks,
+  fetchImportantTasks,
+  handleDeleteTask,
+  handleToggleComplete,
+  handleToggleImportant,
+  handleUpdateRepeat,
+} from '../../utils/taskUtil';
+import {HandleNotification} from '../../utils/handleNotification';
+import messaging from '@react-native-firebase/messaging';
 const HomeScreen = ({navigation}: {navigation: any}) => {
   const user = auth().currentUser;
+  useCustomStatusBar('light-content', appColors.primary);
+
   const [activeFilter, setActiveFilter] = useState('Tất cả');
   const [showBeforeToday, setShowBeforeToday] = useState(true);
+  const dispatch = useDispatch();
   const [showToday, setShowToday] = useState(true);
-  const [tasks, setTasks] = useState<TaskModel[]>([]);
-  const [categories, setCategories] = useState<CategoryModel[]>([]);
+  const tasks = useSelector((state: RootState) => state.tasks.tasks);
 
   useEffect(() => {
-    const unsubscribe = firestore()
-      .collection('tasks')
-      .where('uid', '==', user?.uid)
-      .onSnapshot(snapshot => {
-        const tasksList = snapshot.docs.map(
-          doc => ({id: doc.id, ...doc.data()} as TaskModel),
-        );
-        setTasks(tasksList);
-      });
-
-    return () => unsubscribe();
+    HandleNotification.checkNotificationPersion();
+    messaging().onMessage((mess: any) => {
+      // getNofiticationsUnRead;
+      console.log('mess:', mess);
+    });
   }, []);
+
+  const categories = useSelector(
+    (state: RootState) => state.categories.categories,
+  );
+
+  const deletedTaskIds = useSelector(
+    (state: RootState) => state.tasks.deletedTaskIds,
+  );
+  const completedTasks = useSelector(
+    (state: RootState) => state.tasks.completedTasks,
+  );
+
+  const isImportantTasks = useSelector(
+    (state: RootState) => state.tasks.isImportantTasks,
+  );
 
   useEffect(() => {
     const unsubscribe = firestore()
@@ -49,273 +67,483 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
         const categoriesList = snapshot.docs.map(
           doc => doc.data() as CategoryModel,
         );
-        setCategories(categoriesList);
+        dispatch(setCategories(categoriesList));
       });
     return () => unsubscribe();
-  }, []);
-
-  const filters = categories.reduce<string[]>(
+  }, [dispatch, user]);
+  const filters = categories.reduce<{name: string; icon: string}[]>(
     (acc, category: CategoryModel) => {
-      if (!acc.includes(category.name)) {
-        acc.push(category.name);
+      if (!acc.find(item => item.name === category.name)) {
+        acc.push({name: category.name, icon: category.icon});
       }
       return acc;
     },
-    ['Tất cả', 'Công việc', 'Sinh nhật'],
+    [
+      {name: 'Tất cả', icon: ''},
+      {name: 'Du lịch', icon: 'airplanemode-active'},
+      {name: 'Sinh nhật', icon: 'cake'},
+      ...categories.map(category => ({
+        name: category.name,
+        icon: category.icon,
+      })),
+    ],
   );
 
   const filteredTasks = tasks.filter(task => {
     if (activeFilter === 'Tất cả') return true;
     return task.category === activeFilter;
   });
+  useEffect(() => {
+    fetchDeletedTasks(dispatch);
+    fetchCompletedTasks(dispatch);
+    fetchImportantTasks(dispatch);
+  }, [dispatch]);
 
-  const today = DateTime.GetDate(new Date());
-  const tasksBeforeToday = filteredTasks.filter(
-    task =>
-      task.startDate && DateTime.GetDate(new Date(task.startDate)) < today,
-  );
+  useEffect(() => {
+    const unsubscribe = firestore()
+      .collection('categories')
+      .where('uid', '==', user?.uid)
+      .onSnapshot(snapshot => {
+        const categoriesList = snapshot.docs.map(
+          doc => doc.data() as CategoryModel,
+        );
+        dispatch(setCategories(categoriesList));
+      });
+    return () => unsubscribe();
+  }, [dispatch, user]);
+  useEffect(() => {
+    const unsubscribe = firestore()
+      .collection('tasks')
+      .where('uid', '==', user?.uid)
+      .onSnapshot(snapshot => {
+        const tasksList = snapshot.docs.map(doc => {
+          const taskData = doc.data() as TaskModel;
 
-  const tasksToday = filteredTasks.filter(
-    task =>
-      task.startDate && DateTime.GetDate(new Date(task.startDate)) == today,
-  );
+          // Chuyển đổi dueDate và startTime (nếu có) thành Date hoặc chuỗi ISO
+          const dueDate =
+            taskData.dueDate instanceof firebase.firestore.Timestamp
+              ? taskData.dueDate.toDate().toISOString()
+              : taskData.dueDate;
 
-  const tasksAfterToday = filteredTasks.filter(
-    task =>
-      task.startDate && DateTime.GetDate(new Date(task.startDate)) > today,
-  );
+          const startTime =
+            taskData.startTime instanceof firebase.firestore.Timestamp
+              ? taskData.startTime.toDate().toISOString()
+              : taskData.startTime;
 
-  const renderRightActions = (item: TaskModel) => (
-    <View style={styles.swipeActions}>
-      <TouchableOpacity
-        style={styles.swipeActionButton}
-        onPress={() => handleHighlight(item.id)}>
-        <MaterialIcons
-          name="star"
-          size={24}
-          color={item.isImportant ? appColors.yellow : appColors.gray}
-        />
-        <Text style={styles.actionText}>Nổi bật</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.swipeActionButton}
-        onPress={() => handleDelete(item.id)}>
-        <MaterialIcons name="delete" size={24} color={appColors.red} />
-        <Text style={styles.actionText}>Xóa</Text>
-      </TouchableOpacity>
-    </View>
-  );
+          return {
+            ...taskData,
+            id: doc.id,
+            dueDate,
+            startTime,
+          } as TaskModel;
+        });
+
+        // Logic xử lý lặp lại task
+        const allTasksWithRepeats = tasksList.flatMap(task => {
+          if (task.repeat === 'no' || !task.repeat || !task.startDate) {
+            return [task];
+          }
+
+          const repeatedDates = calculateRepeatedDates(
+            task.startDate,
+            task.repeat as 'day' | 'week' | 'month',
+            task.repeatCount as number,
+            task.repeatDays as number[],
+          );
+
+          return repeatedDates.map(date => ({
+            ...task,
+            id: `${task.id}-${date}`,
+            startDate: date,
+          }));
+        });
+
+        const filteredTasks = allTasksWithRepeats.filter(
+          task => !deletedTaskIds.includes(task.id),
+        );
+
+        const restoredTasks = filteredTasks.map(task => ({
+          ...task,
+          isCompleted: completedTasks[task.id] || task.isCompleted,
+          isImportant: isImportantTasks[task.id] || task.isImportant,
+        }));
+
+        dispatch(setTasks(restoredTasks));
+      });
+
+    return () => unsubscribe();
+  }, [dispatch, user, deletedTaskIds, completedTasks, isImportantTasks]);
+
+  const handleDelete = (taskId: string, repeatCount: number) => {
+    handleDeleteTask(taskId, dispatch, repeatCount);
+  };
+
+  const handleToggleCompleteTask = (taskId: string) => {
+    handleToggleComplete(taskId, tasks, dispatch);
+  };
 
   const handleHighlight = async (taskId: string) => {
-    try {
-      const taskRef = firestore().collection('tasks').doc(taskId);
-      const taskDoc = await taskRef.get();
-
-      if (taskDoc.exists) {
-        const currentIsImportant = taskDoc.data()?.isImportant;
-        await taskRef.update({
-          isImportant: !currentIsImportant,
-        });
-      }
-    } catch (error) {
-      console.error('Error updating task: ', error);
-    }
+    handleToggleImportant(taskId, tasks, dispatch);
   };
 
-  const handleDelete = (taskId: string) => {
-    Alert.alert('Xác nhận xóa', 'Bạn có chắc chắn muốn xóa nhiệm vụ này?', [
-      {text: 'Hủy', style: 'cancel'},
-      {
-        text: 'Xóa',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await firestore().collection('tasks').doc(taskId).delete();
-            console.log(`Deleted task with id: ${taskId}`);
-          } catch (error) {
-            console.error('Error deleting task: ', error);
+  const handleUpdateRepeatTask = (taskId: string) => {
+    handleUpdateRepeat(taskId);
+  };
+
+  const calculateRepeatedDates = (
+    startDate: string,
+    repeat: 'day' | 'week' | 'month',
+    count: number,
+    repeatDays: number[],
+  ) => {
+    const dates = [];
+    let currentDate = new Date(startDate);
+
+    for (let i = 0; i < count; i++) {
+      dates.push(currentDate.toISOString());
+
+      if (repeat === 'day') {
+        currentDate = addDays(currentDate, 1);
+      } else if (repeat === 'week' && repeatDays.length === 0) {
+        currentDate = addWeeks(currentDate, 1);
+      } else if (repeat === 'month' && repeatDays.length === 0) {
+        currentDate = addMonths(currentDate, 1);
+      } else if (repeat === 'week' && repeatDays.length > 0) {
+        repeatDays.forEach(day => {
+          let tempDate = new Date(currentDate);
+          tempDate.setDate(
+            tempDate.getDate() + ((day + 7 - tempDate.getDay()) % 7),
+          );
+          if (tempDate > currentDate) {
+            dates.push(tempDate.toISOString());
           }
-        },
-      },
-    ]);
-  };
-
-  const handleToggleComplete = async (taskId: string) => {
-    try {
-      const taskRef = firestore().collection('tasks').doc(taskId);
-      const taskDoc = await taskRef.get();
-
-      if (taskDoc.exists) {
-        const currentCompleted = taskDoc.data()?.isCompleted || false;
-        await taskRef.update({
-          isCompleted: !currentCompleted,
         });
+        currentDate = addWeeks(currentDate, 1);
+      } else if (repeat === 'month' && repeatDays.length > 0) {
+        repeatDays.forEach(day => {
+          let tempDate = new Date(currentDate);
+          tempDate.setDate(day);
+          if (tempDate > currentDate) {
+            dates.push(tempDate.toISOString());
+          }
+        });
+        currentDate = addMonths(currentDate, 1);
       }
-    } catch (error) {
-      console.error('Error updating task completion status: ', error);
     }
+
+    return dates;
   };
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const formatTime = (date: Date) => {
+    return format(date, 'HH:mm');
+  };
+  const fomatDate = (date: Date) => {
+    return format(date, 'dd/MM/yyyy');
+  };
+
+  const tasksBeforeToday = filteredTasks.filter(task => {
+    const taskStartDate = new Date(task.startDate || '');
+    taskStartDate.setHours(0, 0, 0, 0);
+    return taskStartDate < today && !task.isCompleted;
+  });
+
+  const sortedTasksBeforeToday = tasksBeforeToday.sort((a, b) => {
+    const dateA = new Date(a.startDate || '').getTime();
+    const dateB = new Date(b.startDate || '').getTime();
+    return dateB - dateA;
+  });
+
+  const uniqueTasksBeforeTodayMap = new Map<string, TaskModel>();
+
+  sortedTasksBeforeToday.forEach(task => {
+    if (!uniqueTasksBeforeTodayMap.has(task.description)) {
+      uniqueTasksBeforeTodayMap.set(task.description, task);
+    }
+  });
+
+  const uniqueTasksBeforeToday = Array.from(uniqueTasksBeforeTodayMap.values());
+
+  const tasksToday = filteredTasks.filter(task => {
+    const taskStartDate = new Date(task.startDate || '');
+    taskStartDate.setHours(0, 0, 0, 0); // Đặt giờ về 00:00:00
+    return taskStartDate.getTime() === today.getTime() && !task.isCompleted;
+  });
+
+ const tasksAfterToday = filteredTasks.filter(task => {
+   const taskStartDate = new Date(task.startDate || '');
+   taskStartDate.setHours(0, 0, 0, 0);
+   return taskStartDate > today && !task.isCompleted;
+ });
+
+
+  const sortedTasks = tasksAfterToday.sort((a, b) => {
+    const dateA = new Date(a.startDate || '').getTime();
+    const dateB = new Date(b.startDate || '').getTime();
+    return dateA - dateB;
+  });
+
+  const uniqueTasksMap = new Map<string, TaskModel>();
+
+  sortedTasks.forEach(task => {
+    if (!uniqueTasksMap.has(task.description)) {
+      uniqueTasksMap.set(task.description, task);
+    }
+  });
+
+
+  const uniqueTasks = Array.from(uniqueTasksMap.values());
+
 
   const handleTaskPress = (task: TaskModel) => {
-    navigation.navigate('TaskDetailScreen', {task: task});
+    navigation.navigate('TaskDetailsScreen', {id: task.id});
   };
 
-  const renderTask = ({item}: {item: TaskModel}) => {
+  const renderTask = (item: TaskModel) => {
     if (!item) return null;
 
+    const renderRightActions = (item: TaskModel) => (
+      <View style={styles.swipeActions}>
+        <Pressable
+          style={styles.swipeActionButton}
+          onPress={() => handleDelete(item.id, item.repeatCount)}>
+          <MaterialIcons name="delete" size={24} color={appColors.red} />
+          <Text style={styles.actionText}>Xóa</Text>
+        </Pressable>
+
+        {item.repeat !== 'no' && (
+          <Pressable
+            style={styles.swipeActionButton}
+            onPress={() => handleUpdateRepeatTask(item.id)}>
+            <Repeat size="24" color={appColors.blue} />
+            <Text style={styles.actionText}>Bỏ lặp lại</Text>
+          </Pressable>
+        )}
+      </View>
+    );
+
     return (
-      <Swipeable renderRightActions={() => renderRightActions(item)}>
-        <TouchableOpacity onPress={() => handleTaskPress(item)}>
-          <View style={styles.taskItem}>
-            <TouchableOpacity
+      <Swipeable
+        renderRightActions={() => renderRightActions(item)}
+        key={item.id}>
+        <Pressable onPress={() => handleTaskPress(item)}>
+          <View
+            style={[
+              styles.taskItem,
+              {
+                borderLeftColor: item.isCompleted
+                  ? appColors.gray
+                  : appColors.primary,
+              },
+            ]}>
+            <Pressable
               style={styles.roundButton}
-              onPress={() => handleToggleComplete(item.id)}>
+              onPress={() => handleToggleCompleteTask(item.id)}>
               {item.isCompleted ? (
                 <MaterialIcons
                   name="check-circle"
                   size={24}
-                  color={appColors.primary}
+                  color={appColors.gray}
                 />
               ) : (
                 <MaterialIcons
                   name="radio-button-unchecked"
                   size={24}
-                  color={appColors.gray}
+                  color={appColors.primary}
                 />
               )}
-            </TouchableOpacity>
-            <View style={styles.taskContent}>
-              <Text
-                style={[
-                  styles.taskTitle,
-                  item.isCompleted && styles.completedTaskTitle,
-                ]}>
-                {item.description}
-              </Text>
-              <Text style={styles.taskDate}>
-                {DateTime.GetDate(new Date(item.startDate || ''))}
-              </Text>
-            </View>
+            </Pressable>
+            <RowComponent>
+              <View style={styles.taskContent}>
+                <Text
+                  style={[
+                    styles.taskTitle,
+                    item.isCompleted && styles.completedTaskTitle,
+                  ]}>
+                  {item.title ? item.title : item.description}
+                </Text>
+                <Text style={styles.taskDate}>
+                  {item.dueDate
+                    ? fomatDate(new Date(item.startDate || ''))
+                    : 'No due date'}{' '}
+                  -{' '}
+                  {item.startTime
+                    ? formatTime(item.startTime)
+                    : 'No start time'}
+                </Text>
+              </View>
+              <Pressable
+                style={{
+                  paddingRight: 40,
+                }}
+                onPress={() => handleHighlight(item.id)}>
+                <MaterialIcons
+                  name="star"
+                  size={24}
+                  color={item.isImportant ? appColors.yellow : appColors.gray2}
+                />
+              </Pressable>
+            </RowComponent>
           </View>
-        </TouchableOpacity>
+        </Pressable>
       </Swipeable>
     );
   };
 
   return (
     <View style={styles.container}>
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor={appColors.whitesmoke}
-      />
-
       <View style={styles.header}>
-        <TouchableOpacity
+        <Pressable
           style={styles.iconButton}
           onPress={() => navigation.openDrawer()}>
-          <MaterialIcons name="menu" size={24} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Home</Text>
-        <TouchableOpacity style={styles.iconButton}>
-          <MaterialIcons name="search" size={24} color={appColors.black} />
-        </TouchableOpacity>
+          <MaterialIcons name="menu" size={24} color={appColors.white} />
+        </Pressable>
+        <Text style={styles.headerTitle}>TimeLy</Text>
+        <Pressable
+          style={styles.iconButton}
+          onPress={() =>
+            navigation.navigate('ListTasks', {
+              tasks,
+            })
+          }>
+          <SearchNormal1 size={20} color={appColors.white} />
+        </Pressable>
       </View>
-
       <View style={styles.filtersContainer}>
         <ScrollView
           horizontal={true}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filters}>
           {filters.map((filter, index) => (
-            <TouchableOpacity
+            <Pressable
               key={index}
               style={[
                 styles.filterButton,
-                activeFilter === filter && styles.activeFilterButton,
+                activeFilter === filter.name && styles.activeFilterButton,
               ]}
-              onPress={() => setActiveFilter(filter)}>
-              <Text
-                style={[
-                  styles.filterButtonText,
-                  activeFilter === filter && styles.activeFilterText,
-                ]}>
-                {filter}
-              </Text>
-            </TouchableOpacity>
+              onPress={() => setActiveFilter(filter.name)}>
+              <RowComponent>
+                {filter.icon && (
+                  <MaterialIcons
+                    name={filter.icon}
+                    size={20}
+                    color={
+                      activeFilter === filter.name
+                        ? appColors.white
+                        : appColors.black
+                    }
+                  />
+                )}
+                <SpaceComponent width={4} />
+                <Text
+                  style={[
+                    styles.filterButtonText,
+                    activeFilter === filter.name && styles.activeFilterText,
+                  ]}>
+                  {filter.name}
+                </Text>
+              </RowComponent>
+            </Pressable>
           ))}
         </ScrollView>
+        <SpaceComponent width={10} />
+        <Pressable
+          onPress={() => {
+            // Xử lý sự kiện thêm danh mục
+            navigation.navigate('Category');
+          }}>
+          <Category size="24" color={appColors.primary} />
+        </Pressable>
       </View>
-
-      <View style={styles.tasksContainer}>
+      <ScrollView style={styles.tasksContainer}>
         {tasksBeforeToday.length > 0 && (
           <View style={styles.section}>
-            <TouchableOpacity
+            <Pressable
               onPress={() => setShowBeforeToday(!showBeforeToday)}
               style={styles.sectionHeaderContainer}>
               <Text style={styles.sectionHeader}>Trước</Text>
               <MaterialIcons
                 name={showBeforeToday ? 'expand-less' : 'expand-more'}
                 size={24}
-                color={appColors.black}
+                color={appColors.gray}
               />
-            </TouchableOpacity>
-            {showBeforeToday && (
-              <FlatList
-                data={tasksBeforeToday}
-                keyExtractor={item => item.id}
-                renderItem={renderTask}
-                contentContainerStyle={styles.flatListContent}
-              />
-            )}
+            </Pressable>
+            {showBeforeToday && uniqueTasksBeforeToday.map(renderTask)}
           </View>
         )}
 
         {tasksToday.length > 0 && (
           <View style={styles.section}>
-            <TouchableOpacity
+            <Pressable
               onPress={() => setShowToday(!showToday)}
               style={styles.sectionHeaderContainer}>
               <Text style={styles.sectionHeader}>Hôm nay </Text>
               <MaterialIcons
                 name={showToday ? 'expand-less' : 'expand-more'}
                 size={24}
-                color={appColors.black}
+                color={appColors.gray}
               />
-            </TouchableOpacity>
-            {showToday && (
-              <FlatList
-                data={tasksToday}
-                keyExtractor={item => item.id}
-                renderItem={renderTask}
-                contentContainerStyle={styles.flatListContent}
-              />
-            )}
+            </Pressable>
+            {showToday && tasksToday.map(renderTask)}
           </View>
         )}
         {tasksAfterToday.length > 0 && (
           <View style={styles.section}>
-            <TouchableOpacity
+            <Pressable
               onPress={() => setShowBeforeToday(!showBeforeToday)}
               style={styles.sectionHeaderContainer}>
               <Text style={styles.sectionHeader}>Tương lai</Text>
               <MaterialIcons
                 name={showBeforeToday ? 'expand-less' : 'expand-more'}
                 size={24}
-                color={appColors.black}
+                color={appColors.gray}
               />
-            </TouchableOpacity>
-            {showBeforeToday && (
-              <FlatList
-                data={tasksAfterToday}
-                keyExtractor={item => item.id}
-                renderItem={renderTask}
-                contentContainerStyle={styles.flatListContent}
-              />
-            )}
+            </Pressable>
+            {showBeforeToday && uniqueTasks.map(renderTask)}
           </View>
         )}
-      </View>
-      <SpaceComponent height={120} />
+
+        {tasks.filter(
+          task =>
+            task.isCompleted &&
+            new Date(task.updatedAt).toDateString() === today.toDateString(),
+        ).length > 0 && (
+          <View style={styles.section}>
+            <Pressable
+              onPress={() => setShowBeforeToday(!showBeforeToday)}
+              style={styles.sectionHeaderContainer}>
+              <Text style={styles.sectionHeader}>Đã hoàn thành hôm nay</Text>
+              <MaterialIcons
+                name={showBeforeToday ? 'expand-less' : 'expand-more'}
+                size={24}
+                color={appColors.gray}
+              />
+            </Pressable>
+            {showBeforeToday &&
+              tasks
+                .filter(
+                  task =>
+                    task.isCompleted &&
+                    new Date(task.updatedAt).toDateString() ===
+                      today.toDateString(),
+                )
+                .map(renderTask)}
+          </View>
+        )}
+        <SpaceComponent height={20} />
+        <Pressable
+          onPress={() =>
+            navigation.navigate('IsCompleTaskScreen', {
+              tasks: tasks.filter(task => task.isCompleted),
+            })
+          }>
+          <Text style={{textDecorationLine: 'underline', textAlign: 'center'}}>
+            Xem tất cả các nhiệm vụ đã hoàn thành
+          </Text>
+        </Pressable>
+      </ScrollView>
+      <SpaceComponent height={28} />
     </View>
   );
 };
@@ -323,29 +551,35 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: appColors.whitesmoke,
-    paddingHorizontal: 10,
+    backgroundColor: appColors.lightPurple,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
     paddingHorizontal: 10,
-    backgroundColor: appColors.white,
+    paddingTop: -10,
+    paddingBottom: 20,
+    backgroundColor: appColors.primary,
     borderBottomWidth: 1,
     borderBottomColor: appColors.lightGray,
+    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: 20,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: appColors.black,
+    color: appColors.white,
   },
   iconButton: {
     padding: 8,
   },
   filtersContainer: {
+    paddingHorizontal: 10,
     paddingBottom: 4,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   filters: {
     flexDirection: 'row',
@@ -354,7 +588,7 @@ const styles = StyleSheet.create({
   filterButton: {
     paddingHorizontal: 18,
     paddingVertical: 10,
-    backgroundColor: appColors.lightGray,
+    backgroundColor: appColors.gray2,
     borderRadius: 14,
     marginRight: 8,
     height: 40,
@@ -366,13 +600,14 @@ const styles = StyleSheet.create({
   },
   filterButtonText: {
     fontSize: 15,
-    color: appColors.gray,
+    color: appColors.black,
   },
   activeFilterText: {
     color: appColors.white,
   },
   tasksContainer: {
     flex: 1,
+    paddingHorizontal: 10,
   },
   section: {
     marginVertical: 4,
@@ -383,16 +618,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 10,
-    backgroundColor: appColors.white,
+    // backgroundColor: appColors.white,
     borderRadius: 8,
   },
   sectionHeader: {
     fontSize: 16,
     fontWeight: 'bold',
     color: appColors.gray,
-  },
-  flatListContent: {
-    paddingTop: 4,
   },
   taskItem: {
     flexDirection: 'row',
@@ -407,6 +639,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 2,
+    borderLeftWidth: 2,
   },
   roundButton: {
     marginRight: 10,
@@ -425,7 +658,6 @@ const styles = StyleSheet.create({
   },
   taskDate: {
     fontSize: 14,
-    color: appColors.red,
     marginTop: 4,
   },
   swipeActions: {
