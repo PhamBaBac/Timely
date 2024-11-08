@@ -72,7 +72,7 @@ const EMPTY_CATEGORY: CategoryWithoutCount = {
   id: '',
   name: '',
   color: 'default',
-  icon: '',
+  icon: 'radio-button-checked', // Add default icon here
   createdAt: 0,
   updatedAt: 0,
 };
@@ -172,14 +172,22 @@ const CategoryScreen: React.FC = () => {
     setEditModalVisible(true);
     hideModal();
   };
+  const getValidIconName = (iconName: string | undefined): string => {
+    if (!iconName || !availableIcons.includes(iconName)) {
+      return 'radio-button-checked';
+    }
+    return iconName;
+  };
 
   const handleCreate = () => {
-    setEditingCategory(EMPTY_CATEGORY);
+    setEditingCategory({
+      ...EMPTY_CATEGORY,
+      icon: 'radio-button-checked', // Set default icon
+    });
     setIsDefaultColor(true);
     setIsCreating(true);
     setEditModalVisible(true);
   };
-
   const handleDelete = async (category: Category) => {
     if (!user?.uid) return;
 
@@ -290,12 +298,18 @@ const CategoryScreen: React.FC = () => {
       return;
     }
 
+    // Add icon validation
+    if (!editingCategory.icon) {
+      Alert.alert('Lỗi', 'Vui lòng chọn biểu tượng');
+      return;
+    }
+
     try {
       setIsLoading(true);
       const categoryData = {
         name: editingCategory.name.trim(),
         color: isDefaultColor ? 'default' : editingCategory.color,
-        icon: editingCategory.icon,
+        icon: editingCategory.icon || 'radio-button-checked', // Ensure default icon
         uid: user.uid,
         updatedAt: Date.now(),
       };
