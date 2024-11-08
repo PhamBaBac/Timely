@@ -40,7 +40,7 @@ export const fetchImportantTasks = async (dispatch: Dispatch) => {
 export const handleDeleteTask = async (
   taskId: string,
   dispatch: Dispatch,
-  deletedTaskIds: string[],
+  repeatCount: number = 0,
 ) => {
   Alert.alert('Xác nhận xóa', 'Bạn có chắc chắn muốn xóa nhiệm vụ này?', [
     {text: 'Hủy', style: 'cancel'},
@@ -68,6 +68,12 @@ export const handleDeleteTask = async (
 
             dispatch(setDeletedTaskIds(updatedDeletedTasks));
             dispatch(deleteTask(taskId));
+
+            const remainingTasks: string[] = deletedTasks.filter((id: string) => id.startsWith(taskId.split('-')[0]));
+            console.log('Remaining tasks:', remainingTasks);
+            if (remainingTasks.length === repeatCount - 1) {
+              await firestore().collection('tasks').doc(taskId.split('-')[0]).delete();
+            }
           } else {
             await firestore().collection('tasks').doc(taskId).delete();
             dispatch(deleteTask(taskId));
@@ -79,7 +85,6 @@ export const handleDeleteTask = async (
     },
   ]);
 };
-
 export const handleToggleComplete = async (
   taskId: string,
   tasks: TaskModel[],

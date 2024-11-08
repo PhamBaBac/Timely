@@ -20,7 +20,6 @@ export class HandleNotification {
 
   static getFcmToken = async () => {
     const fcmtoken = await AsyncStorage.getItem('fcmtoken');
-    console.log('fcmtoken:', fcmtoken);
     if (!fcmtoken) {
       const token = await messaging().getToken();
       if (token) {
@@ -69,6 +68,7 @@ export class HandleNotification {
       );
       const result = await res.json();
       const accessToken = result.data.access_token;
+      console.log('Access Token:', accessToken);
       return accessToken;
     } catch (error) {
       console.log(error);
@@ -100,7 +100,6 @@ export class HandleNotification {
 
       // Send Notification
       const member: any = await firestore().doc(`users/${memberId}`).get();
-      console.log('member:', member);
 
       if (member && member.data().tokens) {
         var myHeaders = new Headers();
@@ -142,4 +141,6 @@ export class HandleNotification {
       console.log('Error sending notification:', error);
     }
   };
+
+  
 }
