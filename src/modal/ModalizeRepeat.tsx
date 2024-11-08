@@ -1,4 +1,3 @@
-// src/components/ModalizeRepeat.tsx
 import React, {useRef, useEffect, useState} from 'react';
 import {
   View,
@@ -24,6 +23,7 @@ interface ModalizeRepeatProps {
   taskDetail: any;
   handleChangeValue: (key: string, value: any) => void;
   setSelectedRepeat: (value: string) => void;
+  startDate: Date; // Thêm startDate vào các props
 }
 
 const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
@@ -32,6 +32,7 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
   taskDetail,
   handleChangeValue,
   setSelectedRepeat,
+  startDate, // Lấy startDate từ props
 }) => {
   const modalizeRef = useRef<Modalize>(null);
 
@@ -44,6 +45,10 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
   }, [visible]);
 
   const [isWeek, setIsWeek] = useState(false);
+
+  // Chuyển startDate thành ngày và tháng
+  const startDay = startDate.getDate();
+  const startMonth = startDate.getMonth(); // 0-indexed (0 = January)
 
   return (
     <Portal>
@@ -78,7 +83,15 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
           <SpaceComponent height={20} />
           <View style={styles.repeatOptionsContainer}>
             <Text
-              style={styles.repeatOptionText}
+              style={[
+                styles.repeatOptionText,
+                {
+                  color:
+                    taskDetail.repeat === 'day'
+                      ? appColors.primary
+                      : appColors.text,
+                },
+              ]}
               onPress={() => {
                 handleChangeValue('repeat', 'day');
                 setSelectedRepeat('Ngày');
@@ -87,11 +100,19 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
             </Text>
             <TextComponent
               text="|"
-              color={appColors.primary}
+              color={appColors.text}
               styles={{fontSize: 22}}
             />
             <Text
-              style={styles.repeatOptionText}
+              style={[
+                styles.repeatOptionText,
+                {
+                  color:
+                    taskDetail.repeat === 'week'
+                      ? appColors.primary
+                      : appColors.text,
+                },
+              ]}
               onPress={() => {
                 handleChangeValue('repeat', 'week');
                 setIsWeek(true);
@@ -102,40 +123,49 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
             </Text>
             <TextComponent
               text="|"
-              color={appColors.primary}
+              color={appColors.text}
               styles={{fontSize: 22}}
             />
             <Text
-              style={styles.repeatOptionText}
+              style={[
+                styles.repeatOptionText,
+                {
+                  color:
+                    taskDetail.repeat === 'month'
+                      ? appColors.primary
+                      : appColors.text,
+                },
+              ]}
               onPress={() => {
                 handleChangeValue('repeat', 'month');
-                modalizeRef.current?.close();
                 setSelectedRepeat('Tháng');
               }}>
               Hằng tháng
             </Text>
           </View>
           <SpaceComponent height={20} />
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              marginBottom: 20,
-              marginHorizontal: 10,
-            }}>
-            <TextComponent text="Số lần lặp" />
-            <SpaceComponent width={10} />
-            <TextInput
-              style={styles.input}
-              keyboardType="numeric"
-              onChangeText={text => handleChangeValue('repeatCount', text)}
-              value={
-                taskDetail.repeatCount
-                  ? taskDetail.repeatCount.toString()
-                  : undefined
-              }
-            />
-          </View>
+          {taskDetail.repeat !== 'no' && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginBottom: 20,
+                marginHorizontal: 10,
+              }}>
+              <TextComponent text="Số lần lặp" />
+              <SpaceComponent width={10} />
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                onChangeText={text => handleChangeValue('repeatCount', text)}
+                value={
+                  taskDetail.repeatCount
+                    ? taskDetail.repeatCount.toString()
+                    : undefined
+                }
+              />
+            </View>
+          )}
           {taskDetail.repeat === 'week' && (
             <View>
               <SectionComponent>
@@ -158,12 +188,52 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
                                 (d: number) => d !== index,
                               )
                             : [...(taskDetail.repeatDays || []), index];
+                          newRepeatDays.sort((a: number, b: number) => a - b);
+                          console.log('newRepeatDays', newRepeatDays);
                           handleChangeValue('repeatDays', newRepeatDays);
                         }}>
                         <TextComponent text={day} />
                       </TouchableOpacity>
                     ),
                   )}
+                </View>
+              </SectionComponent>
+            </View>
+          )}
+          {taskDetail.repeat === 'month' && (
+            <View>
+              <SectionComponent>
+                <TextComponent text="Chọn ngày trong tháng" />
+                <View style={styles.weekDaysContainer}>
+                  {[...Array(31).keys()].map((day, index) => {
+                    const actualDay = day + 1; // Tính giá trị ngày thực tế (từ 1 đến 31)
+                    const isValidDay = actualDay >= startDay; // Kiểm tra xem ngày có hợp lệ không
+
+                    return (
+                      <TouchableOpacity
+                        key={index}
+                        style={[
+                          styles.weekDay,
+                          taskDetail.repeatDays?.includes(actualDay) &&
+                            styles.selectedDay,
+                          !isValidDay && styles.disabledDay, // Vô hiệu hóa ngày trước ngày bắt đầu
+                        ]}
+                        onPress={() => {
+                          if (isValidDay) {
+                            const newRepeatDays =
+                              taskDetail.repeatDays?.includes(actualDay)
+                                ? taskDetail.repeatDays.filter(
+                                    (d: number) => d !== actualDay,
+                                  )
+                                : [...(taskDetail.repeatDays || []), actualDay];
+                            newRepeatDays.sort((a: number, b: number) => a - b);
+                            handleChangeValue('repeatDays', newRepeatDays);
+                          }
+                        }}>
+                        <TextComponent text={actualDay.toString()} />
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </SectionComponent>
             </View>
@@ -185,12 +255,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 10,
     borderWidth: 1,
-    borderColor: appColors.primary,
+    borderColor: appColors.text,
     borderRadius: 8,
   },
   repeatOptionText: {
     fontSize: 16,
-    color: appColors.primary,
   },
   input: {
     borderWidth: 1,
@@ -198,7 +267,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     height: 40,
-    
   },
   weekDaysContainer: {
     flexDirection: 'row',
@@ -216,6 +284,10 @@ const styles = StyleSheet.create({
   selectedDay: {
     backgroundColor: appColors.primary,
     borderColor: appColors.primary,
+  },
+  disabledDay: {
+    backgroundColor: appColors.gray2,
+    borderColor: appColors.gray2,
   },
 });
 
