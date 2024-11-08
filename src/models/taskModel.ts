@@ -8,6 +8,8 @@ export interface TaskModel {
   startTime?: Date;
   remind: string;
   repeat: 'no' | 'day' | 'week' | 'month' | 'weekday';
+  repeatDays: number[];
+  repeatCount: number;
   category: string;
   isCompleted: boolean;
   isImportant: boolean;
