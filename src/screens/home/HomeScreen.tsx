@@ -1,7 +1,7 @@
 import auth, {firebase} from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import {addDays, addMonths, addWeeks, format} from 'date-fns';
-import {Category, Repeat, SearchNormal1} from 'iconsax-react-native';
+import {ArchiveTick, Category, Flag, Repeat, SearchNormal1, Star1, StarSlash, Trash} from 'iconsax-react-native';
 import React, {useEffect, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
@@ -88,6 +88,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
       })),
     ],
   );
+  
 
   const filteredTasks = tasks.filter(task => {
     if (activeFilter === 'Tất cả') return true;
@@ -271,12 +272,31 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     return taskStartDate.getTime() === today.getTime() && !task.isCompleted;
   });
 
- const tasksAfterToday = filteredTasks.filter(task => {
-   const taskStartDate = new Date(task.startDate || '');
-   taskStartDate.setHours(0, 0, 0, 0);
-   return taskStartDate > today && !task.isCompleted;
- });
+  //sap xep theo  priority(low, medium, high) va gio bat dau
+  tasksToday.sort((a, b) => {
+    if (a.priority === 'low' && b.priority !== 'low') {
+      return 1;
+    }
+    if (a.priority === 'medium' && b.priority === 'high') {
+      return 1;
+    }
+    if (a.priority === 'high' && b.priority !== 'high') {
+      return -1;
+    }
+    if (a.startTime && b.startTime) {
+      return a.startTime.toString().localeCompare(b.startTime.toString());
+    }
+    return 0;
+  }
+  );
+  console.log('tasksToday', tasksToday);
 
+
+  const tasksAfterToday = filteredTasks.filter(task => {
+    const taskStartDate = new Date(task.startDate || '');
+    taskStartDate.setHours(0, 0, 0, 0);
+    return taskStartDate > today && !task.isCompleted;
+  });
 
   const sortedTasks = tasksAfterToday.sort((a, b) => {
     const dateA = new Date(a.startDate || '').getTime();
@@ -292,9 +312,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     }
   });
 
-
   const uniqueTasks = Array.from(uniqueTasksMap.values());
-
 
   const handleTaskPress = (task: TaskModel) => {
     navigation.navigate('TaskDetailsScreen', {id: task.id});
@@ -308,7 +326,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
         <Pressable
           style={styles.swipeActionButton}
           onPress={() => handleDelete(item.id, item.repeatCount)}>
-          <MaterialIcons name="delete" size={24} color={appColors.red} />
+          <Trash size={24} color={appColors.red} variant="Bold" />
           <Text style={styles.actionText}>Xóa</Text>
         </Pressable>
 
@@ -322,6 +340,9 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
         )}
       </View>
     );
+      const categoryIcon = categories.find(
+        category => category.name === item.category,
+      )?.icon || (item.category === 'Du lịch' ? 'airplanemode-active' : item.category === 'Sinh nhật' ? 'cake' : '');
 
     return (
       <Swipeable
@@ -354,6 +375,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
                 />
               )}
             </Pressable>
+
             <RowComponent>
               <View style={styles.taskContent}>
                 <Text
@@ -363,6 +385,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
                   ]}>
                   {item.title ? item.title : item.description}
                 </Text>
+
                 <Text style={styles.taskDate}>
                   {item.dueDate
                     ? fomatDate(new Date(item.startDate || ''))
@@ -371,18 +394,48 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
                   {item.startTime
                     ? formatTime(item.startTime)
                     : 'No start time'}
+                  <SpaceComponent width={10} />
                 </Text>
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center'
+                }}>
+                  {categoryIcon && (
+                    <MaterialIcons
+                      name={categoryIcon}
+                      size={16}
+                      color={appColors.gray2}
+                    />
+                  )}
+                  <SpaceComponent width={10} />
+                  {item.repeat !== 'no' && (
+                    <Repeat size="16" color={appColors.gray2} />
+                  )}
+                  
+                </View>
               </View>
+              <View>
+                {item.priority === 'low' && (
+                  <Flag size="24" color={appColors.green} variant="Bold" />
+                )}
+                {item.priority === 'medium' && (
+                  <Flag size="24" color={appColors.yellow} variant="Bold" />
+                )}
+                {item.priority === 'high' && (
+                  <Flag size="24" color={appColors.red} variant="Bold" />
+                )}
+              </View>
+              <SpaceComponent width={10} />
               <Pressable
                 style={{
                   paddingRight: 40,
                 }}
                 onPress={() => handleHighlight(item.id)}>
-                <MaterialIcons
-                  name="star"
-                  size={24}
-                  color={item.isImportant ? appColors.yellow : appColors.gray2}
-                />
+                {item.isImportant ? (
+                  <Star1 size={24} color="#FF8A65" />
+                ) : (
+                  <StarSlash size={24} color="#FF8A65" />
+                )}
               </Pressable>
             </RowComponent>
           </View>
@@ -659,6 +712,9 @@ const styles = StyleSheet.create({
   taskDate: {
     fontSize: 14,
     marginTop: 4,
+    marginBottom: 4,
+    justifyContent:'center',
+    
   },
   swipeActions: {
     flexDirection: 'row',

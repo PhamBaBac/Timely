@@ -13,6 +13,7 @@ export interface TaskModel {
   category: string;
   isCompleted: boolean;
   isImportant: boolean;
+  priority: 'low' | 'medium' | 'high';
   createdAt: number;
   updatedAt: number;
 }
