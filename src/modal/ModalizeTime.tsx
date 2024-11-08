@@ -32,7 +32,7 @@ const ModalizeTime: React.FC<ModalizeTimeProps> = ({
     }
   }, [visible]);
 
-  console.log('selectedTime', format(selectedTime, 'HH:mm'));
+  // console.log('selectedTime', format(selectedTime, 'HH:mm'));
   return (
     <Portal>
       <Modalize ref={modalizeTimeRef} adjustToContentHeight onClosed={onClose}>

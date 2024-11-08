@@ -123,8 +123,8 @@ const CalendarScreen = ({navigation}: any) => {
     fetchImportantTasks(dispatch);
   }, [dispatch]);
 
-  const handleDelete = (taskId: string) => {
-    handleDeleteTask(taskId, dispatch, deletedTaskIds);
+  const handleDelete = (taskId: string, repeatCount: number) => {
+    handleDeleteTask(taskId, dispatch, repeatCount);
   };
   const handleToggleCompleteTask = (taskId: string) => {
     handleToggleComplete(taskId, tasks, dispatch);
@@ -147,7 +147,7 @@ const CalendarScreen = ({navigation}: any) => {
       <View style={styles.swipeActions}>
         <Pressable
           style={styles.swipeActionButton}
-          onPress={() => handleDelete(item.id)}>
+          onPress={() => handleDelete(item.id, item.repeatCount)}>
           <MaterialIcons name="delete" size={24} color={appColors.red} />
           <Text style={styles.actionText}>Xóa</Text>
         </Pressable>
