@@ -37,35 +37,26 @@ const ModalizeDate: React.FC<ModalizeDateProps> = ({
       <Modalize ref={modalizeDateRef} adjustToContentHeight onClosed={onClose}>
         <View style={styles.modalContent}>
           <RNCalendar
-            value={taskDetail.dueDate}
             style={styles.calendar}
             markingType={'custom'}
             markedDates={{
-              [new Date().toISOString().split('T')[0]]: {
-                marked: true,
-                dotColor: appColors.primary,
-                customStyles: {
-                  text: {
-                    color: appColors.primary,
-                    fontWeight: 'bold',
-                  },
-                },
-              },
-              [selectedDate ? selectedDate.toISOString().split('T')[0] : '']: {
+              [selectedDate
+                ? selectedDate.toISOString().split('T')[0]
+                : taskDetail.dueDate
+                ? new Date(taskDetail.dueDate).toISOString().split('T')[0]
+                : new Date().toISOString().split('T')[0]]: {
                 selected: true,
                 textColor: appColors.primary,
                 selectedColor: appColors.primary,
               },
             }}
-            onDayPress={({dateString}: {dateString: string}) => {
-              const selectedDate = new Date(dateString);
-              onDateChange(selectedDate);
+            onDayPress={({ dateString }: { dateString: string }) => {
+              const newSelectedDate = new Date(dateString);
+              onDateChange(newSelectedDate);
             }}
             renderArrow={(direction: 'left' | 'right') => (
               <MaterialIcons
-                name={
-                  direction === 'left' ? 'arrow-back-ios' : 'arrow-forward-ios'
-                }
+                name={direction === 'left' ? 'arrow-back-ios' : 'arrow-forward-ios'}
                 size={14}
                 color={appColors.primary}
               />

@@ -38,8 +38,8 @@ import ModalizeDate from '../modal/modalizaDate';
 import ModalizeCategory from '../modal/ModalizeCategory';
 import ModalizeRepeat from '../modal/ModalizeRepeat';
 import ModalizeTime from '../modal/ModalizeTime';
-import { CategoryModel } from '../models/categoryModel';
-import { TaskModel } from '../models/taskModel';
+import {CategoryModel} from '../models/categoryModel';
+import {TaskModel} from '../models/taskModel';
 import useCustomStatusBar from '../hooks/useCustomStatusBar';
 
 const now = new Date();
@@ -52,6 +52,8 @@ const initValue: TaskModel = {
   startTime: new Date(),
   remind: '',
   repeat: 'no' as 'no' | 'day' | 'week' | 'month',
+  repeatDays: [],
+  repeatCount: 0,
   category: '',
   isCompleted: false,
   isImportant: false,
@@ -95,7 +97,6 @@ const AddNewScreen = ({navigation}: any) => {
   const [isNewCategoryModalVisible, setNewCategoryModalVisible] =
     useState(false);
   const [selectedTime, setSelectedTime] = useState(new Date());
-  console.log(selectedTime);
   const [selectedRepeat, setSelectedRepeat] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [taskDetail, setTaskDetail] = useState<TaskModel>(initValue);
@@ -114,15 +115,60 @@ const AddNewScreen = ({navigation}: any) => {
   }, [user]);
 
   const handleAddNewTask = async () => {
-    if (!taskDetail.description) {
-      setErrorText('Nội dung là bắt buộc');
+    if (!taskDetail.title) {
+      setErrorText('Tiêu đề là bắt buộc');
       return;
     }
 
-    const startDate = taskDetail.dueDate
-      ? new Date(taskDetail.dueDate)
-      : new Date();
+    let startDate = selectedDate ? new Date(selectedDate) : new Date();
 
+    // Weekly repeat logic
+    if (taskDetail.repeat === 'week' && taskDetail.repeatDays.length > 0) {
+      const currentDay = startDate.getDay(); // Get the current day based on selected start date
+      const sortedRepeatDays = [
+        ...taskDetail.repeatDays.filter(day => day >= currentDay),
+        ...taskDetail.repeatDays.filter(day => day < currentDay),
+      ];
+
+      const nextRepeatDay = sortedRepeatDays[0];
+      startDate.setDate(
+        startDate.getDate() +
+          (nextRepeatDay - currentDay + (nextRepeatDay < currentDay ? 7 : 0)),
+      );
+    }
+
+    // Monthly repeat logic
+    else if (
+      taskDetail.repeat === 'month' &&
+      taskDetail.repeatDays.length > 0
+    ) {
+      const currentDay = startDate.getDate();
+      const sortedRepeatDays = [
+        ...taskDetail.repeatDays.filter(day => day >= currentDay),
+        ...taskDetail.repeatDays.filter(day => day < currentDay),
+      ];
+
+      let nextRepeatDay = sortedRepeatDays[0]; // Get the first valid repeat day
+
+      if (nextRepeatDay < currentDay) {
+        startDate.setMonth(startDate.getMonth() + 1); // Move to next month
+      }
+
+      startDate.setDate(nextRepeatDay);
+
+      if (startDate.getDate() !== nextRepeatDay) {
+        startDate = new Date(
+          startDate.getFullYear(),
+          startDate.getMonth() + 1,
+          0,
+        );
+      }
+    } else if (
+      (taskDetail.repeat === 'week' || taskDetail.repeat === 'month') &&
+      taskDetail.repeatDays.length === 0
+    ){
+      startDate = selectedDate ? new Date(selectedDate) : new Date();
+    }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -147,7 +193,6 @@ const AddNewScreen = ({navigation}: any) => {
       startTime: selectedTime.getTime(),
     };
 
-    setIsLoading(true);
     await taskRef
       .set(task)
       .then(() => {
@@ -155,6 +200,8 @@ const AddNewScreen = ({navigation}: any) => {
         setIsLoading(false);
         setTaskDetail(initValue);
         setSubtasks([]);
+        setSelectedRepeat('');
+        setSelectedDate(null);
         setErrorText('');
         navigation.navigate('Trang chủ', {
           screen: 'HomeScreen',
@@ -206,7 +253,10 @@ const AddNewScreen = ({navigation}: any) => {
     }
   };
 
-  const handleChangeValue = (id: string, value: string | Date) => {
+  const handleChangeValue = (
+    id: string,
+    value: string | Date | number | number[],
+  ) => {
     setTaskDetail(prevState => ({
       ...prevState,
       [id]: value,
@@ -237,11 +287,11 @@ const AddNewScreen = ({navigation}: any) => {
     return format(date, 'HH:mm');
   };
   const fomatDate = (date: Date) => {
-    return format(date, 'dd/MM');
+    return format(date, 'dd/MM/yyyy');
   };
 
   return (
-    <Container back title="Thêm nhiệm vụ mới" isScroll>
+    <Container back title="Thêm công việc mới" isScroll>
       <View style={styles.inputContainer}>
         <View
           style={{
@@ -250,16 +300,16 @@ const AddNewScreen = ({navigation}: any) => {
           <InputComponent
             value={taskDetail.title}
             onChange={val => handleChangeValue('title', val)}
-            title="tiêu đề"
+            title="Tên công việc"
             allowClear
-            placeholder="nhập tiêu đề"
+            placeholder="Nhập tên công việc"
           />
           <InputComponent
             value={taskDetail.description}
             onChange={val => handleChangeValue('description', val)}
-            title="Nội dung"
+            title="Mô tả công việc"
             allowClear
-            placeholder="Nhập nội dung"
+            placeholder="Nhập mô tả công việc"
             multiple
             numberOfLine={3}
           />
@@ -282,7 +332,6 @@ const AddNewScreen = ({navigation}: any) => {
           onPress={() => {
             setModalDateVisible(true);
             setSelectedDate(new Date());
-            setSelectedRepeat('');
           }}>
           <CalendarIcon size={24} color={appColors.primary} />
           <View
@@ -298,6 +347,22 @@ const AddNewScreen = ({navigation}: any) => {
                 ? `${
                     selectedDate
                       ? fomatDate(selectedDate)
+                      : taskDetail.repeatDays.length > 0 &&
+                        selectedRepeat === 'Tuần'
+                      ? fomatDate(
+                          new Date(
+                            Math.min(
+                              ...taskDetail.repeatDays.map(day => {
+                                const date = new Date();
+                                date.setDate(
+                                  date.getDate() +
+                                    ((day + 7 - date.getDay()) % 7),
+                                );
+                                return date.getTime();
+                              }),
+                            ),
+                          ),
+                        )
                       : fomatDate(new Date())
                   }`
                 : 'Chọn ngày/giờ'}
@@ -345,7 +410,7 @@ const AddNewScreen = ({navigation}: any) => {
           onPress={() => setRepeatModalVisible(true)}>
           <Repeat size={24} color={appColors.primary} />
           <Text style={styles.modalOptionText}>Chọn lặp lại</Text>
-          <Text style={styles.selectedRepeatText}>{selectedRepeat}</Text>
+          <Text style={styles.selectedRepeatText}>{selectedRepeat ? selectedRepeat : 'Không'}</Text>  
         </TouchableOpacity>
       </View>
       <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
@@ -367,6 +432,7 @@ const AddNewScreen = ({navigation}: any) => {
           taskDetail={taskDetail}
           handleChangeValue={handleChangeValue}
           setSelectedRepeat={setSelectedRepeat}
+          startDate={selectedDate ? selectedDate : new Date()}
         />
       </View>
       <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>

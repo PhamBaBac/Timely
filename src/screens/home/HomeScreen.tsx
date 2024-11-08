@@ -1,28 +1,20 @@
-import auth, { firebase } from '@react-native-firebase/auth';
+import auth, {firebase} from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import { addDays, addMonths, addWeeks, format } from 'date-fns';
-import { Category, SearchNormal1 } from 'iconsax-react-native';
-import React, { useEffect, useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View
-} from 'react-native';
+import {addDays, addMonths, addWeeks, format} from 'date-fns';
+import {Category, Repeat, SearchNormal1} from 'iconsax-react-native';
+import React, {useEffect, useState} from 'react';
+import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { useDispatch, useSelector } from 'react-redux';
-import { RowComponent, SpaceComponent } from '../../components';
-import { appColors } from '../../constants/appColor';
+import {useDispatch, useSelector} from 'react-redux';
+import {RowComponent, SpaceComponent} from '../../components';
+import {appColors} from '../../constants/appColor';
 import useCustomStatusBar from '../../hooks/useCustomStatusBar';
-import { CategoryModel } from '../../models/categoryModel';
-import { TaskModel } from '../../models/taskModel';
-import { setCategories } from '../../redux/reducers/categoriesSlice';
-import {
-  setTasks
-} from '../../redux/reducers/tasksSlice';
-import { RootState } from '../../redux/store';
+import {CategoryModel} from '../../models/categoryModel';
+import {TaskModel} from '../../models/taskModel';
+import {setCategories} from '../../redux/reducers/categoriesSlice';
+import {setTasks} from '../../redux/reducers/tasksSlice';
+import {RootState} from '../../redux/store';
 import {
   fetchCompletedTasks,
   fetchDeletedTasks,
@@ -32,7 +24,8 @@ import {
   handleToggleImportant,
   handleUpdateRepeat,
 } from '../../utils/taskUtil';
-
+import {HandleNotification} from '../../utils/handleNotification';
+import messaging from '@react-native-firebase/messaging';
 const HomeScreen = ({navigation}: {navigation: any}) => {
   const user = auth().currentUser;
   useCustomStatusBar('light-content', appColors.primary);
@@ -42,9 +35,19 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
   const dispatch = useDispatch();
   const [showToday, setShowToday] = useState(true);
   const tasks = useSelector((state: RootState) => state.tasks.tasks);
+
+  useEffect(() => {
+    HandleNotification.checkNotificationPersion();
+    messaging().onMessage((mess: any) => {
+      // getNofiticationsUnRead;
+      console.log('mess:', mess);
+    });
+  }, []);
+
   const categories = useSelector(
     (state: RootState) => state.categories.categories,
   );
+
   const deletedTaskIds = useSelector(
     (state: RootState) => state.tasks.deletedTaskIds,
   );
@@ -68,18 +71,21 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
       });
     return () => unsubscribe();
   }, [dispatch, user]);
-  const filters = categories.reduce<string[]>(
+  const filters = categories.reduce<{name: string; icon: string}[]>(
     (acc, category: CategoryModel) => {
-      if (!acc.includes(category.name)) {
-        acc.push(category.name);
+      if (!acc.find(item => item.name === category.name)) {
+        acc.push({name: category.name, icon: category.icon});
       }
       return acc;
     },
     [
-      'Tất cả',
-      'Du lịch',
-      'Sinh nhật',
-      ...categories.map(category => category.name),
+      {name: 'Tất cả', icon: ''},
+      {name: 'Du lịch', icon: 'airplanemode-active'},
+      {name: 'Sinh nhật', icon: 'cake'},
+      ...categories.map(category => ({
+        name: category.name,
+        icon: category.icon,
+      })),
     ],
   );
 
@@ -141,7 +147,8 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
           const repeatedDates = calculateRepeatedDates(
             task.startDate,
             task.repeat as 'day' | 'week' | 'month',
-            7,
+            task.repeatCount as number,
+            task.repeatDays as number[],
           );
 
           return repeatedDates.map(date => ({
@@ -167,8 +174,8 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     return () => unsubscribe();
   }, [dispatch, user, deletedTaskIds, completedTasks, isImportantTasks]);
 
-  const handleDelete = (taskId: string) => {
-    handleDeleteTask(taskId, dispatch, deletedTaskIds);
+  const handleDelete = (taskId: string, repeatCount: number) => {
+    handleDeleteTask(taskId, dispatch, repeatCount);
   };
 
   const handleToggleCompleteTask = (taskId: string) => {
@@ -187,6 +194,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     startDate: string,
     repeat: 'day' | 'week' | 'month',
     count: number,
+    repeatDays: number[],
   ) => {
     const dates = [];
     let currentDate = new Date(startDate);
@@ -196,9 +204,29 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
 
       if (repeat === 'day') {
         currentDate = addDays(currentDate, 1);
-      } else if (repeat === 'week') {
+      } else if (repeat === 'week' && repeatDays.length === 0) {
         currentDate = addWeeks(currentDate, 1);
-      } else if (repeat === 'month') {
+      } else if (repeat === 'month' && repeatDays.length === 0) {
+        currentDate = addMonths(currentDate, 1);
+      } else if (repeat === 'week' && repeatDays.length > 0) {
+        repeatDays.forEach(day => {
+          let tempDate = new Date(currentDate);
+          tempDate.setDate(
+            tempDate.getDate() + ((day + 7 - tempDate.getDay()) % 7),
+          );
+          if (tempDate > currentDate) {
+            dates.push(tempDate.toISOString());
+          }
+        });
+        currentDate = addWeeks(currentDate, 1);
+      } else if (repeat === 'month' && repeatDays.length > 0) {
+        repeatDays.forEach(day => {
+          let tempDate = new Date(currentDate);
+          tempDate.setDate(day);
+          if (tempDate > currentDate) {
+            dates.push(tempDate.toISOString());
+          }
+        });
         currentDate = addMonths(currentDate, 1);
       }
     }
@@ -212,7 +240,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     return format(date, 'HH:mm');
   };
   const fomatDate = (date: Date) => {
-    return format(date, 'dd/MM');
+    return format(date, 'dd/MM/yyyy');
   };
 
   const tasksBeforeToday = filteredTasks.filter(task => {
@@ -243,17 +271,19 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     return taskStartDate.getTime() === today.getTime() && !task.isCompleted;
   });
 
-  const tasksAfterToday = filteredTasks.filter(task => {
-    const taskStartDate = new Date(task.startDate || '');
-    taskStartDate.setHours(0, 0, 0, 0);
-    return taskStartDate > today && !task.isCompleted;
-  });
+ const tasksAfterToday = filteredTasks.filter(task => {
+   const taskStartDate = new Date(task.startDate || '');
+   taskStartDate.setHours(0, 0, 0, 0);
+   return taskStartDate > today && !task.isCompleted;
+ });
+
 
   const sortedTasks = tasksAfterToday.sort((a, b) => {
     const dateA = new Date(a.startDate || '').getTime();
     const dateB = new Date(b.startDate || '').getTime();
     return dateA - dateB;
   });
+
   const uniqueTasksMap = new Map<string, TaskModel>();
 
   sortedTasks.forEach(task => {
@@ -262,7 +292,9 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     }
   });
 
+
   const uniqueTasks = Array.from(uniqueTasksMap.values());
+
 
   const handleTaskPress = (task: TaskModel) => {
     navigation.navigate('TaskDetailsScreen', {id: task.id});
@@ -275,7 +307,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
       <View style={styles.swipeActions}>
         <Pressable
           style={styles.swipeActionButton}
-          onPress={() => handleDelete(item.id)}>
+          onPress={() => handleDelete(item.id, item.repeatCount)}>
           <MaterialIcons name="delete" size={24} color={appColors.red} />
           <Text style={styles.actionText}>Xóa</Text>
         </Pressable>
@@ -284,7 +316,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
           <Pressable
             style={styles.swipeActionButton}
             onPress={() => handleUpdateRepeatTask(item.id)}>
-            <MaterialIcons name="repeat" size={24} color={appColors.blue} />
+            <Repeat size="24" color={appColors.blue} />
             <Text style={styles.actionText}>Bỏ lặp lại</Text>
           </Pressable>
         )}
@@ -388,16 +420,30 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
               key={index}
               style={[
                 styles.filterButton,
-                activeFilter === filter && styles.activeFilterButton,
+                activeFilter === filter.name && styles.activeFilterButton,
               ]}
-              onPress={() => setActiveFilter(filter)}>
-              <Text
-                style={[
-                  styles.filterButtonText,
-                  activeFilter === filter && styles.activeFilterText,
-                ]}>
-                {filter}
-              </Text>
+              onPress={() => setActiveFilter(filter.name)}>
+              <RowComponent>
+                {filter.icon && (
+                  <MaterialIcons
+                    name={filter.icon}
+                    size={20}
+                    color={
+                      activeFilter === filter.name
+                        ? appColors.white
+                        : appColors.black
+                    }
+                  />
+                )}
+                <SpaceComponent width={4} />
+                <Text
+                  style={[
+                    styles.filterButtonText,
+                    activeFilter === filter.name && styles.activeFilterText,
+                  ]}>
+                  {filter.name}
+                </Text>
+              </RowComponent>
             </Pressable>
           ))}
         </ScrollView>
