@@ -26,46 +26,45 @@ const AppRouters = () => {
 
     return () => clearTimeout(timeout);
   }, []);
-  const tasks = useSelector((state: RootState) => state.tasks.tasks);
-  console.log('tasks', tasks);
-  const user = auth().currentUser;
+  // const tasks = useSelector((state: RootState) => state.tasks.tasks);
+  // const user = auth().currentUser;
 
-useEffect(() => {
-  const checkUpcomingTasks = () => {
-    console.log('Checking upcoming tasks...');
-    const now = new Date();
-    const threeMinutes = 3 * 60 * 1000;
+// useEffect(() => {
+//   const checkUpcomingTasks = () => {
+//     console.log('Checking upcoming tasks...');
+//     const now = new Date();
+//     const threeMinutes = 3 * 60 * 1000;
 
-    // Tìm các task sắp đến hạn trong vòng 3 phút tới
-    const upcomingTasks = tasks.filter(task => {
-      console.log('Task:', task.title, task.dueDate);
-      if (!task.dueDate) return false;
+//     // Tìm các task sắp đến hạn trong vòng 3 phút tới
+//     const upcomingTasks = tasks.filter(task => {
+//       console.log('Task:', task.title, task.dueDate);
+//       if (!task.dueDate) return false;
 
-      const taskTime = new Date(task.dueDate).getTime();
-      const timeDiff = taskTime - now.getTime();
+//       const taskTime = new Date(task.dueDate).getTime();
+//       const timeDiff = taskTime - now.getTime();
 
-      return timeDiff > 0 && timeDiff <= threeMinutes;
-    });
+//       return timeDiff > 0 && timeDiff <= threeMinutes;
+//     });
 
-    // Gửi thông báo cho từng task sắp diễn ra
-    upcomingTasks.forEach(task => {
-      console.log('Task:', task.title, task.dueDate);
-      HandleNotification.SendNotification({
-        memberId: user?.uid || '',
-        title: `Task "${task.title}" is starting soon`,
-        body: task.description,
-        taskId: task.id,
-      });
-      console.log('Task starting soon:', task.title);
-    });
-  };
+//     // Gửi thông báo cho từng task sắp diễn ra
+//     upcomingTasks.forEach(task => {
+//       console.log('Task:', task.title, task.dueDate);
+//       HandleNotification.SendNotification({
+//         memberId: user?.uid || '',
+//         title: `Task "${task.title}" is starting soon`,
+//         body: task.description,
+//         taskId: task.id,
+//       });
+//       console.log('Task starting soon:', task.title);
+//     });
+//   };
 
-  BackgroundTimer.runBackgroundTimer(checkUpcomingTasks, 6000); // Chạy mỗi 6 giây
+//   BackgroundTimer.runBackgroundTimer(checkUpcomingTasks, 6000); // Chạy mỗi 6 giây
 
-  return () => {
-    BackgroundTimer.stopBackgroundTimer();
-  };
-}, [tasks]);
+//   return () => {
+//     BackgroundTimer.stopBackgroundTimer();
+//   };
+// }, [tasks]);
 
 
   return (
