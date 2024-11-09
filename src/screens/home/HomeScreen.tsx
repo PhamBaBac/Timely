@@ -1,7 +1,16 @@
 import auth, {firebase} from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import {addDays, addMonths, addWeeks, format} from 'date-fns';
-import {ArchiveTick, Category, Flag, Repeat, SearchNormal1, Star1, StarSlash, Trash} from 'iconsax-react-native';
+import {
+  ArchiveTick,
+  Category,
+  Flag,
+  Repeat,
+  SearchNormal1,
+  Star1,
+  StarSlash,
+  Trash,
+} from 'iconsax-react-native';
 import React, {useEffect, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
@@ -88,7 +97,6 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
       })),
     ],
   );
-  
 
   const filteredTasks = tasks.filter(task => {
     if (activeFilter === 'Tất cả') return true;
@@ -287,10 +295,8 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
       return a.startTime.toString().localeCompare(b.startTime.toString());
     }
     return 0;
-  }
-  );
+  });
   console.log('tasksToday', tasksToday);
-
 
   const tasksAfterToday = filteredTasks.filter(task => {
     const taskStartDate = new Date(task.startDate || '');
@@ -340,9 +346,13 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
         )}
       </View>
     );
-      const categoryIcon = categories.find(
-        category => category.name === item.category,
-      )?.icon || (item.category === 'Du lịch' ? 'airplanemode-active' : item.category === 'Sinh nhật' ? 'cake' : '');
+    const categoryIcon =
+      categories.find(category => category.name === item.category)?.icon ||
+      (item.category === 'Du lịch'
+        ? 'airplanemode-active'
+        : item.category === 'Sinh nhật'
+        ? 'cake'
+        : '');
 
     return (
       <Swipeable
@@ -396,22 +406,22 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
                     : 'No start time'}
                   <SpaceComponent width={10} />
                 </Text>
-                <View style={{
-                  flexDirection: 'row',
-                  alignItems: 'center'
-                }}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                  }}>
                   {categoryIcon && (
                     <MaterialIcons
                       name={categoryIcon}
-                      size={16}
-                      color={appColors.gray2}
+                      size={20}
+                      color={appColors.blueViolet}
                     />
                   )}
                   <SpaceComponent width={10} />
                   {item.repeat !== 'no' && (
-                    <Repeat size="16" color={appColors.gray2} />
+                    <Repeat size="16" color={appColors.blueViolet} />
                   )}
-                  
                 </View>
               </View>
               <View>
@@ -592,7 +602,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
             })
           }>
           <Text style={{textDecorationLine: 'underline', textAlign: 'center'}}>
-            Xem tất cả các nhiệm vụ đã hoàn thành
+            Xem tất cả các công việc đã hoàn thành
           </Text>
         </Pressable>
       </ScrollView>
@@ -713,8 +723,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
     marginBottom: 4,
-    justifyContent:'center',
-    
+    justifyContent: 'center',
   },
   swipeActions: {
     flexDirection: 'row',

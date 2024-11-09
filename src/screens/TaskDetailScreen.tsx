@@ -198,7 +198,7 @@ const TaskDetailScreen = ({navigation, route}: any) => {
         </SectionComponent>
         <View style={{marginHorizontal: 10, marginVertical: 20}}>
           <SectionComponent>
-            <TitleComponent text="Nội dung" size={22} />
+            <TitleComponent text="Mô tả công việc" size={22} />
             <CardComponent
               bgColor={appColors.white}
               styles={{
@@ -215,7 +215,7 @@ const TaskDetailScreen = ({navigation, route}: any) => {
           </SectionComponent>
           <SectionComponent>
             <RowComponent>
-              <TitleComponent flex={1} text="Thêm nhiệm vụ phụ" size={20} />
+              <TitleComponent flex={1} text="Thêm công việc phụ" size={20} />
               <TouchableOpacity
                 onPress={() => {
                   setIsVisibleModalSubTask(true);
@@ -251,7 +251,7 @@ const TaskDetailScreen = ({navigation, route}: any) => {
               ))
             ) : (
               <TextComponent
-                text="Không có nhiệm vụ phụ"
+                text="Không có công việc phụ"
                 styles={{
                   textAlign: 'center',
                   color: appColors.gray4,

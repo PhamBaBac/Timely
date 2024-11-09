@@ -40,7 +40,7 @@ const DrawerCustom = ({navigation}: any) => {
     },
     {
       key: 'Logout',
-      title: 'Logout',
+      title: 'Đăng xuất',
       icon: <MaterialIcons name="logout" size={size} color={color} />,
       action: () => handleSingout(),
     },
@@ -95,7 +95,6 @@ const DrawerCustom = ({navigation}: any) => {
     await AsyncStorage.removeItem('completedTasks');
     await AsyncStorage.removeItem('importantTasks');
     await AsyncStorage.removeItem('deletedTasks');
-
   };
 
   return (
