@@ -5,6 +5,7 @@ import {
   Clock,
   Repeat,
   Tag,
+  Star,
 } from 'iconsax-react-native';
 import React, {useEffect, useRef, useState} from 'react';
 import {
@@ -41,6 +42,7 @@ import ModalizeTime from '../modal/ModalizeTime';
 import {CategoryModel} from '../models/categoryModel';
 import {TaskModel} from '../models/taskModel';
 import useCustomStatusBar from '../hooks/useCustomStatusBar';
+import Toggle from '../components/Toggle';
 
 const now = new Date();
 const initValue: TaskModel = {
@@ -99,7 +101,10 @@ const AddNewScreen = ({navigation}: any) => {
   const [selectedTime, setSelectedTime] = useState(new Date());
   const [selectedRepeat, setSelectedRepeat] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [taskDetail, setTaskDetail] = useState<TaskModel>(initValue);
+  const [taskDetail, setTaskDetail] = useState<TaskModel>({
+    ...initValue,
+    isImportant: false,
+  });
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
@@ -110,6 +115,7 @@ const AddNewScreen = ({navigation}: any) => {
   const [subtasks, setSubtasks] = useState<
     {description: string; isCompleted: boolean}[]
   >([]); // Updated state for subtasks
+
   useEffect(() => {
     user && setTaskDetail({...taskDetail, uid: user.uid});
   }, [user]);
@@ -166,7 +172,7 @@ const AddNewScreen = ({navigation}: any) => {
     } else if (
       (taskDetail.repeat === 'week' || taskDetail.repeat === 'month') &&
       taskDetail.repeatDays.length === 0
-    ){
+    ) {
       startDate = selectedDate ? new Date(selectedDate) : new Date();
     }
     const today = new Date();
@@ -180,8 +186,12 @@ const AddNewScreen = ({navigation}: any) => {
     const data = {
       ...taskDetail,
       uid: user?.uid,
-      subtasks, // Include subtasks in the task data
+      subtasks,
       repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat,
+      category: selectedCategory,
+      startDate: startDate.toISOString(),
+      startTime: selectedTime.getTime(),
+      isImportant: taskDetail.isImportant,
     };
 
     const taskRef = firestore().collection('tasks').doc();
@@ -255,7 +265,7 @@ const AddNewScreen = ({navigation}: any) => {
 
   const handleChangeValue = (
     id: string,
-    value: string | Date | number | number[],
+    value: string | Date | number | number[] | boolean,
   ) => {
     setTaskDetail(prevState => ({
       ...prevState,
@@ -410,8 +420,20 @@ const AddNewScreen = ({navigation}: any) => {
           onPress={() => setRepeatModalVisible(true)}>
           <Repeat size={24} color={appColors.primary} />
           <Text style={styles.modalOptionText}>Chọn lặp lại</Text>
-          <Text style={styles.selectedRepeatText}>{selectedRepeat ? selectedRepeat : 'Không'}</Text>  
+          <Text style={styles.selectedRepeatText}>
+            {selectedRepeat ? selectedRepeat : 'Không'}
+          </Text>
         </TouchableOpacity>
+
+        <View style={[styles.option]}>
+          <Star size={24} color={appColors.primary} />
+          <Text style={styles.optionText}>Công việc quan trọng</Text>
+          <Toggle
+            value={taskDetail.isImportant}
+            onValueChange={value => handleChangeValue('isImportant', value)}
+            style={styles.toggleSwitch}
+          />
+        </View>
       </View>
       <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
         <ModalizeDate
@@ -602,6 +624,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
+  // importantOption: {
+  //   backgroundColor: appColors.danger,
+  // },
   optionText: {
     marginLeft: 10,
     fontSize: 16,
@@ -738,6 +763,9 @@ const styles = StyleSheet.create({
   },
   selectedIconOption: {
     borderColor: appColors.primary,
+  },
+  toggleSwitch: {
+    marginLeft: 'auto',
   },
 });
 

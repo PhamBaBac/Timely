@@ -129,7 +129,8 @@ const TaskDetailScreen = ({navigation, route}: any) => {
             borderBottomRightRadius: 20,
             backgroundColor: appColors.primary,
           }}>
-          <RowComponent styles={{alignItems: 'center', justifyContent:'center'}}>
+          <RowComponent
+            styles={{alignItems: 'center', justifyContent: 'center'}}>
             <TouchableOpacity onPress={() => navigation.goBack()}>
               <ArrowLeft2
                 size={28}
@@ -146,7 +147,6 @@ const TaskDetailScreen = ({navigation, route}: any) => {
             />
           </RowComponent>
           <View style={{marginTop: 20, marginHorizontal: 12}}>
-  
             <RowComponent>
               <RowComponent
                 styles={{
@@ -175,6 +175,20 @@ const TaskDetailScreen = ({navigation, route}: any) => {
                   <TextComponent
                     flex={0}
                     text={fomatDate(new Date(taskDetail.startDate || '')) ?? ''}
+                    styles={{color: appColors.white}}
+                  />
+                </RowComponent>
+              )}
+              {taskDetail.category && (
+                <RowComponent
+                  styles={{
+                    justifyContent: 'flex-end',
+                  }}>
+                  <TickSquare size={20} color={appColors.white} />
+                  <SpaceComponent width={4} />
+                  <TextComponent
+                    flex={0}
+                    text={taskDetail.category}
                     styles={{color: appColors.white}}
                   />
                 </RowComponent>
