@@ -23,7 +23,7 @@ interface ModalizeRepeatProps {
   taskDetail: any;
   handleChangeValue: (key: string, value: any) => void;
   setSelectedRepeat: (value: string) => void;
-  startDate: Date; // Thêm startDate vào các props
+  startDate: Date;
 }
 
 const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
@@ -32,9 +32,12 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
   taskDetail,
   handleChangeValue,
   setSelectedRepeat,
-  startDate, // Lấy startDate từ props
+  startDate,
 }) => {
   const modalizeRef = useRef<Modalize>(null);
+  const [isWeek, setIsWeek] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     if (visible) {
@@ -44,11 +47,33 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
     }
   }, [visible]);
 
-  const [isWeek, setIsWeek] = useState(false);
-
-  // Chuyển startDate thành ngày và tháng
   const startDay = startDate.getDate();
-  const startMonth = startDate.getMonth(); // 0-indexed (0 = January)
+  const startMonth = startDate.getMonth();
+
+  const validateRepeatCount = (text: string) => {
+    // Remove any non-numeric characters
+    const numericText = text.replace(/[^0-9]/g, '');
+
+    if (numericText === '') {
+      setIsError(true);
+      setErrorMessage('Vui lòng nhập số lần lặp');
+      handleChangeValue('repeatCount', '');
+      return;
+    }
+
+    const number = parseInt(numericText, 10);
+
+    if (number <= 0) {
+      setIsError(true);
+      setErrorMessage('Số lần lặp phải lớn hơn 0');
+      handleChangeValue('repeatCount', '');
+      return;
+    }
+
+    setIsError(false);
+    setErrorMessage('');
+    handleChangeValue('repeatCount', numericText);
+  };
 
   return (
     <Portal>
@@ -77,6 +102,11 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
                 const newRepeatValue = val ? 'day' : 'no';
                 handleChangeValue('repeat', newRepeatValue);
                 setSelectedRepeat(val ? 'Ngày' : 'Không');
+                if (!val) {
+                  // Reset error state when turning off repeat
+                  setIsError(false);
+                  setErrorMessage('');
+                }
               }}
             />
           </RowComponent>
@@ -116,7 +146,6 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
               onPress={() => {
                 handleChangeValue('repeat', 'week');
                 setIsWeek(true);
-
                 setSelectedRepeat('Tuần');
               }}>
               Hằng tuần
@@ -155,17 +184,22 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
               <TextComponent text="Số lần lặp" />
               <SpaceComponent width={10} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, isError && styles.inputError]}
                 keyboardType="numeric"
-                onChangeText={text => handleChangeValue('repeatCount', text)}
-                value={
-                  taskDetail.repeatCount
-                    ? taskDetail.repeatCount.toString()
-                    : undefined
-                }
+                onChangeText={validateRepeatCount}
+                value={taskDetail.repeatCount?.toString()}
+                placeholder="Nhập số lần lặp"
               />
             </View>
           )}
+          {isError && (
+            <TextComponent
+              text={errorMessage}
+              color={appColors.red}
+              styles={styles.errorText}
+            />
+          )}
+
           {taskDetail.repeat === 'week' && (
             <View>
               <SectionComponent>
@@ -189,7 +223,6 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
                               )
                             : [...(taskDetail.repeatDays || []), index];
                           newRepeatDays.sort((a: number, b: number) => a - b);
-                          console.log('newRepeatDays', newRepeatDays);
                           handleChangeValue('repeatDays', newRepeatDays);
                         }}>
                         <TextComponent text={day} />
@@ -206,8 +239,8 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
                 <TextComponent text="Chọn ngày trong tháng" />
                 <View style={styles.weekDaysContainer}>
                   {[...Array(31).keys()].map((day, index) => {
-                    const actualDay = day + 1; // Tính giá trị ngày thực tế (từ 1 đến 31)
-                    const isValidDay = actualDay >= startDay; // Kiểm tra xem ngày có hợp lệ không
+                    const actualDay = day + 1;
+                    const isValidDay = actualDay >= startDay;
 
                     return (
                       <TouchableOpacity
@@ -216,7 +249,7 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
                           styles.weekDay,
                           taskDetail.repeatDays?.includes(actualDay) &&
                             styles.selectedDay,
-                          !isValidDay && styles.disabledDay, // Vô hiệu hóa ngày trước ngày bắt đầu
+                          !isValidDay && styles.disabledDay,
                         ]}
                         onPress={() => {
                           if (isValidDay) {
@@ -267,6 +300,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     height: 40,
+    width: 50,
+  },
+  inputError: {
+    borderColor: appColors.red,
+  },
+  errorText: {
+    marginLeft: 10,
+    marginBottom: 10,
   },
   weekDaysContainer: {
     flexDirection: 'row',

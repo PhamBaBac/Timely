@@ -93,13 +93,13 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
             style={styles.statBox}
             onPress={() => handleViewTasks(true)}>
             <Text style={styles.statNumber}>{completedTasks}</Text>
-            <Text style={styles.statLabel}>Nhiệm vụ đã hoàn thành</Text>
+            <Text style={styles.statLabel}>Công việc đã hoàn thành</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.statBox}
             onPress={() => handleViewTasks(false)}>
             <Text style={styles.statNumber}>{incompleteTasks}</Text>
-            <Text style={styles.statLabel}>Nhiệm vụ chưa hoàn thành</Text>
+            <Text style={styles.statLabel}>Công việc chưa hoàn thành</Text>
           </TouchableOpacity>
         </View>
 
