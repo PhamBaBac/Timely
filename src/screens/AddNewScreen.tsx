@@ -4,8 +4,9 @@ import {
   Calendar as CalendarIcon,
   Clock,
   Repeat,
+  Sort,
   Tag,
-  Star,
+  TickSquare,
 } from 'iconsax-react-native';
 import React, {useEffect, useRef, useState} from 'react';
 import {
@@ -13,6 +14,7 @@ import {
   FlatList,
   Modal,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TextInputComponent,
@@ -20,9 +22,10 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import {Portal} from 'react-native-portalize';
+import {Modalize} from 'react-native-modalize';
 
 import {format} from 'date-fns';
-import {Modalize} from 'react-native-modalize';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {
   ButtonComponent,
@@ -42,7 +45,6 @@ import ModalizeTime from '../modal/ModalizeTime';
 import {CategoryModel} from '../models/categoryModel';
 import {TaskModel} from '../models/taskModel';
 import useCustomStatusBar from '../hooks/useCustomStatusBar';
-import Toggle from '../components/Toggle';
 
 const now = new Date();
 const initValue: TaskModel = {
@@ -59,6 +61,7 @@ const initValue: TaskModel = {
   category: '',
   isCompleted: false,
   isImportant: false,
+  priority: 'low' as 'low' | 'medium' | 'high',
   createdAt: Date.now(),
   updatedAt: Date.now(),
 };
@@ -101,10 +104,7 @@ const AddNewScreen = ({navigation}: any) => {
   const [selectedTime, setSelectedTime] = useState(new Date());
   const [selectedRepeat, setSelectedRepeat] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [taskDetail, setTaskDetail] = useState<TaskModel>({
-    ...initValue,
-    isImportant: false,
-  });
+  const [taskDetail, setTaskDetail] = useState<TaskModel>(initValue);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
@@ -112,10 +112,12 @@ const AddNewScreen = ({navigation}: any) => {
   const [selectedColor, setSelectedColor] = useState(appColors.primary);
   const [categories, setCategories] = useState<CategoryModel[]>([]);
   const [tempCategory, setTempCategory] = useState('');
+  const [selectedPriority, setSelectedPriority] = useState('');
+  const modalizePriority = useRef<Modalize>(null);
+
   const [subtasks, setSubtasks] = useState<
     {description: string; isCompleted: boolean}[]
   >([]); // Updated state for subtasks
-
   useEffect(() => {
     user && setTaskDetail({...taskDetail, uid: user.uid});
   }, [user]);
@@ -186,12 +188,8 @@ const AddNewScreen = ({navigation}: any) => {
     const data = {
       ...taskDetail,
       uid: user?.uid,
-      subtasks,
+      subtasks, // Include subtasks in the task data
       repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat,
-      category: selectedCategory,
-      startDate: startDate.toISOString(),
-      startTime: selectedTime.getTime(),
-      isImportant: taskDetail.isImportant,
     };
 
     const taskRef = firestore().collection('tasks').doc();
@@ -415,6 +413,123 @@ const AddNewScreen = ({navigation}: any) => {
             </Text>
           </View>
         </TouchableOpacity>
+        <View style={styles.option}>
+          <TickSquare size="22" color={appColors.primary} />
+          <View
+            style={{
+              flexDirection: 'row',
+              flex: 1,
+              justifyContent: 'space-between',
+            }}>
+            <Text style={styles.optionText}>Chọn quan trọng</Text>
+            <SpaceComponent width={10} />
+            <Switch
+              trackColor={{false: appColors.gray, true: appColors.primary}}
+              thumbColor={
+                taskDetail.isImportant ? appColors.primary : appColors.gray2
+              }
+              value={taskDetail.isImportant}
+              onValueChange={val => handleChangeValue('isImportant', val)}
+            />
+          </View>
+        </View>
+        <TouchableOpacity onPress={() => modalizePriority.current?.open()}>
+          <View style={styles.option}>
+            <Sort size="22" color={appColors.primary} />
+            <View
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+              }}>
+              <Text style={styles.optionText}>Chọn mức độ ưu tiên</Text>
+              <SpaceComponent width={10} />
+              <Text
+                style={styles.selectedTimeText}
+                numberOfLines={1}
+                ellipsizeMode="tail">
+                {selectedPriority}
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+        <Portal>
+          <Modalize
+            adjustToContentHeight
+            ref={modalizePriority}
+            onClose={() => {}}>
+            <View
+              style={{
+                padding: 20,
+              }}>
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: 'bold',
+                  color: appColors.text,
+                  textAlign: 'center',
+                  paddingBottom: 10,
+                }}>
+                Chọn mức độ ưu tiên
+              </Text>
+              <TouchableOpacity
+                style={{
+                  paddingVertical: 15,
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#eee',
+                }}
+                onPress={() => {
+                  setSelectedPriority('Thấp');
+                  handleChangeValue('priority', 'low');
+                  modalizePriority.current?.close();
+                }}>
+                <Text
+                  style={{
+                    fontSize: 16,
+                    color: '#666',
+                  }}>
+                  Thấp
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  paddingVertical: 15,
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#eee',
+                }}
+                onPress={() => {
+                  setSelectedPriority('Trung bình');
+                  handleChangeValue('priority', 'medium');
+                  modalizePriority.current?.close();
+                }}>
+                <Text
+                  style={{
+                    fontSize: 16,
+                    color: '#666',
+                  }}>
+                  Trung bình
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  paddingVertical: 15,
+                }}
+                onPress={() => {
+                  setSelectedPriority('Cao');
+                  handleChangeValue('priority', 'high');
+                  modalizePriority.current?.close();
+                }}>
+                <Text
+                  style={{
+                    fontSize: 16,
+                    color: '#666',
+                  }}>
+                  Cao
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Modalize>
+        </Portal>
         <TouchableOpacity
           style={styles.option}
           onPress={() => setRepeatModalVisible(true)}>
@@ -424,16 +539,6 @@ const AddNewScreen = ({navigation}: any) => {
             {selectedRepeat ? selectedRepeat : 'Không'}
           </Text>
         </TouchableOpacity>
-
-        <View style={[styles.option]}>
-          <Star size={24} color={appColors.primary} />
-          <Text style={styles.optionText}>Công việc quan trọng</Text>
-          <Toggle
-            value={taskDetail.isImportant}
-            onValueChange={value => handleChangeValue('isImportant', value)}
-            style={styles.toggleSwitch}
-          />
-        </View>
       </View>
       <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
         <ModalizeDate
@@ -624,9 +729,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  // importantOption: {
-  //   backgroundColor: appColors.danger,
-  // },
   optionText: {
     marginLeft: 10,
     fontSize: 16,
@@ -763,9 +865,6 @@ const styles = StyleSheet.create({
   },
   selectedIconOption: {
     borderColor: appColors.primary,
-  },
-  toggleSwitch: {
-    marginLeft: 'auto',
   },
 });
 

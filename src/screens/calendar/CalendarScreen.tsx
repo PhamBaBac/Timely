@@ -18,7 +18,7 @@ import {useNavigation} from '@react-navigation/native';
 import {DateTime} from '../../utils/DateTime';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {Swipeable} from 'react-native-gesture-handler';
-import {RowComponent} from '../../components';
+import {RowComponent, SpaceComponent} from '../../components';
 import {
   fetchCompletedTasks,
   fetchDeletedTasks,
@@ -26,9 +26,11 @@ import {
   handleDeleteTask,
   handleToggleComplete,
   handleToggleImportant,
+  handleUpdateRepeat,
 } from '../../utils/taskUtil';
 import {useDispatch} from 'react-redux';
 import useCustomStatusBar from '../../hooks/useCustomStatusBar';
+import { Flag, Repeat, Star1, StarSlash, Trash } from 'iconsax-react-native';
 
 // Set Vietnamese locale for the calendar
 LocaleConfig.locales['vi'] = {
@@ -84,6 +86,9 @@ const CalendarScreen = ({navigation}: any) => {
     new Date().toISOString().split('T')[0],
   );
   const tasks = useSelector((state: RootState) => state.tasks.tasks);
+   const categories = useSelector(
+     (state: RootState) => state.categories.categories,
+   );
   const [filteredTasks, setFilteredTasks] = useState<TaskModel[]>([]);
   const [markedDates, setMarkedDates] = useState<{[key: string]: any}>({});
 
@@ -133,12 +138,15 @@ const CalendarScreen = ({navigation}: any) => {
   const handleHighlight = async (taskId: string) => {
     handleToggleImportant(taskId, tasks, dispatch);
   };
+  const handleUpdateRepeatTask = (taskId: string) => {
+    handleUpdateRepeat(taskId);
+  };
 
   const formatTime = (date: Date) => {
     return format(date, 'HH:mm');
   };
   const fomatDate = (date: Date) => {
-    return format(date, 'dd/MM');
+    return format(date, 'dd/MM/yyyy');
   };
   const renderTask = (item: TaskModel) => {
     if (!item) return null;
@@ -148,18 +156,28 @@ const CalendarScreen = ({navigation}: any) => {
         <Pressable
           style={styles.swipeActionButton}
           onPress={() => handleDelete(item.id, item.repeatCount)}>
-          <MaterialIcons name="delete" size={24} color={appColors.red} />
+          <Trash size={24} color={appColors.red} variant="Bold" />
+
           <Text style={styles.actionText}>Xóa</Text>
         </Pressable>
 
         {item.repeat !== 'no' && (
-          <Pressable style={styles.swipeActionButton}>
-            <MaterialIcons name="repeat" size={24} color={appColors.blue} />
+          <Pressable
+            style={styles.swipeActionButton}
+            onPress={() => handleUpdateRepeatTask(item.id)}>
+            <Repeat size={24} color={appColors.blue} />
             <Text style={styles.actionText}>Bỏ lặp lại</Text>
           </Pressable>
         )}
       </View>
     );
+const categoryIcon =
+  categories.find(category => category.name === item.category)?.icon ||
+  (item.category === 'Du lịch'
+    ? 'airplanemode-active'
+    : item.category === 'Sinh nhật'
+    ? 'cake'
+    : '');
 
     return (
       <Swipeable
@@ -201,6 +219,7 @@ const CalendarScreen = ({navigation}: any) => {
                   ]}>
                   {item.title ? item.title : item.description}
                 </Text>
+
                 <Text style={styles.taskDate}>
                   {item.dueDate
                     ? fomatDate(new Date(item.startDate || ''))
@@ -209,18 +228,48 @@ const CalendarScreen = ({navigation}: any) => {
                   {item.startTime
                     ? formatTime(item.startTime)
                     : 'No start time'}
+                  <SpaceComponent width={10} />
                 </Text>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                  }}>
+                  {categoryIcon && (
+                    <MaterialIcons
+                      name={categoryIcon}
+                      size={16}
+                      color={appColors.gray2}
+                    />
+                  )}
+                  <SpaceComponent width={10} />
+                  {item.repeat !== 'no' && (
+                    <Repeat size="16" color={appColors.gray2} />
+                  )}
+                </View>
               </View>
+              <View>
+                {item.priority === 'low' && (
+                  <Flag size="24" color={appColors.green} variant="Bold" />
+                )}
+                {item.priority === 'medium' && (
+                  <Flag size="24" color={appColors.yellow} variant="Bold" />
+                )}
+                {item.priority === 'high' && (
+                  <Flag size="24" color={appColors.red} variant="Bold" />
+                )}
+              </View>
+              <SpaceComponent width={10} />
               <Pressable
                 style={{
                   paddingRight: 40,
                 }}
                 onPress={() => handleHighlight(item.id)}>
-                <MaterialIcons
-                  name="star"
-                  size={24}
-                  color={item.isImportant ? appColors.yellow : appColors.gray2}
-                />
+                {item.isImportant ? (
+                  <Star1 size={24} color="#FF8A65" />
+                ) : (
+                  <StarSlash size={24} color="#FF8A65" />
+                )}
               </Pressable>
             </RowComponent>
           </View>
@@ -312,6 +361,7 @@ const styles = StyleSheet.create({
   taskDate: {
     fontSize: 14,
     marginTop: 4,
+    marginBottom: 4,
   },
   swipeActions: {
     flexDirection: 'row',
