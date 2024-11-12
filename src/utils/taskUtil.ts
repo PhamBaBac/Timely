@@ -70,7 +70,7 @@ export const handleDeleteTask = async (
             dispatch(deleteTask(taskId));
 
             const remainingTasks: string[] = deletedTasks.filter((id: string) => id.startsWith(taskId.split('-')[0]));
-            console.log('Remaining tasks:', remainingTasks);
+
             if (remainingTasks.length === repeatCount - 1) {
               await firestore().collection('tasks').doc(taskId.split('-')[0]).delete();
             }

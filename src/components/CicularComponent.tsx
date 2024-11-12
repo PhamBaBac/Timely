@@ -30,7 +30,6 @@ const CicularComponent = ({tasks = []}: Props) => {
     categoryData['Khác'] = otherCount;
   }
 
-  console.log('categoryData', categoryData);
 
   const series = Object.values(categoryData);
 
