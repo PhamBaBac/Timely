@@ -11,8 +11,6 @@ export class HandleUser {
         ? user.email.split('@')[0]
         : '',
     };
-    console.log(data);
-
     try {
       await firestore()
         .doc(`users/${user.uid}`)

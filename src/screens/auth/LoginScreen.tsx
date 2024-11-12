@@ -25,7 +25,6 @@ const LoginScreen = ({navigation}: any) => {
           const user = userCredential.user;
 
           if (user) {
-            console.log(user);
             setIsLoading(false);
           }
         })
