@@ -18,7 +18,7 @@ const AppRouters = () => {
     auth().onAuthStateChanged(user => {
       user ? setIsLogin(true) : setIsLogin(false);
     });
-    HandleNotification.getAccessToken();
+    // HandleNotification.getAccessToken();
     messaging().onNotificationOpenedApp((mess: any) => {});
     const timeout = setTimeout(() => {
       setIsShowSplash(false);
