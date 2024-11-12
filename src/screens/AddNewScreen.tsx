@@ -108,7 +108,6 @@ const AddNewScreen = ({navigation}: any) => {
   const [selectedTime, setSelectedTime] = useState(new Date());
   const [selectedRepeat, setSelectedRepeat] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  console.log('selectedCategory', selectedCategory);
   const [taskDetail, setTaskDetail] = useState<TaskModel>(initValue);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -116,7 +115,6 @@ const AddNewScreen = ({navigation}: any) => {
   const [selectedIcon, setSelectedIcon] = useState(availableIcons[0]);
   const [selectedColor, setSelectedColor] = useState(appColors.primary);
   const [categories, setCategories] = useState<CategoryModel[]>([]);
-  console.log('categories', categories);
   const [tempCategory, setTempCategory] = useState('');
   const [selectedPriority, setSelectedPriority] = useState('');
   const modalizePriority = useRef<Modalize>(null);

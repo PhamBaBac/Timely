@@ -24,7 +24,6 @@ import {format} from 'date-fns';
 const IsCompleTaskScreen = ({route}: any) => {
   useCustomStatusBar('dark-content', appColors.lightPurple);
   const {tasks}: {tasks: TaskModel[]} = route.params;
-  console.log('tasks', tasks);
   const formatTime = (date: Date) => {
     return format(date, 'HH:mm');
   };
