@@ -289,7 +289,6 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     return 0;
   }
   );
-  console.log('tasksToday', tasksToday);
 
 
   const tasksAfterToday = filteredTasks.filter(task => {
