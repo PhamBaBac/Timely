@@ -11,25 +11,29 @@ interface Task {
 }
 
 interface Props {
-  tasks?: Task[]; // Đảm bảo tasks có thể undefined
+  tasks?: Task[]; 
 }
 
 const CicularComponent = ({tasks = []}: Props) => {
-  // Nhóm tasks theo danh mục
   const categoryData = tasks.reduce((acc: {[key: string]: number}, task) => {
     if (!task.isCompleted) {
-      const category = task.category || 'Không có danh mục';
+      const category = task.category || 'Khác';
       acc[category] = (acc[category] || 0) + 1;
     }
     return acc;
   }, {});
 
+ 
+  if (categoryData['Khác']) {
+    const otherCount = categoryData['Khác'];
+    delete categoryData['Khác'];
+    categoryData['Khác'] = otherCount;
+  }
+
   console.log('categoryData', categoryData);
 
-  // Tạo một mảng chứa số lượng task cho mỗi danh mục
   const series = Object.values(categoryData);
 
-  // Tạo mảng màu ngẫu nhiên không trùng nhau
   const generateShadeOfColor = (baseColor: string, factor: number) => {
     const hex = baseColor.replace('#', '');
     const r = parseInt(hex.substring(0, 2), 16);

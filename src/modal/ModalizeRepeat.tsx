@@ -1,21 +1,30 @@
-import React, {useRef, useEffect, useState} from 'react';
 import {
-  View,
+  differenceInDays,
+  differenceInMonths,
+  format
+} from 'date-fns';
+import {
+  Calendar1,
+  Calendar as CalendarIcon
+} from 'iconsax-react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
+  View
 } from 'react-native';
-import {Portal} from 'react-native-portalize';
-import {Modalize} from 'react-native-modalize';
+import { Switch } from 'react-native-gesture-handler';
+import { Modalize } from 'react-native-modalize';
+import { Portal } from 'react-native-portalize';
 import {
   RowComponent,
   SectionComponent,
   SpaceComponent,
   TextComponent,
 } from '../components';
-import {appColors} from '../constants';
-import {Switch} from 'react-native-gesture-handler';
+import { appColors } from '../constants';
+import ModalizeDate from './modalizaDate';
 
 interface ModalizeRepeatProps {
   visible: boolean;
@@ -36,6 +45,9 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
 }) => {
   const modalizeRef = useRef<Modalize>(null);
 
+
+  const [visibleEndDate, setVisibleEndDate] = useState(false);
+
   useEffect(() => {
     if (visible) {
       modalizeRef.current?.open();
@@ -43,12 +55,50 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
       modalizeRef.current?.close();
     }
   }, [visible]);
+   const fomatDate = (date: Date) => {
+     return format(date, 'dd/MM/yyyy');
+   };
 
   const [isWeek, setIsWeek] = useState(false);
 
-  // Chuyển startDate thành ngày và tháng
+  
   const startDay = startDate.getDate();
-  const startMonth = startDate.getMonth(); // 0-indexed (0 = January)
+
+  const calculateRepeatCount = (
+    endDate: Date,
+    intervalType: 'day' | 'week' | 'month',
+  ) => {
+    
+    const normalizedStartDate = new Date(startDate);
+    normalizedStartDate.setHours(0, 0, 0, 0);
+
+    const normalizedEndDate = new Date(endDate);
+    normalizedEndDate.setHours(0, 0, 0, 0); 
+
+    if (intervalType === 'day') {
+      const daysDifference = differenceInDays(
+        normalizedEndDate,
+        normalizedStartDate,
+      );
+      console.log('Days Difference:', daysDifference);
+      return daysDifference + 1; // Add 1 to include the start day
+    } else if (intervalType === 'week') {
+      const weeksDifference = Math.floor(
+        differenceInDays(normalizedEndDate, normalizedStartDate) / 7,
+      );
+      console.log('Weeks Difference:', weeksDifference);
+      return weeksDifference + 1; // Include the first week
+    } else if (intervalType === 'month') {
+      const monthsDifference = differenceInMonths(
+        normalizedEndDate,
+        normalizedStartDate,
+      );
+      console.log('Months Difference:', monthsDifference);
+      return monthsDifference + 1; // Include the first month
+    }
+    return 0;
+  };
+
 
   return (
     <Portal>
@@ -145,59 +195,118 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
           </View>
           <SpaceComponent height={20} />
           {taskDetail.repeat !== 'no' && (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                marginBottom: 20,
-                marginHorizontal: 10,
-              }}>
-              <TextComponent text="Số lần lặp" />
-              <SpaceComponent width={10} />
-              <TextInput
-                style={styles.input}
-                keyboardType="numeric"
-                onChangeText={text => handleChangeValue('repeatCount', text)}
-                value={
-                  taskDetail.repeatCount
-                    ? taskDetail.repeatCount.toString()
-                    : undefined
-                }
+            <>
+              <TouchableOpacity
+                onPress={() => {
+                  setVisibleEndDate(true);
+                }}>
+                <RowComponent>
+                  <CalendarIcon size={24} color={appColors.primary} />
+                  <TextComponent
+                    text="Chọn ngày kết thúc:"
+                    color={appColors.text}
+                    styles={{
+                      fontSize: 16,
+                      fontWeight: 'bold',
+                      color: appColors.text,
+                      flex: 1,
+                      textAlign: 'left',
+                      paddingLeft: 10,
+                    }}
+                  />
+                  <TextComponent
+                    text={
+                      taskDetail.endDate
+                        ? fomatDate(new Date(taskDetail.endDate))
+                        : ''
+                    }
+                    styles={{
+                      fontSize: 16,
+                      color: appColors.black,
+                      textAlign: 'left',
+                      paddingLeft: 16,
+                    }}
+                  />
+                </RowComponent>
+              </TouchableOpacity>
+              <ModalizeDate
+                visible={visibleEndDate}
+                onClose={() => {
+                  setVisibleEndDate(false);
+                }}
+                selectedDate={taskDetail.endDate}
+                onDateChange={date => {
+                  handleChangeValue('endDate', date);
+                  const repeatCount = calculateRepeatCount(
+                    date,
+                    taskDetail.repeat,
+                  );
+                  handleChangeValue('repeatCount', repeatCount);
+                }}
+                taskDetail={taskDetail}
               />
-            </View>
+            </>
           )}
+          <SpaceComponent height={20} />
           {taskDetail.repeat === 'week' && (
             <View>
-              <SectionComponent>
-                <TextComponent text="Chọn ngày trong tuần" />
-                <View style={styles.weekDaysContainer}>
-                  {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map(
-                    (day, index) => (
-                      <TouchableOpacity
-                        key={index}
-                        style={[
-                          styles.weekDay,
-                          taskDetail.repeatDays?.includes(index) &&
-                            styles.selectedDay,
-                        ]}
-                        onPress={() => {
-                          const newRepeatDays = taskDetail.repeatDays?.includes(
-                            index,
-                          )
-                            ? taskDetail.repeatDays.filter(
-                                (d: number) => d !== index,
-                              )
-                            : [...(taskDetail.repeatDays || []), index];
-                          newRepeatDays.sort((a: number, b: number) => a - b);
-                          console.log('newRepeatDays', newRepeatDays);
-                          handleChangeValue('repeatDays', newRepeatDays);
-                        }}>
-                        <TextComponent text={day} />
-                      </TouchableOpacity>
-                    ),
-                  )}
-                </View>
-              </SectionComponent>
+              <RowComponent>
+                <Calendar1 size={24} color={appColors.primary} />
+                <TextComponent
+                  text="Chọn ngày trong tuần:"
+                  color={appColors.text}
+                  styles={{
+                    fontSize: 16,
+                    fontWeight: 'bold',
+                    color: appColors.text,
+                    flex: 1,
+                    textAlign: 'left',
+                    paddingLeft: 10,
+                  }}
+                />
+               
+                <TextComponent
+                  text={
+                    taskDetail.repeatDays
+                      ?.map((day: number) => ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][day])
+                      .join(', ') || ''
+                  }
+                  styles={{
+                    fontSize: 16,
+                    color: appColors.black,
+                    textAlign: 'left',
+                    paddingLeft: 16,
+                  }}
+                />
+              </RowComponent>
+              <SpaceComponent height={10} />
+              <View style={styles.weekDaysContainer}>
+                {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map(
+                  (day, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.weekDay,
+                        taskDetail.repeatDays?.includes(index) &&
+                          styles.selectedDay,
+                      ]}
+                      onPress={() => {
+                        const newRepeatDays = taskDetail.repeatDays?.includes(
+                          index,
+                        )
+                          ? taskDetail.repeatDays.filter(
+                              (d: number) => d !== index,
+                            )
+                          : [...(taskDetail.repeatDays || []), index];
+                        newRepeatDays.sort((a: number, b: number) => a - b);
+                        console.log('newRepeatDays', newRepeatDays);
+                        handleChangeValue('repeatDays', newRepeatDays);
+                      }}>
+                      <TextComponent text={day} />
+                    </TouchableOpacity>
+                  ),
+                )}
+              </View>
             </View>
           )}
           {taskDetail.repeat === 'month' && (
