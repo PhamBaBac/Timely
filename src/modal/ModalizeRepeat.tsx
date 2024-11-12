@@ -80,20 +80,17 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
         normalizedEndDate,
         normalizedStartDate,
       );
-      console.log('Days Difference:', daysDifference);
       return daysDifference + 1; // Add 1 to include the start day
     } else if (intervalType === 'week') {
       const weeksDifference = Math.floor(
         differenceInDays(normalizedEndDate, normalizedStartDate) / 7,
       );
-      console.log('Weeks Difference:', weeksDifference);
       return weeksDifference + 1; // Include the first week
     } else if (intervalType === 'month') {
       const monthsDifference = differenceInMonths(
         normalizedEndDate,
         normalizedStartDate,
       );
-      console.log('Months Difference:', monthsDifference);
       return monthsDifference + 1; // Include the first month
     }
     return 0;
@@ -299,7 +296,6 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
                             )
                           : [...(taskDetail.repeatDays || []), index];
                         newRepeatDays.sort((a: number, b: number) => a - b);
-                        console.log('newRepeatDays', newRepeatDays);
                         handleChangeValue('repeatDays', newRepeatDays);
                       }}>
                       <TextComponent text={day} />

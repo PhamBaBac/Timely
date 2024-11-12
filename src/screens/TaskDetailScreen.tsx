@@ -47,7 +47,6 @@ const TaskDetailScreen = ({navigation, route}: any) => {
   const [taskDetail, setTaskDetail] = useState<TaskModel>();
   const [progress, setProgress] = useState(0);
   const [subTasks, setSubTasks] = useState<SubTask[]>([]);
-  console.log('subTasks', subTasks);
   const [isVisibleModalSubTask, setIsVisibleModalSubTask] = useState(false);
   const tasks = useSelector((state: RootState) => state.tasks.tasks);
    const categories = useSelector(
@@ -103,7 +102,6 @@ const TaskDetailScreen = ({navigation, route}: any) => {
               id: item.id,
               ...item.data(),
             });
-            console.log('item', item.data());
           });
           setSubTasks(items);
         }
