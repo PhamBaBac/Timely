@@ -8,7 +8,7 @@ import ButtonComponent from '../components/ButtonComponent';
 import TitleComponent from '../components/TitleComponent';
 import InputComponent from '../components/InputComponent';
 import firestore from '@react-native-firebase/firestore';
-import { appColors } from '../constants';
+import {appColors} from '../constants';
 
 interface Props {
   visible: boolean;
@@ -95,7 +95,7 @@ const ModalAddSubTask = (props: Props) => {
               <ButtonComponent
                 text="Lưu"
                 onPress={handleSaveToDatabase}
-                type='primary'
+                type="primary"
               />
             </View>
           </RowComponent>

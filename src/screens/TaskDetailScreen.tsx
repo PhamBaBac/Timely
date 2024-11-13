@@ -49,9 +49,9 @@ const TaskDetailScreen = ({navigation, route}: any) => {
   const [subTasks, setSubTasks] = useState<SubTask[]>([]);
   const [isVisibleModalSubTask, setIsVisibleModalSubTask] = useState(false);
   const tasks = useSelector((state: RootState) => state.tasks.tasks);
-   const categories = useSelector(
-     (state: RootState) => state.categories.categories,
-   );
+  const categories = useSelector(
+    (state: RootState) => state.categories.categories,
+  );
   useEffect(() => {
     getTaskDetail();
     getSubTaskById();
@@ -94,7 +94,7 @@ const TaskDetailScreen = ({navigation, route}: any) => {
       .where('taskId', '==', id)
       .onSnapshot(snap => {
         if (snap.empty) {
-           setSubTasks([]);
+          setSubTasks([]);
         } else {
           const items: SubTask[] = [];
           snap.forEach((item: any) => {
@@ -124,9 +124,7 @@ const TaskDetailScreen = ({navigation, route}: any) => {
     } catch (error) {
       console.log(error);
     }
-  }
-
-  
+  };
 
   const formatTime = (date: Date) => {
     return format(date, 'HH:mm');
@@ -295,19 +293,19 @@ const TaskDetailScreen = ({navigation, route}: any) => {
 
             <TouchableOpacity>
               <TextComponent
-              text={
-                taskDetail.repeat === 'day'
-                ? 'Ngày'
-                : taskDetail.repeat === 'week'
-                ? 'Tuần'
-                : taskDetail.repeat === 'month'
-                ? 'Tháng'
-                : 'Không'
-              }
-              size={18}
-              styles={{
-                color: appColors.black,
-              }}
+                text={
+                  taskDetail.repeat === 'day'
+                    ? 'Ngày'
+                    : taskDetail.repeat === 'week'
+                    ? 'Tuần'
+                    : taskDetail.repeat === 'month'
+                    ? 'Tháng'
+                    : 'Không'
+                }
+                size={18}
+                styles={{
+                  color: appColors.black,
+                }}
               />
             </TouchableOpacity>
           </RowComponent>

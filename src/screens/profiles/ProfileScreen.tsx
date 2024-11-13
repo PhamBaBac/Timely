@@ -3,6 +3,8 @@ import React, {useEffect, useState} from 'react';
 import {
   Dimensions,
   FlatList,
+  Modal,
+  Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -23,9 +25,23 @@ import useCustomStatusBar from '../../hooks/useCustomStatusBar';
 const ProfileScreen = ({navigation}: {navigation: any}) => {
   useCustomStatusBar('dark-content', appColors.lightPurple);
 
-  const currentUser = auth().currentUser?.email;
+  const currentUser =
+    auth().currentUser?.displayName || auth().currentUser?.email;
   const [completedTasks, setCompletedTasks] = useState(0);
   const [incompleteTasks, setIncompleteTasks] = useState(0);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState('all');
+
+  const timeOptions = [
+    {label: 'Tất cả', value: 'all'},
+    {label: '7 Ngày', value: '7'},
+    {label: '30 Ngày', value: '30'},
+  ];
+
+  const handlePeriodSelect = (value: string) => {
+    setSelectedPeriod(value);
+    setModalVisible(false);
+  };
 
   const getWeekRange = (offset: number) => {
     const today = new Date();
@@ -92,15 +108,51 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
             style={styles.statBox}
             onPress={() => handleViewTasks(true)}>
             <Text style={styles.statNumber}>{completedTasks}</Text>
-            <Text style={styles.statLabel}>Nhiệm vụ đã hoàn thành</Text>
+            <Text style={styles.statLabel}>Công việc đã hoàn thành</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.statBox}
             onPress={() => handleViewTasks(false)}>
             <Text style={styles.statNumber}>{incompleteTasks}</Text>
-            <Text style={styles.statLabel}>Nhiệm vụ chưa hoàn thành</Text>
+            <Text style={styles.statLabel}>Công việc chưa hoàn thành</Text>
           </TouchableOpacity>
         </View>
+        <View style={styles.periodWrapper}>
+          <TouchableOpacity
+            style={styles.periodSelector}
+            onPress={() => setModalVisible(true)}>
+            <Text style={styles.periodSelectorText}>
+              {timeOptions.find(option => option.value === selectedPeriod)
+                ?.label || 'Tất cả'}
+            </Text>
+            <MaterialIcons name="arrow-drop-down" size={24} color="#000" />
+          </TouchableOpacity>
+        </View>
+
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={() => setModalVisible(false)}>
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setModalVisible(false)}>
+            <View style={styles.modalContent}>
+              {timeOptions.map((option, index) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.modalOption,
+                    index !== timeOptions.length - 1 &&
+                      styles.modalOptionBorder,
+                  ]}
+                  onPress={() => handlePeriodSelect(option.value)}>
+                  <Text style={styles.modalOptionText}>{option.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Pressable>
+        </Modal>
 
         <RowComponent>
           <TextComponent
@@ -255,7 +307,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#000',
+    backgroundColor: appColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 20,
@@ -315,6 +367,50 @@ const styles = StyleSheet.create({
     color: '#888',
     textAlign: 'center',
     marginTop: 20,
+  },
+  periodWrapper: {
+    alignItems: 'flex-end',
+    marginBottom: 10,
+    paddingRight: 10,
+  },
+  periodSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: appColors.white,
+    paddingHorizontal: 8, // Adjusted padding
+    paddingVertical: 4, // Adjusted padding
+    borderRadius: 8,
+  },
+  periodSelectorText: {
+    color: '#000',
+    marginRight: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center', // Center the modal vertically
+    alignItems: 'flex-end', // Align the modal to the right
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    width: '40%', // Adjust the width as needed
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginRight: 10, // Adjust the margin to position the modal next to the selector
+    marginTop: -180, // Move the modal slightly higher
+  },
+  modalOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  modalOptionBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+  },
+  modalOptionText: {
+    fontSize: 16,
+    color: '#000',
+    textAlign: 'center',
   },
 });
 

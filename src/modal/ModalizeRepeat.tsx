@@ -1,29 +1,17 @@
-import {
-  differenceInDays,
-  differenceInMonths,
-  format
-} from 'date-fns';
-import {
-  Calendar1,
-  Calendar as CalendarIcon
-} from 'iconsax-react-native';
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
-} from 'react-native';
-import { Switch } from 'react-native-gesture-handler';
-import { Modalize } from 'react-native-modalize';
-import { Portal } from 'react-native-portalize';
+import {differenceInDays, differenceInMonths, format} from 'date-fns';
+import {Calendar1, Calendar as CalendarIcon} from 'iconsax-react-native';
+import React, {useEffect, useRef, useState} from 'react';
+import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {Switch} from 'react-native-gesture-handler';
+import {Modalize} from 'react-native-modalize';
+import {Portal} from 'react-native-portalize';
 import {
   RowComponent,
   SectionComponent,
   SpaceComponent,
   TextComponent,
 } from '../components';
-import { appColors } from '../constants';
+import {appColors} from '../constants';
 import ModalizeDate from './modalizaDate';
 
 interface ModalizeRepeatProps {
@@ -45,7 +33,6 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
 }) => {
   const modalizeRef = useRef<Modalize>(null);
 
-
   const [visibleEndDate, setVisibleEndDate] = useState(false);
 
   useEffect(() => {
@@ -55,25 +42,23 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
       modalizeRef.current?.close();
     }
   }, [visible]);
-   const fomatDate = (date: Date) => {
-     return format(date, 'dd/MM/yyyy');
-   };
+  const fomatDate = (date: Date) => {
+    return format(date, 'dd/MM/yyyy');
+  };
 
   const [isWeek, setIsWeek] = useState(false);
 
-  
   const startDay = startDate.getDate();
 
   const calculateRepeatCount = (
     endDate: Date,
     intervalType: 'day' | 'week' | 'month',
   ) => {
-    
     const normalizedStartDate = new Date(startDate);
     normalizedStartDate.setHours(0, 0, 0, 0);
 
     const normalizedEndDate = new Date(endDate);
-    normalizedEndDate.setHours(0, 0, 0, 0); 
+    normalizedEndDate.setHours(0, 0, 0, 0);
 
     if (intervalType === 'day') {
       const daysDifference = differenceInDays(
@@ -95,7 +80,6 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
     }
     return 0;
   };
-
 
   return (
     <Portal>
@@ -261,11 +245,14 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
                     paddingLeft: 10,
                   }}
                 />
-               
+
                 <TextComponent
                   text={
                     taskDetail.repeatDays
-                      ?.map((day: number) => ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][day])
+                      ?.map(
+                        (day: number) =>
+                          ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][day],
+                      )
                       .join(', ') || ''
                   }
                   styles={{

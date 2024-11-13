@@ -79,7 +79,7 @@ const IsCompleTaskScreen = ({route}: any) => {
   );
 
   return (
-    <Container back isScroll title="Nhiệm vụ đã hoàn thành">
+    <Container back isScroll title="Công việc đã hoàn thành">
       <ScrollView>
         {Object.entries(
           tasks

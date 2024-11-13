@@ -577,14 +577,15 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
             marginLeft: 10,
           }}>
           {!isDeleteAll ? (
-            <Pressable style={{flexDirection: 'row', alignItems: 'center'}}
+            <Pressable
+              style={{flexDirection: 'row', alignItems: 'center'}}
               onPress={() => {
                 const allTaskIds = tasks.map(task => task.id);
                 setSelectedTaskIds(allTaskIds);
                 setIsDeleteAll(true);
               }}>
               <TickSquare size={24} color={appColors.primary} />
-              <SpaceComponent width={5} />  
+              <SpaceComponent width={5} />
               <Text style={{color: appColors.black}}>Nhấn để chọn tất cả</Text>
             </Pressable>
           ) : (
