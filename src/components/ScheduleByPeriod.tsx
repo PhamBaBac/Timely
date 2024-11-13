@@ -1,22 +1,22 @@
 import React from 'react';
-import {View, Text, StyleSheet, ScrollView} from 'react-native';
-import {ScheduleItem} from './ScheduleItemProps '; // Fix the import statement
+import {View, Text, StyleSheet} from 'react-native';
+import {ScheduleItem} from './ScheduleItemProps ';
 
 const TIME_PERIODS = {
   MORNING: {
     name: 'Buổi sáng',
     periods: ['1-3', '4-6'],
-    color: '#E3F2FD',
+    color: '#E8F5E9', // Light green
   },
   AFTERNOON: {
     name: 'Buổi chiều',
     periods: ['7-9', '10-12'],
-    color: '#FFF3E0',
+    color: '#FFF3E0', // Light orange
   },
   EVENING: {
     name: 'Buổi tối',
     periods: ['13-15'],
-    color: '#F3E5F5',
+    color: '#E1BEE7', // Light purple
   },
 };
 
@@ -37,7 +37,7 @@ interface Schedule {
   room: string;
   instructor: string;
   isExam: boolean;
-  day: Date; // Added missing property
+  day: Date;
 }
 
 interface ScheduleByPeriodProps {
@@ -49,7 +49,6 @@ const ScheduleByPeriod = ({
   schedules,
   onSchedulePress,
 }: ScheduleByPeriodProps) => {
-  // Group schedules by time period
   const groupedSchedules = React.useMemo(() => {
     const groups: {[key: string]: Schedule[]} = {
       MORNING: [],
@@ -64,7 +63,6 @@ const ScheduleByPeriod = ({
       }
     });
 
-    // Sort within each group by period
     Object.keys(groups).forEach(key => {
       groups[key].sort((a, b) => {
         const periodA = parseInt(a.period.split('-')[0]);
@@ -76,78 +74,127 @@ const ScheduleByPeriod = ({
     return groups;
   }, [schedules]);
 
+  const renderTableHeader = () => (
+    <View style={styles.tableHeader}>
+      <Text style={[styles.headerCell, {flex: 2}]}>Thời gian</Text>
+      <Text style={[styles.headerCell, {flex: 3}]}>Môn học</Text>
+      <Text style={[styles.headerCell, {flex: 2}]}>Phòng</Text>
+      <Text style={[styles.headerCell, {flex: 3}]}>Giảng viên</Text>
+    </View>
+  );
+
+  const renderScheduleRow = (schedule: Schedule) => (
+    <View
+      key={schedule.id}
+      style={[
+        styles.tableRow,
+        schedule.isExam && styles.examRow,
+        {
+          backgroundColor:
+            TIME_PERIODS[getPeriodCategory(schedule.period)!].color,
+        },
+      ]}
+      onTouchEnd={() => onSchedulePress(schedule)}>
+      <Text style={[styles.cell, {flex: 2}]}>Tiết {schedule.period}</Text>
+      <Text style={[styles.cell, {flex: 3}]}>
+        {schedule.course}
+        {schedule.isExam && ' (Thi)'}
+      </Text>
+      <Text style={[styles.cell, {flex: 2}]}>{schedule.room}</Text>
+      <Text style={[styles.cell, {flex: 3}]}>{schedule.instructor}</Text>
+    </View>
+  );
+
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
       {Object.entries(TIME_PERIODS).map(([key, period]) => (
         <View
           key={key}
           style={[styles.periodSection, {backgroundColor: period.color}]}>
           <View style={styles.periodHeader}>
-            <Text style={styles.periodTitle}>{period.name}</Text>
-            <Text style={styles.periodTime}>
-              {`(Tiết ${period.periods.join(', ')})`}
+            <Text style={styles.periodTitle}>
+              {period.name} (Tiết {period.periods.join(', ')})
             </Text>
           </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.scheduleList}>
+          <View style={styles.tableContainer}>
+            {renderTableHeader()}
             {groupedSchedules[key].length > 0 ? (
-              groupedSchedules[key].map((schedule, index) => (
-                <View
-                  key={`${schedule.id}-${index}`}
-                  style={styles.scheduleItem}>
-                  <ScheduleItem item={schedule} onPress={onSchedulePress} />
-                </View>
-              ))
+              groupedSchedules[key].map(schedule => renderScheduleRow(schedule))
             ) : (
-              <Text style={styles.emptyText}>Không có lịch học</Text>
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>Không có lịch học</Text>
+              </View>
             )}
-          </ScrollView>
+          </View>
         </View>
       ))}
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    padding: 16,
   },
   periodSection: {
-    marginVertical: 8,
-    marginHorizontal: 16,
+    marginBottom: 16,
     borderRadius: 12,
-    padding: 12,
+    overflow: 'hidden',
   },
   periodHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
+    padding: 12,
+    backgroundColor: 'rgba(0,0,0,0.1)',
   },
   periodTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
+    textAlign: 'center',
   },
-  periodTime: {
+  tableContainer: {
+    backgroundColor: 'white',
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#f5f5f5',
+    padding: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  headerCell: {
+    fontWeight: 'bold',
     fontSize: 14,
-    color: '#666',
-    marginLeft: 8,
+    color: '#333',
+    textAlign: 'center',
   },
-  scheduleList: {
-    paddingVertical: 8,
+  tableRow: {
+    flexDirection: 'row',
+    padding: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
-  scheduleItem: {
-    width: 300,
-    marginRight: 12,
+  examRow: {
+    borderWidth: 2,
+    borderColor: '#FF5722',
+    borderRadius: 8,
+    marginHorizontal: 4,
+    marginVertical: 2,
+  },
+  cell: {
+    fontSize: 14,
+    color: '#444',
+    textAlign: 'center',
+    padding: 4,
+  },
+  emptyContainer: {
+    padding: 16,
+    alignItems: 'center',
   },
   emptyText: {
     color: '#666',
     fontStyle: 'italic',
-    textAlign: 'center',
-    paddingVertical: 12,
   },
 });
 

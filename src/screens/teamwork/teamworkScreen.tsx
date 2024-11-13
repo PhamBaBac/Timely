@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import {addDays, isBefore} from 'date-fns';
+import {addDays, format, isBefore} from 'date-fns';
 import {ScheduleHeader} from '../../components/ScheduleHeader';
 import {WeekNavigator} from '../../components/WeekNavigator';
 import {ScheduleDayItem} from '../../components/ScheduleDayItem';
@@ -152,6 +152,55 @@ const Teamwork = () => {
     [],
   );
 
+  const checkScheduleConflict = useCallback(
+    (scheduleToCheck: ScheduleModel) => {
+      // Get all dates between start and end date
+      const dates = calculateRepeatedDates(
+        scheduleToCheck.startDate,
+        scheduleToCheck.endDate,
+      );
+
+      // Check each date for conflicts
+      for (const date of dates) {
+        const dateString = date.toISOString().split('T')[0];
+        const formattedDate = format(date, 'dd/MM/yyyy');
+
+        // Find schedules on this date
+        const schedulesOnDate = schedules.flatMap(schedule => {
+          const repeatedDates = calculateRepeatedDates(
+            schedule.startDate,
+            schedule.endDate,
+          );
+          return repeatedDates
+            .filter(
+              repeatedDate =>
+                repeatedDate.toISOString().split('T')[0] === dateString,
+            )
+            .map(() => schedule);
+        });
+
+        // Skip checking against the schedule being edited
+        const conflictingSchedules = schedulesOnDate.filter(
+          schedule => schedule.id !== scheduleToCheck.id,
+        );
+
+        // Check for period conflicts
+        for (const existingSchedule of conflictingSchedules) {
+          if (existingSchedule.period === scheduleToCheck.period) {
+            return {
+              hasConflict: true,
+              date: formattedDate,
+              conflictingCourse: existingSchedule.course,
+            };
+          }
+        }
+      }
+
+      return {hasConflict: false};
+    },
+    [schedules, calculateRepeatedDates],
+  );
+
   const filteredScheduleItems = useMemo(() => {
     return schedules
       .flatMap(item => {
@@ -183,13 +232,105 @@ const Teamwork = () => {
 
   const handleDeleteSchedule = useCallback(
     (scheduleId: string) => {
-      Alert.alert('Xóa lịch học', 'Bạn có chắc chắn muốn xóa lịch học này?', [
+      // Find the schedule to be deleted
+      const scheduleToDelete = schedules.find(s => s.id === scheduleId);
+
+      if (!scheduleToDelete) {
+        Alert.alert('Lỗi', 'Không tìm thấy lịch học này.');
+        return;
+      }
+
+      Alert.alert('Xóa lịch học', 'Bạn muốn xóa lịch học này như thế nào?', [
         {
           text: 'Hủy',
           style: 'cancel',
         },
         {
-          text: 'Xóa',
+          text: 'Chỉ xóa ngày này',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              // Get the specific date from the schedule
+              const dateToDelete = scheduleToDelete.startDate;
+
+              // Create a new schedule that excludes this specific date
+              const repeatedDates = calculateRepeatedDates(
+                scheduleToDelete.startDate,
+                scheduleToDelete.endDate,
+              );
+
+              if (repeatedDates.length === 1) {
+                // If this is the only date, delete the entire schedule
+                await firestore()
+                  .collection('schedules')
+                  .doc(scheduleId)
+                  .delete();
+              } else {
+                // Split the schedule into two parts if necessary
+                const datesToKeep = repeatedDates.filter(
+                  date => date.getTime() !== dateToDelete.getTime(),
+                );
+
+                // Find the continuous date ranges
+                const ranges = datesToKeep.reduce((acc, date) => {
+                  if (acc.length === 0) {
+                    return [[date, date]];
+                  }
+
+                  const lastRange = acc[acc.length - 1];
+                  const lastDate = lastRange[1];
+
+                  if (
+                    (date.getTime() - lastDate.getTime()) /
+                      (1000 * 60 * 60 * 24) ===
+                    7
+                  ) {
+                    lastRange[1] = date;
+                  } else {
+                    acc.push([date, date]);
+                  }
+
+                  return acc;
+                }, [] as Date[][]);
+
+                // Delete the original schedule
+                await firestore()
+                  .collection('schedules')
+                  .doc(scheduleId)
+                  .delete();
+
+                // Create new schedules for each continuous range
+                const batch = firestore().batch();
+                ranges.forEach(([startDate, endDate]) => {
+                  const newScheduleRef = firestore()
+                    .collection('schedules')
+                    .doc();
+                  batch.set(newScheduleRef, {
+                    ...scheduleToDelete,
+                    id: newScheduleRef.id,
+                    startDate,
+                    endDate,
+                  });
+                });
+
+                await batch.commit();
+              }
+
+              await fetchSchedules();
+              Alert.alert('Thành công', 'Đã xóa lịch học thành công.');
+            } catch (error) {
+              console.error('Error deleting schedule:', error);
+              Alert.alert(
+                'Lỗi',
+                'Không thể xóa lịch học. Vui lòng thử lại sau.',
+              );
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+        {
+          text: 'Xóa tất cả',
           onPress: async () => {
             setLoading(true);
             try {
@@ -198,6 +339,7 @@ const Teamwork = () => {
                 .doc(scheduleId)
                 .delete();
               await fetchSchedules();
+              Alert.alert('Thành công', 'Đã xóa tất cả lịch học thành công.');
             } catch (error) {
               console.error('Error deleting schedule:', error);
               Alert.alert(
@@ -212,11 +354,26 @@ const Teamwork = () => {
         },
       ]);
     },
-    [fetchSchedules],
+    [schedules, fetchSchedules, calculateRepeatedDates],
   );
-
   const handleSaveSchedule = useCallback(async () => {
     if (!user?.uid) return;
+
+    // Check for required fields
+    if (!newSchedule.period || !newSchedule.course) {
+      Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin tiết học và môn học.');
+      return;
+    }
+
+    // Check for schedule conflicts
+    const conflict = checkScheduleConflict(newSchedule);
+    if (conflict.hasConflict) {
+      Alert.alert(
+        'Trùng lịch',
+        `Ngày ${conflict.date} đã có lịch học môn "${conflict.conflictingCourse}" trong tiết ${newSchedule.period}. Vui lòng chọn tiết học khác.`,
+      );
+      return;
+    }
 
     setLoading(true);
     try {
@@ -237,7 +394,7 @@ const Teamwork = () => {
     } finally {
       setLoading(false);
     }
-  }, [newSchedule, user?.uid, fetchSchedules]);
+  }, [newSchedule, user?.uid, fetchSchedules, checkScheduleConflict]);
 
   const handleAddNewSchedule = useCallback(() => {
     setNewSchedule(DEFAULT_SCHEDULE);
@@ -330,12 +487,10 @@ const Teamwork = () => {
         onSave={handleSaveSchedule}
         onDelete={handleDeleteSchedule}
         onScheduleChange={setNewSchedule}
-        showStartDatePicker={showStartDatePicker}
-        showEndDatePicker={showEndDatePicker}
-        onStartDatePickerChange={(event, date) =>
+        onStartDatePickerChange={(event: any, date?: Date) =>
           handleDatePickerChange('start', event, date)
         }
-        onEndDatePickerChange={(event, date) =>
+        onEndDatePickerChange={(event: any, date?: Date) =>
           handleDatePickerChange('end', event, date)
         }
         setShowStartDatePicker={setShowStartDatePicker}

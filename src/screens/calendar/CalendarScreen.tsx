@@ -307,10 +307,10 @@ const categoryIcon =
         {filteredTasks.length > 0 ? (
           <FlatList
             data={filteredTasks.sort((a, b) => {
-          const dateA = a.startTime ? new Date(a.startTime).getTime() : 0;
-          const dateB = b.startTime ? new Date(b.startTime).getTime() : 0;
-          return dateB - dateA;
-        })}
+              const dateA = a.startTime ? new Date(a.startTime).getTime() : 0;
+              const dateB = b.startTime ? new Date(b.startTime).getTime() : 0;
+              return dateB - dateA;
+            })}
             renderItem={({item}) => renderTask(item)}
             keyExtractor={item => item.id}
           />

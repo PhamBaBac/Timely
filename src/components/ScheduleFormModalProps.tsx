@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -9,32 +9,49 @@ import {
   TextInput,
   ScrollView,
   Switch,
+  Alert,
 } from 'react-native';
 import {Picker} from '@react-native-picker/picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import {Calendar} from 'react-native-calendars';
 import {ScheduleModel} from '../models/ScheduleModel';
+import {appColors} from '../constants';
 
 interface ScheduleFormModalProps {
   visible: boolean;
+
   schedule: ScheduleModel;
+
   onClose: () => void;
+
   onSave: () => void;
-  onDelete: (id: string) => void;
+
+  onDelete: (scheduleId: string) => void;
+
   onScheduleChange: (schedule: ScheduleModel) => void;
-  showStartDatePicker: boolean;
-  showEndDatePicker: boolean;
-  onStartDatePickerChange: (event: any, date?: Date) => void;
-  onEndDatePickerChange: (event: any, date?: Date) => void;
+
   setShowStartDatePicker: (show: boolean) => void;
+
   setShowEndDatePicker: (show: boolean) => void;
+
+  onStartDatePickerChange: (event: any, date?: Date) => void;
+
+  onEndDatePickerChange: (event: any, date?: Date) => void;
+}
+
+interface ValidationErrors {
+  course: string;
+  period: string;
+  room: string;
+  instructor: string;
+  dates: string;
 }
 
 const PERIOD_OPTIONS = [
-  {label: 'Tiết 1-3', value: '1-3', time: '6:45-9:00'},
-  {label: 'Tiết 4-6', value: '4-6', time: '9:15-11:30'},
-  {label: 'Tiết 7-9', value: '7-9', time: '12:30-14:45'},
-  {label: 'Tiết 10-12', value: '10-12', time: '15:00-17:15'},
-  {label: 'Tiết 13-15', value: '13-15', time: '17:45-20:00'},
+  {label: 'Tiết 1-3', value: '1-3', time: '6:30-9:00'},
+  {label: 'Tiết 4-6', value: '4-6', time: '9:05-11:30'},
+  {label: 'Tiết 7-9', value: '7-9', time: '12:30-15:00'},
+  {label: 'Tiết 10-12', value: '10-12', time: '15:00-17:40'},
+  {label: 'Tiết 13-15', value: '13-15', time: '18:00-20:30'},
 ];
 
 export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
@@ -44,100 +61,226 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
   onSave,
   onDelete,
   onScheduleChange,
-  showStartDatePicker,
-  showEndDatePicker,
-  onStartDatePickerChange,
-  onEndDatePickerChange,
-  setShowStartDatePicker,
-  setShowEndDatePicker,
 }) => {
-  const handleDelete = (id: string) => {
-    onDelete(id);
-    onClose();
+  const [errors, setErrors] = useState<ValidationErrors>({
+    course: '',
+    period: '',
+    room: '',
+    instructor: '',
+    dates: '',
+  });
+
+  const [showStartCalendar, setShowStartCalendar] = useState(false);
+  const [showEndCalendar, setShowEndCalendar] = useState(false);
+
+  // Update end date when start date changes
+  useEffect(() => {
+    if (schedule.endDate < schedule.startDate) {
+      onScheduleChange({
+        ...schedule,
+        endDate: schedule.startDate,
+      });
+    }
+  }, [schedule.startDate]);
+
+  const validateForm = (): boolean => {
+    const newErrors: ValidationErrors = {
+      course: '',
+      period: '',
+      room: '',
+      instructor: '',
+      dates: '',
+    };
+    let isValid = true;
+
+    if (!schedule.course.trim()) {
+      newErrors.course = schedule.isExam
+        ? 'Vui lòng nhập môn thi'
+        : 'Vui lòng nhập môn học';
+      isValid = false;
+    }
+
+    if (!schedule.period) {
+      newErrors.period = schedule.isExam
+        ? 'Vui lòng chọn ca thi'
+        : 'Vui lòng chọn tiết học';
+      isValid = false;
+    }
+
+    if (!schedule.room.trim()) {
+      newErrors.room = schedule.isExam
+        ? 'Vui lòng nhập phòng thi'
+        : 'Vui lòng nhập phòng học';
+      isValid = false;
+    }
+
+    if (!schedule.instructor.trim()) {
+      newErrors.instructor = schedule.isExam
+        ? 'Vui lòng nhập tên giám thị'
+        : 'Vui lòng nhập tên giảng viên';
+      isValid = false;
+    }
+
+    if (schedule.endDate < schedule.startDate) {
+      newErrors.dates = 'Ngày kết thúc không thể trước ngày bắt đầu';
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
   };
 
-  const renderDatePicker = (
+  const handleSave = () => {
+    if (validateForm()) {
+      onSave();
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    Alert.alert('Xác nhận xóa', 'Bạn có chắc chắn muốn xóa lịch này không?', [
+      {
+        text: 'Hủy',
+        style: 'cancel',
+      },
+      {
+        text: 'Xóa',
+        onPress: () => {
+          onDelete(id);
+          onClose();
+        },
+        style: 'destructive',
+      },
+    ]);
+  };
+
+  const renderCalendarModal = (
     isStart: boolean,
     show: boolean,
-    onShow: (show: boolean) => void,
-    onChange: (event: any, date?: Date) => void,
+    onClose: () => void,
   ) => {
     const currentDate = isStart ? schedule.startDate : schedule.endDate;
-    const minimumDate = isStart ? new Date() : schedule.startDate;
+    const minimumDate = isStart ? undefined : schedule.startDate;
 
-    if (Platform.OS === 'ios') {
-      return (
-        <View>
-          <TouchableOpacity
-            onPress={() => onShow(true)}
-            style={styles.dateButton}>
-            <Text>{currentDate.toLocaleDateString('vi-VN')}</Text>
-          </TouchableOpacity>
-          {show && (
-            <View style={styles.iosPickerContainer}>
-              <DateTimePicker
-                value={currentDate}
-                mode="date"
-                display="spinner"
-                onChange={onChange}
-                minimumDate={minimumDate}
-              />
-              <TouchableOpacity
-                style={styles.iosPickerButton}
-                onPress={() => onShow(false)}>
-                <Text style={styles.iosPickerButtonText}>Xong</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+    return (
+      <Modal
+        visible={show}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={onClose}>
+        <View style={styles.calendarModalContainer}>
+          <View style={styles.calendarModalContent}>
+            <Calendar
+              current={currentDate.toISOString()}
+              minDate={minimumDate?.toISOString()}
+              onDayPress={(day: {timestamp: number}) => {
+                const newDate = new Date(day.timestamp);
+                if (isStart) {
+                  onScheduleChange({...schedule, startDate: newDate});
+                } else {
+                  onScheduleChange({...schedule, endDate: newDate});
+                }
+                onClose();
+              }}
+              monthFormat={'MM yyyy'}
+              firstDay={1}
+              enableSwipeMonths={true}
+              theme={{
+                todayTextColor: '#007AFF',
+                selectedDayBackgroundColor: '#007AFF',
+                'stylesheet.calendar.header': {
+                  dayTextAtIndex0: {
+                    color: 'red',
+                  },
+                  dayTextAtIndex6: {
+                    color: 'red',
+                  },
+                },
+              }}
+              dayNames={['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']}
+              monthNames={[
+                'Tháng 1',
+                'Tháng 2',
+                'Tháng 3',
+                'Tháng 4',
+                'Tháng 5',
+                'Tháng 6',
+                'Tháng 7',
+                'Tháng 8',
+                'Tháng 9',
+                'Tháng 10',
+                'Tháng 11',
+                'Tháng 12',
+              ]}
+            />
+            <TouchableOpacity
+              style={styles.calendarCloseButton}
+              onPress={onClose}>
+              <Text style={styles.calendarCloseButton}>Đóng</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      );
-    }
+      </Modal>
+    );
+  };
+
+  const renderDatePicker = (isStart: boolean) => {
+    const currentDate = isStart ? schedule.startDate : schedule.endDate;
+    const show = isStart ? showStartCalendar : showEndCalendar;
+    const setShow = isStart ? setShowStartCalendar : setShowEndCalendar;
 
     return (
       <View>
         <TouchableOpacity
-          onPress={() => onShow(true)}
-          style={styles.dateButton}>
-          <Text>{currentDate.toLocaleDateString('vi-VN')}</Text>
+          onPress={() => setShow(true)}
+          style={[styles.dateButton, errors.dates ? styles.inputError : null]}>
+          <Text>
+            {`${currentDate.getDate()}/${
+              currentDate.getMonth() + 1
+            }/${currentDate.getFullYear()}`}
+          </Text>
         </TouchableOpacity>
-        {show && (
-          <DateTimePicker
-            value={currentDate}
-            mode="date"
-            display="default"
-            onChange={(event, date) => {
-              onShow(false);
-              onChange(event, date);
-            }}
-            minimumDate={minimumDate}
-          />
-        )}
+        {renderCalendarModal(isStart, show, () => setShow(false))}
+        {!isStart && errors.dates ? (
+          <Text style={styles.errorText}>{errors.dates}</Text>
+        ) : null}
       </View>
     );
   };
 
   const renderPeriodPicker = () => {
     return (
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={schedule.period}
-          onValueChange={(itemValue: any) =>
-            onScheduleChange({...schedule, period: itemValue})
-          }
-          style={styles.picker}
-          mode="dropdown">
-          <Picker.Item
-            label={schedule.isExam ? 'Chọn ca thi' : 'Chọn tiết học'}
-            value=""
-          />
-          {PERIOD_OPTIONS.map(option => (
+      <View>
+        <View
+          style={[
+            styles.pickerContainer,
+            errors.period ? styles.inputError : null,
+          ]}>
+          <Picker
+            selectedValue={schedule.period}
+            onValueChange={(itemValue: any) => {
+              onScheduleChange({...schedule, period: itemValue});
+              if (itemValue) {
+                setErrors(prev => ({...prev, period: ''}));
+              }
+            }}
+            style={styles.picker}
+            mode="dropdown">
             <Picker.Item
-              key={option.value}
-              label={`${option.label} (${option.time})`}
-              value={option.value}
+              label={schedule.isExam ? 'Chọn ca thi' : 'Chọn tiết học'}
+              value=""
             />
-          ))}
-        </Picker>
+            {PERIOD_OPTIONS.map(option => (
+              <Picker.Item
+                key={option.value}
+                label={`${option.label} (${option.time})`}
+                value={option.value}
+              />
+            ))}
+          </Picker>
+        </View>
+        {errors.period ? (
+          <Text style={styles.errorText}>{errors.period}</Text>
+        ) : null}
       </View>
     );
   };
@@ -177,35 +320,31 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
                 {schedule.isExam ? 'Môn thi' : 'Môn học'}
               </Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.course ? styles.inputError : null]}
                 value={schedule.course}
-                onChangeText={text =>
-                  onScheduleChange({...schedule, course: text})
-                }
+                onChangeText={text => {
+                  onScheduleChange({...schedule, course: text});
+                  if (text.trim()) {
+                    setErrors(prev => ({...prev, course: ''}));
+                  }
+                }}
                 placeholder={
                   schedule.isExam ? 'Nhập tên môn thi' : 'Nhập tên môn học'
                 }
               />
+              {errors.course ? (
+                <Text style={styles.errorText}>{errors.course}</Text>
+              ) : null}
             </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Thời gian bắt đầu</Text>
-              {renderDatePicker(
-                true,
-                showStartDatePicker,
-                setShowStartDatePicker,
-                onStartDatePickerChange,
-              )}
+              {renderDatePicker(true)}
             </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Thời gian kết thúc</Text>
-              {renderDatePicker(
-                false,
-                showEndDatePicker,
-                setShowEndDatePicker,
-                onEndDatePickerChange,
-              )}
+              {renderDatePicker(false)}
             </View>
 
             <View style={styles.formGroup}>
@@ -232,15 +371,21 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
                 {schedule.isExam ? 'Phòng thi' : 'Phòng học'}
               </Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.room ? styles.inputError : null]}
                 value={schedule.room}
-                onChangeText={text =>
-                  onScheduleChange({...schedule, room: text})
-                }
+                onChangeText={text => {
+                  onScheduleChange({...schedule, room: text});
+                  if (text.trim()) {
+                    setErrors(prev => ({...prev, room: ''}));
+                  }
+                }}
                 placeholder={
                   schedule.isExam ? 'Nhập phòng thi' : 'Nhập phòng học'
                 }
               />
+              {errors.room ? (
+                <Text style={styles.errorText}>{errors.room}</Text>
+              ) : null}
             </View>
 
             <View style={styles.formGroup}>
@@ -248,21 +393,30 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
                 {schedule.isExam ? 'Giám thị' : 'Giảng viên'}
               </Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  errors.instructor ? styles.inputError : null,
+                ]}
                 value={schedule.instructor}
-                onChangeText={text =>
-                  onScheduleChange({...schedule, instructor: text})
-                }
+                onChangeText={text => {
+                  onScheduleChange({...schedule, instructor: text});
+                  if (text.trim()) {
+                    setErrors(prev => ({...prev, instructor: ''}));
+                  }
+                }}
                 placeholder={
                   schedule.isExam ? 'Nhập tên giám thị' : 'Nhập tên giảng viên'
                 }
               />
+              {errors.instructor ? (
+                <Text style={styles.errorText}>{errors.instructor}</Text>
+              ) : null}
             </View>
 
             <View style={styles.buttonContainer}>
               <TouchableOpacity
                 style={[styles.button, styles.saveButton]}
-                onPress={onSave}>
+                onPress={handleSave}>
                 <Text style={styles.buttonText}>Lưu</Text>
               </TouchableOpacity>
 
@@ -284,109 +438,217 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 20,
-    width: '90%',
-    maxHeight: '80%',
+    backgroundColor: '#F8F9FA',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxHeight: '90%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -3,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 5,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E9ECEF',
   },
   headerText: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#212529',
   },
   closeButton: {
-    padding: 5,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#F8F9FA',
   },
   closeButtonText: {
-    fontSize: 20,
-    color: '#666',
+    fontSize: 22,
+    color: '#495057',
+    fontWeight: '500',
   },
   formGroup: {
-    marginBottom: 15,
+    marginBottom: 20,
   },
   switchContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
-    paddingVertical: 5,
+    marginBottom: 20,
+    padding: 12,
+    backgroundColor: '#F1F3F5',
+    borderRadius: 12,
   },
   label: {
     fontSize: 16,
-    marginBottom: 5,
-    color: '#333',
+    marginBottom: 8,
+    color: '#495057',
+    fontWeight: '500',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    padding: 10,
+    borderColor: '#DEE2E6',
+    borderRadius: 12,
+    padding: 12,
     fontSize: 16,
+    backgroundColor: 'white',
+    color: '#212529',
   },
   dateButton: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    padding: 10,
+    borderColor: '#DEE2E6',
+    borderRadius: 12,
+    padding: 14,
+    backgroundColor: 'white',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  inputError: {
+    borderColor: '#FA5252',
+    backgroundColor: '#FFF5F5',
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 20,
+    marginTop: 24,
+    gap: 12,
   },
   button: {
     flex: 1,
-    padding: 15,
-    borderRadius: 5,
-    marginHorizontal: 5,
+    padding: 16,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   saveButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#228BE6',
   },
   deleteButton: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#FA5252',
   },
   buttonText: {
     color: 'white',
     textAlign: 'center',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   pickerContainer: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
+    borderColor: '#DEE2E6',
+    borderRadius: 12,
     overflow: 'hidden',
+    backgroundColor: 'white',
+  },
+  errorText: {
+    color: '#FA5252',
+    fontSize: 14,
+    marginTop: 6,
+    fontWeight: '500',
   },
   picker: {
     height: 50,
     width: '100%',
     backgroundColor: 'white',
   },
-  iosPickerContainer: {
+  calendarModalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  },
+  calendarModalContent: {
     backgroundColor: 'white',
-    width: '100%',
-    padding: 5,
-    borderRadius: 10,
-    marginTop: 5,
+    borderRadius: 20,
+    padding: 24,
+    width: '90%',
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
-  iosPickerButton: {
-    alignSelf: 'flex-end',
-    padding: 10,
+  calendarModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: 16,
   },
-  iosPickerButtonText: {
-    color: '#007AFF',
+  calendarCloseButton: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    padding: 12,
+    zIndex: 1,
+    backgroundColor: appColors.primary,
+    borderRadius: 12,
+  },
+  calendarCloseButtonIcon: {
+    fontSize: 24,
+    color: '#495057',
+    fontWeight: '600',
+  },
+  calendarFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    gap: 12,
+  },
+  calendarActionButton: {
+    flex: 1,
+    backgroundColor: '#228BE6',
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  calendarActionButtonText: {
+    color: 'white',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  calendarCancelButton: {
+    flex: 1,
+    backgroundColor: '#F1F3F5',
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarCancelButtonText: {
+    color: '#495057',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -61,8 +61,8 @@ export class HandleNotification {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            email: serviceAccount.client_email,
-            key: serviceAccount.private_key,
+            // email: serviceAccount.client_email,
+            // key: serviceAccount.private_key,
           }),
         },
       );
