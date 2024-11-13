@@ -67,11 +67,11 @@ const ModalAddSubTask = (props: Props) => {
               backgroundColor: appColors.white,
             },
           ]}>
-          <TitleComponent text="Thêm công việc phụ" />
+          <TitleComponent text="Thêm công việc phụ" />
           <View style={{paddingVertical: 16}}>
             <InputComponent
-              title="Nội dung"
-              placeholder="Nội dung công việc phụ"
+              title="Mô tả công việc"
+              placeholder="Nhập mô tả công việc"
               value={subTaskForm.description}
               onChange={val =>
                 setSubTaskForm({

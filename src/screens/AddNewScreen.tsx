@@ -2,9 +2,13 @@ import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import {
   Calendar as CalendarIcon,
+  Category,
   Clock,
+  Flag,
   Repeat,
   Sort,
+  Star1,
+  StarSlash,
   Tag,
   TickSquare,
 } from 'iconsax-react-native';
@@ -17,16 +21,16 @@ import {
   Switch,
   Text,
   TextInput,
-  TextInputComponent,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import {Portal} from 'react-native-portalize';
 import {Modalize} from 'react-native-modalize';
+import {Portal} from 'react-native-portalize';
 
 import {format} from 'date-fns';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
   ButtonComponent,
   Container,
@@ -37,6 +41,7 @@ import {
   TextComponent,
 } from '../components';
 import {appColors} from '../constants';
+import useCustomStatusBar from '../hooks/useCustomStatusBar';
 import LoadingModal from '../modal/LoadingModal';
 import ModalizeDate from '../modal/modalizaDate';
 import ModalizeCategory from '../modal/ModalizeCategory';
@@ -44,7 +49,6 @@ import ModalizeRepeat from '../modal/ModalizeRepeat';
 import ModalizeTime from '../modal/ModalizeTime';
 import {CategoryModel} from '../models/categoryModel';
 import {TaskModel} from '../models/taskModel';
-import useCustomStatusBar from '../hooks/useCustomStatusBar';
 
 const now = new Date();
 const initValue: TaskModel = {
@@ -68,11 +72,11 @@ const initValue: TaskModel = {
 
 const availableIcons = [
   'work',
-  'celebration',
+  'cake',
   'sports-esports',
   'home',
   'school',
-  'fitness-center',
+  'sports',
   'restaurant',
   'shopping-cart',
   'local-hospital',
@@ -127,6 +131,19 @@ const AddNewScreen = ({navigation}: any) => {
       setErrorText('Tiêu đề là bắt buộc');
       return;
     }
+
+    //rang buoc gio bat dau phai lon hon gio hien tai
+    if (selectedDate && selectedDate.toDateString() === new Date().toDateString() && selectedTime < new Date()) {
+      setErrorText('Giờ bắt đầu không thể là giờ trong quá khứ');
+      return;
+    }
+    //rang buoc ngay bat dau phai lon hon hoac bang nga hien tai
+    if (selectedDate && selectedDate <= new Date(new Date().setHours(0, 0, 0, 0))) {
+      setErrorText('Ngày bắt đầu không thể là ngày trong quá khứ');
+      return;
+    }
+
+
 
     let startDate = selectedDate ? new Date(selectedDate) : new Date();
 
@@ -188,7 +205,7 @@ const AddNewScreen = ({navigation}: any) => {
     const data = {
       ...taskDetail,
       uid: user?.uid,
-      subtasks, // Include subtasks in the task data
+      subtasks,
       repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat,
     };
 
@@ -199,6 +216,7 @@ const AddNewScreen = ({navigation}: any) => {
       category: selectedCategory,
       startDate: startDate.toISOString(),
       startTime: selectedTime.getTime(),
+      endDate: taskDetail.endDate ? taskDetail.endDate.toISOString() : null,
     };
 
     await taskRef
@@ -341,7 +359,7 @@ const AddNewScreen = ({navigation}: any) => {
             setModalDateVisible(true);
             setSelectedDate(new Date());
           }}>
-          <CalendarIcon size={24} color={appColors.primary} />
+          <CalendarIcon size={24} color={appColors.primary} variant="Bold" />
           <View
             style={{
               flexDirection: 'row',
@@ -380,7 +398,7 @@ const AddNewScreen = ({navigation}: any) => {
         <TouchableOpacity
           style={styles.option}
           onPress={() => setModalTimeVisible(true)}>
-          <Clock size={24} color={appColors.primary} />
+          <Clock size={24} color="#FF3399" variant="Bold" />
           <RowComponent>
             <Text style={styles.modalOptionText}>Chọn giờ bắt đầu</Text>
           </RowComponent>
@@ -396,7 +414,7 @@ const AddNewScreen = ({navigation}: any) => {
         <TouchableOpacity
           style={styles.option}
           onPress={() => setCategoryModalVisible(true)}>
-          <Tag size={24} color={appColors.primary} />
+          <Category size={24} color="#9966FF" variant="Bold" />
           <View
             style={{
               flexDirection: 'row',
@@ -413,13 +431,23 @@ const AddNewScreen = ({navigation}: any) => {
             </Text>
           </View>
         </TouchableOpacity>
-        <View style={styles.option}>
-          <TickSquare size="22" color={appColors.primary} />
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 20,
+          }}>
+          {taskDetail.isImportant ? (
+            <Star1 size={24} color="#FF8A65" variant="Bold" />
+          ) : (
+            <StarSlash size={24} color="#FF8A65" variant="Bold" />
+          )}
           <View
             style={{
               flexDirection: 'row',
               flex: 1,
               justifyContent: 'space-between',
+              alignItems: 'center', // Add this line to align items in the center
             }}>
             <Text style={styles.optionText}>Chọn quan trọng</Text>
             <SpaceComponent width={10} />
@@ -435,7 +463,17 @@ const AddNewScreen = ({navigation}: any) => {
         </View>
         <TouchableOpacity onPress={() => modalizePriority.current?.open()}>
           <View style={styles.option}>
-            <Sort size="22" color={appColors.primary} />
+            <Flag
+              size="24"
+              color={
+                selectedPriority === 'Cao'
+                  ? appColors.red
+                  : selectedPriority === 'Trung bình'
+                  ? appColors.yellow
+                  : appColors.green
+              }
+              variant="Bold"
+            />
             <View
               style={{
                 flex: 1,
@@ -483,13 +521,24 @@ const AddNewScreen = ({navigation}: any) => {
                   handleChangeValue('priority', 'low');
                   modalizePriority.current?.close();
                 }}>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    color: '#666',
+                <RowComponent
+                  styles={{
+                    justifyContent: 'flex-start',
+                    alignContent: 'center',
                   }}>
-                  Thấp
-                </Text>
+                  <Flag size="24" color={appColors.green} variant="Bold" />
+
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      color: '#666',
+                      paddingLeft: 10,
+                    }}>
+                    Thấp
+                  </Text>
+                </RowComponent>
+
+                <SpaceComponent width={10} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={{
@@ -502,13 +551,21 @@ const AddNewScreen = ({navigation}: any) => {
                   handleChangeValue('priority', 'medium');
                   modalizePriority.current?.close();
                 }}>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    color: '#666',
+                <RowComponent
+                  styles={{
+                    justifyContent: 'flex-start',
+                    alignContent: 'center',
                   }}>
-                  Trung bình
-                </Text>
+                  <Flag size="24" color={appColors.yellow} variant="Bold" />
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      color: '#666',
+                      paddingLeft: 10,
+                    }}>
+                    Trung bình
+                  </Text>
+                </RowComponent>
               </TouchableOpacity>
               <TouchableOpacity
                 style={{
@@ -519,13 +576,21 @@ const AddNewScreen = ({navigation}: any) => {
                   handleChangeValue('priority', 'high');
                   modalizePriority.current?.close();
                 }}>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    color: '#666',
+                <RowComponent
+                  styles={{
+                    justifyContent: 'flex-start',
+                    alignContent: 'center',
                   }}>
-                  Cao
-                </Text>
+                  <Flag size="24" color={appColors.red} variant="Bold" />
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      color: '#666',
+                      paddingLeft: 10,
+                    }}>
+                    Cao
+                  </Text>
+                </RowComponent>
               </TouchableOpacity>
             </View>
           </Modalize>
@@ -533,7 +598,7 @@ const AddNewScreen = ({navigation}: any) => {
         <TouchableOpacity
           style={styles.option}
           onPress={() => setRepeatModalVisible(true)}>
-          <Repeat size={24} color={appColors.primary} />
+          <Ionicons name="repeat" size={24} color={appColors.blue} />
           <Text style={styles.modalOptionText}>Chọn lặp lại</Text>
           <Text style={styles.selectedRepeatText}>
             {selectedRepeat ? selectedRepeat : 'Không'}
@@ -732,7 +797,8 @@ const styles = StyleSheet.create({
   optionText: {
     marginLeft: 10,
     fontSize: 16,
-    color: appColors.primary,
+    color: appColors.black,
+    fontWeight: 'bold',
   },
   selectedCategoryText: {
     marginLeft: 10,
@@ -767,9 +833,10 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   modalOptionText: {
-    marginLeft: 10,
+    marginLeft: 8,
     fontSize: 16,
-    color: appColors.primary,
+    color: appColors.black,
+    fontWeight: 'bold',
   },
   selectedTimeText: {
     marginLeft: 'auto',
@@ -793,6 +860,7 @@ const styles = StyleSheet.create({
     marginLeft: 'auto',
     fontSize: 16,
     color: appColors.gray,
+    
   },
   categoryModalContent: {
     width: '100%',
