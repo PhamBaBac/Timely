@@ -12,7 +12,11 @@ import {
   AddSquare,
   ArrowLeft2,
   CalendarEdit,
+  ClipboardClose,
   Clock,
+  Flag,
+  Star1,
+  StarSlash,
   TickCircle,
   TickSquare,
 } from 'iconsax-react-native';
@@ -33,6 +37,7 @@ import ModalAddSubTask from '../modal/ModalAddSubTask';
 import {useSelector} from 'react-redux';
 import {RootState} from '../redux/store';
 import useCustomStatusBar from '../hooks/useCustomStatusBar';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 const TaskDetailScreen = ({navigation, route}: any) => {
   useCustomStatusBar('light-content', appColors.primary);
@@ -42,9 +47,11 @@ const TaskDetailScreen = ({navigation, route}: any) => {
   const [taskDetail, setTaskDetail] = useState<TaskModel>();
   const [progress, setProgress] = useState(0);
   const [subTasks, setSubTasks] = useState<SubTask[]>([]);
-  console.log('subTasks', subTasks);
   const [isVisibleModalSubTask, setIsVisibleModalSubTask] = useState(false);
   const tasks = useSelector((state: RootState) => state.tasks.tasks);
+  const categories = useSelector(
+    (state: RootState) => state.categories.categories,
+  );
   useEffect(() => {
     getTaskDetail();
     getSubTaskById();
@@ -87,7 +94,7 @@ const TaskDetailScreen = ({navigation, route}: any) => {
       .where('taskId', '==', id)
       .onSnapshot(snap => {
         if (snap.empty) {
-          console.log('Data not found');
+          setSubTasks([]);
         } else {
           const items: SubTask[] = [];
           snap.forEach((item: any) => {
@@ -95,7 +102,6 @@ const TaskDetailScreen = ({navigation, route}: any) => {
               id: item.id,
               ...item.data(),
             });
-            console.log('item', item.data());
           });
           setSubTasks(items);
         }
@@ -107,6 +113,14 @@ const TaskDetailScreen = ({navigation, route}: any) => {
       await firestore()
         .doc(`subTasks/${id}`)
         .update({isCompleted: !isCompleted});
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const handleDeleteSubTask = async (id: string) => {
+    try {
+      await firestore().doc(`subTasks/${id}`).delete();
     } catch (error) {
       console.log(error);
     }
@@ -179,26 +193,13 @@ const TaskDetailScreen = ({navigation, route}: any) => {
                   />
                 </RowComponent>
               )}
-              {taskDetail.category && (
-                <RowComponent
-                  styles={{
-                    justifyContent: 'flex-end',
-                  }}>
-                  <TickSquare size={20} color={appColors.white} />
-                  <SpaceComponent width={4} />
-                  <TextComponent
-                    flex={0}
-                    text={taskDetail.category}
-                    styles={{color: appColors.white}}
-                  />
-                </RowComponent>
-              )}
             </RowComponent>
           </View>
         </SectionComponent>
+
         <View style={{marginHorizontal: 10, marginVertical: 20}}>
           <SectionComponent>
-            <TitleComponent text="Mô tả công việc" size={22} />
+            <TitleComponent text="Mô tả công việc" size={22} />
             <CardComponent
               bgColor={appColors.white}
               styles={{
@@ -213,9 +214,106 @@ const TaskDetailScreen = ({navigation, route}: any) => {
               />
             </CardComponent>
           </SectionComponent>
+          <RowComponent
+            styles={{
+              marginHorizontal: 16,
+              borderBottomWidth: 1,
+              borderBottomColor: appColors.gray2,
+            }}>
+            <TitleComponent
+              text={taskDetail.isImportant ? 'Quan trọng' : 'Không quan trọng'}
+              size={22}
+            />
+            <SpaceComponent width={8} />
+
+            <TouchableOpacity>
+              {taskDetail.isImportant ? (
+                <Star1 size={24} color="#FF8A65" variant="Bold" />
+              ) : (
+                <StarSlash size={24} color="#FF8A65" variant="Bold" />
+              )}
+            </TouchableOpacity>
+          </RowComponent>
+
+          <SpaceComponent height={12} />
+          <RowComponent
+            styles={{
+              marginHorizontal: 16,
+              // them border bottom
+              borderBottomWidth: 1,
+              borderBottomColor: appColors.gray2,
+            }}>
+            <TitleComponent text="Mức độ ưu tiên" size={22} />
+            <SpaceComponent width={8} />
+
+            <TextComponent
+              text={
+                taskDetail.priority === 'high'
+                  ? 'Cao'
+                  : taskDetail.priority === 'medium'
+                  ? 'Trung bình'
+                  : 'Thấp'
+              }
+              size={18}
+              styles={{
+                color: appColors.black,
+              }}
+            />
+          </RowComponent>
+          <SpaceComponent height={12} />
+          <RowComponent
+            styles={{
+              marginHorizontal: 16,
+              borderBottomWidth: 1,
+              borderBottomColor: appColors.gray2,
+            }}>
+            <TitleComponent text="Loại công việc" size={22} />
+            <SpaceComponent width={8} />
+
+            <TouchableOpacity>
+              <TextComponent
+                text={taskDetail.category ? taskDetail.category : 'Khác'}
+                size={18}
+                styles={{
+                  color: appColors.black,
+                }}
+              />
+            </TouchableOpacity>
+          </RowComponent>
+
+          <SpaceComponent height={12} />
+          <RowComponent
+            styles={{
+              marginHorizontal: 16,
+              borderBottomWidth: 1,
+              borderBottomColor: appColors.gray2,
+            }}>
+            <TitleComponent text="Lặp lại" size={22} />
+            <SpaceComponent width={8} />
+
+            <TouchableOpacity>
+              <TextComponent
+                text={
+                  taskDetail.repeat === 'day'
+                    ? 'Ngày'
+                    : taskDetail.repeat === 'week'
+                    ? 'Tuần'
+                    : taskDetail.repeat === 'month'
+                    ? 'Tháng'
+                    : 'Không'
+                }
+                size={18}
+                styles={{
+                  color: appColors.black,
+                }}
+              />
+            </TouchableOpacity>
+          </RowComponent>
+
+          <SpaceComponent height={12} />
           <SectionComponent>
             <RowComponent>
-              <TitleComponent flex={1} text="Thêm công việc phụ" size={20} />
+              <TitleComponent flex={1} text="Thêm nhiệm vụ phụ" size={20} />
               <TouchableOpacity
                 onPress={() => {
                   setIsVisibleModalSubTask(true);
@@ -229,15 +327,17 @@ const TaskDetailScreen = ({navigation, route}: any) => {
                 <CardComponent
                   key={`subtask${index}`}
                   styles={{marginBottom: 12}}>
-                  <RowComponent
-                    onPress={() =>
-                      handleUpdateSubTask(item.id, item.isCompleted)
-                    }>
-                    <TickCircle
-                      variant={item.isCompleted ? 'Bold' : 'Outline'}
-                      color={appColors.primary}
-                      size={22}
-                    />
+                  <RowComponent>
+                    <TouchableOpacity
+                      onPress={() =>
+                        handleUpdateSubTask(item.id, item.isCompleted)
+                      }>
+                      <TickCircle
+                        variant={item.isCompleted ? 'Bold' : 'Outline'}
+                        color={appColors.primary}
+                        size={22}
+                      />
+                    </TouchableOpacity>
                     <View style={{flex: 1, marginLeft: 12}}>
                       <TextComponent text={item.description} />
                       <SpaceComponent height={4} />
@@ -246,12 +346,20 @@ const TaskDetailScreen = ({navigation, route}: any) => {
                         text={fomatDate(new Date(item.createdAt || ''))}
                       />
                     </View>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteSubTask(item.id)}>
+                      <ClipboardClose
+                        size={24}
+                        color={appColors.red}
+                        variant="Bold"
+                      />
+                    </TouchableOpacity>
                   </RowComponent>
                 </CardComponent>
               ))
             ) : (
               <TextComponent
-                text="Không có công việc phụ"
+                text="Không có nhiệm vụ phụ"
                 styles={{
                   textAlign: 'center',
                   color: appColors.gray4,

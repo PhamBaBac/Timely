@@ -6,6 +6,7 @@ export interface TaskModel {
   dueDate?: Date;
   startDate?: string;
   startTime?: Date;
+  endDate?: Date;
   remind: string;
   repeat: 'no' | 'day' | 'week' | 'month' | 'weekday';
   repeatDays: number[];

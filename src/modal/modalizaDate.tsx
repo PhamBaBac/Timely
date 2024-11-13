@@ -8,7 +8,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { appColors } from '../constants';
 
 interface ModalizeDateProps {
-  visible: boolean;
+  visible?: boolean;
   onClose: () => void;
   selectedDate: Date | null;
   onDateChange: (date: Date) => void;

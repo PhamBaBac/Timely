@@ -68,7 +68,6 @@ export class HandleNotification {
       );
       const result = await res.json();
       const accessToken = result.data.access_token;
-      console.log('Access Token:', accessToken);
       return accessToken;
     } catch (error) {
       console.log(error);
@@ -130,7 +129,7 @@ export class HandleNotification {
         };
 
         fetch(
-          'https://fcm.googleapis.com/v1/projects/todolistapp-clone/messages:send',
+          'https://fcm.googleapis.com/v1/projects/timely-d206d/messages:send',
           requestOptions,
         )
           .then(response => response.json())
