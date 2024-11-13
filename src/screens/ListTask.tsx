@@ -116,7 +116,7 @@ const ListTasks = ({navigation, route}: any) => {
   );
 
   return (
-    <Container back title="Tìm kiếm công việc" >
+    <Container back title="Tìm kiếm công việc">
       <SectionComponent>
         <InputComponent
           value={searchKey}
@@ -126,7 +126,7 @@ const ListTasks = ({navigation, route}: any) => {
           placeholder="Nhập title hoặc loại công việc"
         />
       </SectionComponent>
-      <FlatList
+      {/* <FlatList
         style={{flex: 1}}
         showsVerticalScrollIndicator={false}
         data={searchKey ? results : [...tasks].sort((a, b) => {
@@ -140,6 +140,22 @@ const ListTasks = ({navigation, route}: any) => {
                 textAlign:'center'
             }}/>
           </SectionComponent>
+        }
+        renderItem={({item}) => renderTask(item)}
+      /> */}
+      <FlatList
+        style={{flex: 1}}
+        showsVerticalScrollIndicator={false}
+        data={searchKey ? results : []} // Render tasks only when there's a search key
+        ListEmptyComponent={
+          !searchKey ? null : ( // Show empty component only when a search has been performed
+            <SectionComponent>
+              <TextComponent
+                text="Không tìm thấy công việc "
+                styles={{textAlign: 'center'}}
+              />
+            </SectionComponent>
+          )
         }
         renderItem={({item}) => renderTask(item)}
       />

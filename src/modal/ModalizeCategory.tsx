@@ -70,7 +70,11 @@ const ModalizeCategory: React.FC<ModalizeCategoryProps> = ({
               setSelectedCategory('Du lịch');
               modalizeRef.current?.close();
             }}>
-            <MaterialIcons name="work" size={24} color={appColors.green} />
+            <MaterialIcons
+              name="airplanemode-active"
+              size={24}
+              color={appColors.green}
+            />
             <Text style={styles.categoryOptionText}>Du lịch</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -80,11 +84,7 @@ const ModalizeCategory: React.FC<ModalizeCategoryProps> = ({
               setSelectedCategory('Sinh nhật');
               modalizeRef.current?.close();
             }}>
-            <MaterialIcons
-              name="celebration"
-              size={24}
-              color={appColors.yellow}
-            />
+            <MaterialIcons name="cake" size={24} color={appColors.yellow} />
             <Text style={styles.categoryOptionText}>Sinh nhật</Text>
           </TouchableOpacity>
           <ScrollView>

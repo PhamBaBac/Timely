@@ -1,6 +1,6 @@
 import auth, {firebase} from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import {addDays, addMonths, addWeeks, format} from 'date-fns';
+import {addDays, addMonths, addWeeks, format, set} from 'date-fns';
 import {
   ArchiveTick,
   Category,
@@ -9,6 +9,7 @@ import {
   SearchNormal1,
   Star1,
   StarSlash,
+  TickSquare,
   Trash,
 } from 'iconsax-react-native';
 import React, {useEffect, useState} from 'react';
@@ -16,7 +17,7 @@ import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {useDispatch, useSelector} from 'react-redux';
-import {RowComponent, SpaceComponent} from '../../components';
+import {RowComponent, SpaceComponent, TextComponent} from '../../components';
 import {appColors} from '../../constants/appColor';
 import useCustomStatusBar from '../../hooks/useCustomStatusBar';
 import {CategoryModel} from '../../models/categoryModel';
@@ -28,6 +29,8 @@ import {
   fetchCompletedTasks,
   fetchDeletedTasks,
   fetchImportantTasks,
+  handleDeleteAllTasks,
+  handleDeleteMultipleTasks,
   handleDeleteTask,
   handleToggleComplete,
   handleToggleImportant,
@@ -43,7 +46,11 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
   const [showBeforeToday, setShowBeforeToday] = useState(true);
   const dispatch = useDispatch();
   const [showToday, setShowToday] = useState(true);
+  const [isDeleteAll, setIsDeleteAll] = useState(false);
+
   const tasks = useSelector((state: RootState) => state.tasks.tasks);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+  console.log('selectedTaskIds:', selectedTaskIds);
   useEffect(() => {
     HandleNotification.checkNotificationPersion();
     messaging().onMessage((mess: any) => {
@@ -197,6 +204,15 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     handleUpdateRepeat(taskId);
   };
 
+  // const handleDeleteAll = () => {
+  //   handleDeleteAllTasks(tasks, dispatch);
+  // }
+
+  const handleDeleteSelectedTasks = () => {
+    handleDeleteMultipleTasks(tasks, selectedTaskIds, dispatch);
+    setSelectedTaskIds([]);
+    setIsDeleteAll(false);
+  };
   const calculateRepeatedDates = (
     startDate: string,
     repeat: 'day' | 'week' | 'month',
@@ -314,8 +330,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
       uniqueTasksMap.set(task.title, task);
     }
   });
-const uniqueTasks = Array.from(uniqueTasksMap.values())
-  .slice(0, 5);
+  const uniqueTasks = Array.from(uniqueTasksMap.values()).slice(0, 5);
 
   const handleTaskPress = (task: TaskModel) => {
     navigation.navigate('TaskDetailsScreen', {id: task.id});
@@ -364,11 +379,44 @@ const uniqueTasks = Array.from(uniqueTasksMap.values())
                   ? appColors.gray
                   : appColors.primary,
               },
+              {
+                backgroundColor: selectedTaskIds.includes(item.id)
+                  ? appColors.gray2
+                  : item.isCompleted
+                  ? appColors.gray2
+                  : appColors.white,
+              },
             ]}>
             <Pressable
               style={styles.roundButton}
-              onPress={() => handleToggleCompleteTask(item.id)}>
-              {item.isCompleted ? (
+              onPress={() => {
+                if (!isDeleteAll) {
+                  handleToggleCompleteTask(item.id);
+                } else {
+                  if (selectedTaskIds.includes(item.id)) {
+                    setSelectedTaskIds(
+                      selectedTaskIds.filter(id => id !== item.id),
+                    );
+                  } else {
+                    setSelectedTaskIds([...selectedTaskIds, item.id]);
+                  }
+                }
+              }}>
+              {isDeleteAll ? (
+                selectedTaskIds.includes(item.id) ? (
+                  <TickSquare
+                    size={24}
+                    color={appColors.primary}
+                    variant="Bold"
+                  />
+                ) : (
+                  <MaterialIcons
+                    name="radio-button-unchecked"
+                    size={24}
+                    color={appColors.primary}
+                  />
+                )
+              ) : item.isCompleted ? (
                 <MaterialIcons
                   name="check-circle"
                   size={24}
@@ -392,33 +440,38 @@ const uniqueTasks = Array.from(uniqueTasksMap.values())
                   ]}>
                   {item.title ? item.title : item.description}
                 </Text>
-
-                <Text style={styles.taskDate}>
-                  {item.dueDate
-                    ? fomatDate(new Date(item.startDate || ''))
-                    : 'No due date'}{' '}
-                  -{' '}
-                  {item.startTime
-                    ? formatTime(item.startTime)
-                    : 'No start time'}
-                  <SpaceComponent width={10} />
-                </Text>
                 <View
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
                   }}>
-                  {categoryIcon && (
-                    <MaterialIcons
-                      name={categoryIcon}
-                      size={16}
-                      color={appColors.gray2}
-                    />
-                  )}
-                  <SpaceComponent width={10} />
-                  {item.repeat !== 'no' && (
-                    <Repeat size="16" color={appColors.gray2} />
-                  )}
+                  <Text style={styles.taskDate}>
+                    {item.dueDate
+                      ? fomatDate(new Date(item.startDate || ''))
+                      : 'No due date'}{' '}
+                    -{' '}
+                    {item.startTime
+                      ? formatTime(item.startTime)
+                      : 'No start time'}
+                    <SpaceComponent width={10} />
+                  </Text>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                    }}>
+                    {categoryIcon && (
+                      <MaterialIcons
+                        name={categoryIcon}
+                        size={16}
+                        color={appColors.gray2}
+                      />
+                    )}
+                    <SpaceComponent width={10} />
+                    {item.repeat !== 'no' && (
+                      <Repeat size="16" color={appColors.gray2} />
+                    )}
+                  </View>
                 </View>
               </View>
               <View>
@@ -470,6 +523,7 @@ const uniqueTasks = Array.from(uniqueTasksMap.values())
           <SearchNormal1 size={20} color={appColors.white} />
         </Pressable>
       </View>
+
       <View style={styles.filtersContainer}>
         <ScrollView
           horizontal={true}
@@ -516,6 +570,51 @@ const uniqueTasks = Array.from(uniqueTasksMap.values())
           <Category size="24" color={appColors.primary} />
         </Pressable>
       </View>
+      {tasks.length > 0 && (
+        <RowComponent
+          styles={{
+            justifyContent: 'flex-start',
+            marginLeft: 10,
+          }}>
+          {!isDeleteAll ? (
+            <Pressable style={{flexDirection: 'row', alignItems: 'center'}}
+              onPress={() => {
+                const allTaskIds = tasks.map(task => task.id);
+                setSelectedTaskIds(allTaskIds);
+                setIsDeleteAll(true);
+              }}>
+              <TickSquare size={24} color={appColors.primary} />
+              <SpaceComponent width={5} />  
+              <Text style={{color: appColors.black}}>Nhấn để chọn tất cả</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => {
+                setSelectedTaskIds([]);
+                setIsDeleteAll(false);
+              }}
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'flex-start',
+                alignItems: 'center',
+              }}>
+              <TickSquare size={24} color={appColors.primary} variant="Bold" />
+              <SpaceComponent width={5} />
+              <Pressable
+                onPress={() => {
+                  handleDeleteSelectedTasks();
+                }}
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'flex-start',
+                  alignItems: 'center',
+                }}>
+                <Text style={{color: appColors.black}}>Xóa tất cả</Text>
+              </Pressable>
+            </Pressable>
+          )}
+        </RowComponent>
+      )}
       <ScrollView style={styles.tasksContainer}>
         {tasksBeforeToday.length > 0 && (
           <View style={styles.section}>
@@ -721,6 +820,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 4,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   swipeActions: {
     flexDirection: 'row',
