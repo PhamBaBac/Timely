@@ -85,6 +85,75 @@ export const handleDeleteTask = async (
     },
   ]);
 };
+
+export const handleDeleteAllTasks = async (tasks: TaskModel[], dispatch: Dispatch) => {
+  Alert.alert('Xác nhận xóa', 'Bạn có chắc chắn muốn xóa tất cả nhiệm vụ?', [
+    {text: 'Hủy', style: 'cancel'},
+    {
+      text: 'Xóa',
+      style: 'destructive',
+      onPress: async () => {
+        try {
+          const deletedTasks = tasks.map(task => task.id);
+          await AsyncStorage.setItem('deletedTasks', JSON.stringify(deletedTasks));
+          dispatch(setDeletedTaskIds(deletedTasks));
+          dispatch(setTasks([]));
+          await firestore().collection('tasks').get().then(querySnapshot => {
+            querySnapshot.forEach(doc => {
+              doc.ref.delete();
+            });
+          });
+        } catch (error) {
+          console.error('Error deleting all tasks: ', error);
+        }
+      },
+    },
+  ]);
+}
+
+// Xoa nhieu task cung luc khi chon checkbox
+
+export const handleDeleteMultipleTasks = async (
+  tasks: TaskModel[],
+  selectedTaskIds: string[],
+  dispatch: Dispatch,
+) => {
+  Alert.alert('Xác nhận xóa', 'Bạn có chắc chắn muốn xóa các nhiệm vụ đã chọn?', [
+    {text: 'Hủy', style: 'cancel'},
+    {
+      text: 'Xóa',
+      style: 'destructive',
+      onPress: async () => {
+        try {
+          const deletedTasks = tasks
+            .filter(task => selectedTaskIds.includes(task.id))
+            .map(task => task.id);
+          await AsyncStorage.setItem(
+            'deletedTasks',
+            JSON.stringify([...deletedTasks]),
+          );
+          dispatch(setDeletedTaskIds([...deletedTasks]));
+          dispatch(setTasks(tasks.filter(task => !selectedTaskIds.includes(task.id))));
+          await Promise.all(
+            deletedTasks.map(async taskId => {
+              if (taskId.includes('-')) {
+                const remainingTasks: string[] = deletedTasks.filter((id: string) => id.startsWith(taskId.split('-')[0]));
+                if (remainingTasks.length === 1) {
+                  await firestore().collection('tasks').doc(taskId.split('-')[0]).delete();
+                }
+              } else {
+                await firestore().collection('tasks').doc(taskId).delete();
+              }
+            }),
+          );
+        } catch (error) {
+          console.error('Error deleting multiple tasks: ', error);
+        }
+      },
+    },
+  ]);
+};
+
 export const handleToggleComplete = async (
   taskId: string,
   tasks: TaskModel[],
