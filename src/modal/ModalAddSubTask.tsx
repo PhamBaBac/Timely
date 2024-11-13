@@ -8,7 +8,7 @@ import ButtonComponent from '../components/ButtonComponent';
 import TitleComponent from '../components/TitleComponent';
 import InputComponent from '../components/InputComponent';
 import firestore from '@react-native-firebase/firestore';
-import { appColors } from '../constants';
+import {appColors} from '../constants';
 
 interface Props {
   visible: boolean;
@@ -67,11 +67,11 @@ const ModalAddSubTask = (props: Props) => {
               backgroundColor: appColors.white,
             },
           ]}>
-          <TitleComponent text="Add new Subtask" />
+          <TitleComponent text="Thêm công việc phụ" />
           <View style={{paddingVertical: 16}}>
             <InputComponent
-              title="Description"
-              placeholder="Description"
+              title="Nội dung"
+              placeholder="Nội dung công việc phụ"
               value={subTaskForm.description}
               onChange={val =>
                 setSubTaskForm({
@@ -95,7 +95,7 @@ const ModalAddSubTask = (props: Props) => {
               <ButtonComponent
                 text="Lưu"
                 onPress={handleSaveToDatabase}
-                type='primary'
+                type="primary"
               />
             </View>
           </RowComponent>
