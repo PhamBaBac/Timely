@@ -21,6 +21,8 @@ import {WeekDayModel} from '../../models/WeekDayModel';
 import LoadingModal from '../../modal/LoadingModal';
 import {DateTime} from '../../utils/DateTime';
 import ScheduleByPeriod from '../../components/ScheduleByPeriod';
+import useCustomStatusBar from '../../hooks/useCustomStatusBar';
+import { appColors } from '../../constants';
 
 // Định nghĩa period order ở ngoài component để tránh tạo lại mỗi lần render
 const PERIOD_ORDER: {[key: string]: number} = {
@@ -45,6 +47,7 @@ const DEFAULT_SCHEDULE: ScheduleModel = {
 };
 
 const Teamwork = () => {
+   useCustomStatusBar('light-content', appColors.primary);
   const user = auth().currentUser;
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -453,6 +456,7 @@ const Teamwork = () => {
       <View style={styles.weekDaysWrapper}>
         <FlatList
           data={weekDays}
+          
           renderItem={({item}) => (
             <View style={styles.dayItemContainer}>
               <ScheduleDayItem

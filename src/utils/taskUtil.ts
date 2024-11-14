@@ -10,6 +10,7 @@ import {
   setImportantTasks,
 } from '../redux/reducers/tasksSlice';
 import {TaskModel} from '../models/taskModel';
+import { deleteCategory } from '../redux/reducers/categoriesSlice';
 
 export const fetchDeletedTasks = async (dispatch: Dispatch) => {
   const storedDeletedTasks = await AsyncStorage.getItem('deletedTasks');
@@ -153,6 +154,152 @@ export const handleDeleteMultipleTasks = async (
     },
   ]);
 };
+
+export const handleDeleteAllTasksByCategory = async (
+  tasks: TaskModel[],
+  category: string,
+  dispatch: Dispatch,
+) => {
+  Alert.alert('Xác nhận xóa', `Bạn có chắc chắn muốn xóa tất cả nhiệm vụ trong "${category}"?`, [
+    {text: 'Hủy', style: 'cancel'},
+    {
+      text: 'Xóa',
+      style: 'destructive',
+      onPress: async () => {
+        try {
+          const deletedTasks = tasks
+            .filter(task => task.category === category)
+            .map(task => task.id);
+          await AsyncStorage.setItem(
+            'deletedTasks',
+            JSON.stringify([...deletedTasks]),
+          );
+          dispatch(setDeletedTaskIds([...deletedTasks]));
+          dispatch(setTasks(tasks.filter(task => task.category !== category)));
+          await Promise.all(
+            deletedTasks.map(async taskId => {
+              if (taskId.includes('-')) {
+                const remainingTasks: string[] = deletedTasks.filter((id: string) => id.startsWith(taskId.split('-')[0]));
+                if (remainingTasks.length === 1) {
+                  await firestore().collection('tasks').doc(taskId.split('-')[0]).delete();
+                }
+              } else {
+                await firestore().collection('tasks').doc(taskId).delete();
+              }
+            }),
+          );
+        } catch (error) {
+          console.error('Error deleting all tasks by category: ', error);
+        }
+      },
+    },
+  ]);
+};
+
+//Xoa category 
+//  deleteCategory(state, action: PayloadAction<string>) {
+//       state.categories = state.categories.filter(
+//         category => category.name !== action.payload,
+//       );
+//     },
+//B1. Xoa category trong redux va firebase
+//B2. Xoa task co category do trong redux va firebase
+
+export const handleDeleteCategory = async (
+  category: string,
+  tasks: TaskModel[],
+  dispatch: Dispatch,
+) => {
+  Alert.alert('Xác nhận xóa', `Tất cả công việc trong "${category}" sẽ bị xóa. Bạn có chắc chắn muốn tiếp tục?`, [
+    {text: 'Hủy', style: 'cancel'},
+    {
+      text: 'Xóa',
+      style: 'destructive',
+      onPress: async () => {
+        try {
+          // Xóa category trong Redux
+          dispatch(deleteCategory(category));
+
+          // Xóa category trong Firestore
+            await firestore()
+            .collection('categories')
+            .where('name', '==', category)
+            .get()
+            .then(querySnapshot => {
+              querySnapshot.forEach(doc => {
+              doc.ref.delete();
+              });
+            });
+
+            await firestore()
+            .collection('tasks')
+            .where('category', '==', category)
+            .get()
+            .then(querySnapshot => {
+              querySnapshot.forEach(doc => {
+              doc.ref.delete();
+              });
+            });
+
+          // Xóa tất cả task có category đó trong Redux
+          dispatch(setTasks(tasks.filter(task => task.category !== category)));
+        } catch (error) {
+          console.error('Error deleting category: ', error);
+        }
+      },
+    },
+  ]);
+};
+
+//Update ten, icon, mau sac category va task co category do
+//Cap nhat ten, icon, mau sac category trong redux va firebase
+
+export const handleUpdateCategory = async (
+  oldCategory: string,
+  newCategory: string,
+  icon: string,
+  color: string,
+  tasks: TaskModel[],
+  dispatch: Dispatch,
+) => {
+  try {
+    // Cap nhat category trong Redux
+    const updatedTasks = tasks.map(task =>
+      task.category === oldCategory ? {...task, category: newCategory} : task,
+    );
+    dispatch(setTasks(updatedTasks));
+
+    // Cap nhat category trong Firestore
+    await firestore()
+      .collection('categories')
+      .where('name', '==', oldCategory)
+      .get()
+      .then(querySnapshot => {
+        querySnapshot.forEach(doc => {
+          doc.ref.update({
+            color: color,
+            icon: icon,
+            name: newCategory,
+          });
+        });
+      });
+
+    // Cap nhat category trong Redux
+    await firestore()
+      .collection('tasks')
+      .where('category', '==', oldCategory)
+      .get()
+      .then(querySnapshot => {
+        querySnapshot.forEach(doc => {
+          doc.ref.update({
+            category: newCategory,
+          });
+        });
+      });
+  } catch (error) {
+    console.error('Error updating category: ', error);
+  }
+}
 
 export const handleToggleComplete = async (
   taskId: string,

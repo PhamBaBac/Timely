@@ -34,7 +34,6 @@ const tasksSlice = createSlice({
       state.deletedTaskIds = state.tasks.map(task => task.id);
       state.tasks = [];
     },
-    // Xoa nhieu task cung luc khi chon checkbox
     deleteMultipleTasks(state, action: PayloadAction<string[]>) {
       state.deletedTaskIds = state.deletedTaskIds.concat(action.payload);
       state.tasks = state.tasks.filter(task => !action.payload.includes(task.id));
