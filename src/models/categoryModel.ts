@@ -3,6 +3,7 @@ export interface CategoryModel {
     name: string;
     color: string;
     icon: string;
-    createdAt: number;
-    updatedAt: number;
+    isDefault?: boolean;
+    // createdAt: number;
+    // updatedAt: number;
 }
