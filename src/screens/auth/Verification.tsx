@@ -15,9 +15,10 @@ import authenticationAPI from '../../apis/authApi';
 import auth from '@react-native-firebase/auth';
 import {HandleUser} from '../../utils/handleUser';
 import LoadingModal from '../../modal/LoadingModal';
+import firestore from '@react-native-firebase/firestore';
 
 const Verification = ({route}: any) => {
-  const {code, email, password,} = route.params;
+  const {code, email, password} = route.params;
 
   const [currentCode, setCurrentCode] = useState<string>(code);
   const [codeValues, setCodeValues] = useState<string[]>([]);
@@ -85,20 +86,42 @@ const Verification = ({route}: any) => {
       if (parseInt(newCode) !== parseInt(currentCode)) {
         setErrorMessage('Invalid code!!!');
       } else {
-        await auth()
-          .createUserWithEmailAndPassword(email, password)
-          .then(userCredential => {
-            const user = userCredential.user;
-            if (user) {
-              HandleUser.SaveToDatabase(user);
-              setIsLoading(false);
+        setIsLoading(true); // Set loading state to true before starting the process.
+        try {
+          const userCredential = await auth().createUserWithEmailAndPassword(
+            email,
+            password,
+          );
+
+          const user = userCredential.user;
+          if (user) {
+            // Save user to the database (if you have custom logic for saving user data)
+            await HandleUser.SaveToDatabase(user);
+
+            // Define default categories
+            const defaultCategories = [
+              {
+                name: 'Du lịch',
+                icon: 'airplanemode-active',
+                color: 'blue',
+              },
+              {name: 'Sinh nhật', icon: 'cake', color: 'red'},
+            ];
+
+            const categoriesRef = firestore().collection('categories');
+            for (const category of defaultCategories) {
+              await categoriesRef.add({
+                ...category,
+                uid: user.uid, // Store user's UID along with category
+              });
             }
-            setIsLoading(false);
-          })
-          .catch((error: any) => {
-            setIsLoading(false);
-            setErrorMessage(error.message);
-          });
+
+            setIsLoading(false); // End loading state.
+          }
+        } catch (error: any) {
+          setIsLoading(false);
+          setErrorMessage(error.message);
+        }
       }
     } else {
       setErrorMessage('Time out verification code, please resend new code!!!');
@@ -241,4 +264,3 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-

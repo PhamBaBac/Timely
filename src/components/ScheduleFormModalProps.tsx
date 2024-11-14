@@ -293,7 +293,7 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
       onRequestClose={onClose}>
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
-          <ScrollView>
+          <ScrollView showsVerticalScrollIndicator={false}>
             <View style={styles.header}>
               <Text style={styles.headerText}>
                 {schedule.id ? 'Chỉnh sửa lịch' : 'Thêm lịch'}

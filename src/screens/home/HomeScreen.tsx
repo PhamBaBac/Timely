@@ -38,13 +38,23 @@ import {
 } from '../../utils/taskUtil';
 import {HandleNotification} from '../../utils/handleNotification';
 import messaging from '@react-native-firebase/messaging';
+const initialState: CategoryModel[] = [
+  {id: '1', name: 'Tất cả', icon: '', color: '#FF8A65'},
+  {id: '2', name: 'Du lịch', icon: 'airplanemode-active', color: '#FF8A65'},
+  {id: '3', name: 'Sinh nhật', icon: 'cake', color: '#FF8A65'},
+];
+
 const HomeScreen = ({navigation}: {navigation: any}) => {
   const user = auth().currentUser;
+  //luu gia initialState vao redux
+  const dispatch = useDispatch();
+  useEffect(() => {
+    dispatch(setCategories(initialState));
+  }, [dispatch]);
   useCustomStatusBar('light-content', appColors.primary);
 
   const [activeFilter, setActiveFilter] = useState('Tất cả');
   const [showBeforeToday, setShowBeforeToday] = useState(true);
-  const dispatch = useDispatch();
   const [showToday, setShowToday] = useState(true);
   const [isDeleteAll, setIsDeleteAll] = useState(false);
 
@@ -95,8 +105,6 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     },
     [
       {name: 'Tất cả', icon: ''},
-      {name: 'Du lịch', icon: 'airplanemode-active'},
-      {name: 'Sinh nhật', icon: 'cake'},
       ...categories.map(category => ({
         name: category.name,
         icon: category.icon,
@@ -723,8 +731,6 @@ const styles = StyleSheet.create({
     backgroundColor: appColors.primary,
     borderBottomWidth: 1,
     borderBottomColor: appColors.lightGray,
-    borderBottomRightRadius: 20,
-    borderBottomLeftRadius: 20,
   },
   headerTitle: {
     fontSize: 18,
