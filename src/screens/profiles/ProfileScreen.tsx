@@ -21,6 +21,7 @@ import {appColors} from '../../constants';
 import CicularComponent from '../../components/CicularComponent';
 import auth from '@react-native-firebase/auth';
 import useCustomStatusBar from '../../hooks/useCustomStatusBar';
+import { TaskModel } from '../../models/taskModel';
 
 const ProfileScreen = ({navigation}: {navigation: any}) => {
   useCustomStatusBar('dark-content', appColors.lightPurple);
@@ -51,6 +52,26 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
   };
   const [weekOffset, setWeekOffset] = useState(0);
   const tasks = useSelector((state: RootState) => state.tasks.tasks);
+
+const filterTasksByPeriod = (tasks: TaskModel[], period: string) => {
+  const currentDate = new Date();
+  if (period === 'all') return tasks;
+
+  const days = parseInt(period);
+  const futureDate = new Date();
+  futureDate.setDate(currentDate.getDate() + days);
+
+  return tasks.filter(task => {
+    const taskDate = task.dueDate
+      ? new Date(task.dueDate)
+      : new Date();
+    // Check if the task date is between the current date and the future date
+    return taskDate >= currentDate && taskDate <= futureDate;
+  });
+};
+
+const filteredTasks = filterTasksByPeriod(tasks, selectedPeriod);
+
   useEffect(() => {
     let completed = 0;
     let incomplete = 0;
@@ -115,17 +136,6 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
             onPress={() => handleViewTasks(false)}>
             <Text style={styles.statNumber}>{incompleteTasks}</Text>
             <Text style={styles.statLabel}>Công việc chưa hoàn thành</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.periodWrapper}>
-          <TouchableOpacity
-            style={styles.periodSelector}
-            onPress={() => setModalVisible(true)}>
-            <Text style={styles.periodSelectorText}>
-              {timeOptions.find(option => option.value === selectedPeriod)
-                ?.label || 'Tất cả'}
-            </Text>
-            <MaterialIcons name="arrow-drop-down" size={24} color="#000" />
           </TouchableOpacity>
         </View>
 
@@ -272,19 +282,32 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
           showValuesOnTopOfBars={true}
           fromZero={true}
         />
-        <TextComponent
-          text="Công việc chưa hoàn thành"
-          styles={{
-            fontSize: 16,
-            fontWeight: 'bold',
-            color: '#000',
-            flex: 1,
-            textAlign: 'left',
-            paddingLeft: 10,
-          }}
-        />
+        <RowComponent>
+          <TextComponent
+            text="Công việc chưa hoàn thành"
+            styles={{
+              fontSize: 16,
+              fontWeight: 'bold',
+              color: '#000',
+              flex: 1,
+              textAlign: 'left',
+              paddingLeft: 10,
+            }}
+          />
+          <View style={styles.periodWrapper}>
+            <TouchableOpacity
+              style={styles.periodSelector}
+              onPress={() => setModalVisible(true)}>
+              <Text style={styles.periodSelectorText}>
+                {timeOptions.find(option => option.value === selectedPeriod)
+                  ?.label || 'Tất cả'}
+              </Text>
+              <MaterialIcons name="arrow-drop-down" size={24} color="#000" />
+            </TouchableOpacity>
+          </View>
+        </RowComponent>
         <View style={{padding: 10}}>
-          <CicularComponent tasks={tasks} />
+          <CicularComponent tasks={filteredTasks} />
         </View>
       </ScrollView>
     </View>
@@ -370,7 +393,6 @@ const styles = StyleSheet.create({
   },
   periodWrapper: {
     alignItems: 'flex-end',
-    marginBottom: 10,
     paddingRight: 10,
   },
   periodSelector: {
@@ -396,8 +418,8 @@ const styles = StyleSheet.create({
     width: '40%', // Adjust the width as needed
     borderRadius: 12,
     overflow: 'hidden',
-    marginRight: 10, // Adjust the margin to position the modal next to the selector
-    marginTop: -180, // Move the modal slightly higher
+    marginRight: 20, // Adjust the margin to position the modal next to the selector
+    marginTop: 328, // Move the modal slightly higher
   },
   modalOption: {
     paddingVertical: 12,

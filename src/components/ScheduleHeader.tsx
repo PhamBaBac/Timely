@@ -4,6 +4,7 @@ import React from 'react';
 import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {appColors} from '../constants';
+import RowComponent from './RowComponent';
 
 interface ScheduleHeaderProps {
   onTodayPress: () => void;
@@ -16,11 +17,18 @@ export const ScheduleHeader: React.FC<ScheduleHeaderProps> = ({
 }) => {
   return (
     <View style={styles.header}>
-      <Text style={styles.headerTitle}>Lịch học/ Lịch thi</Text>
-      <View style={styles.headerButtons}>
+      <RowComponent
+        styles={{
+          justifyContent: 'flex-start',
+          alignItems: 'center',
+          flex: 1,
+        }}>
         <TouchableOpacity onPress={onTodayPress} style={styles.todayButton}>
           <MaterialIcons name="today" size={24} color="white" />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>Lịch học/ Lịch thi</Text>
+      </RowComponent>
+      <View style={styles.headerButtons}>
         <TouchableOpacity onPress={onAddPress} style={styles.addButton}>
           <Text style={styles.addButtonText}>+</Text>
         </TouchableOpacity>
@@ -40,8 +48,6 @@ const styles = StyleSheet.create({
     backgroundColor: appColors.primary,
     borderBottomWidth: 1,
     borderBottomColor: appColors.lightGray,
-    borderBottomRightRadius: 20,
-    borderBottomLeftRadius: 20,
   },
   headerButtons: {
     flexDirection: 'row',

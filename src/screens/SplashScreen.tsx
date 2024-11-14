@@ -14,9 +14,9 @@ const SplashScreen = () => {
         alignItems: 'center',
       }}
       imageStyle={{flex: 1}}>
-      <StatusBar hidden/>
+      <StatusBar hidden />
       <Image
-        source={require('../assets/images/logo.png')}
+        source={require('../assets/images/logoTimeLy.png')}
         style={{
           width: appInfo.sizes.WIDTH * 0.7,
           resizeMode: 'contain',

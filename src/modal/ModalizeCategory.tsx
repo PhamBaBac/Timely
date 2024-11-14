@@ -63,7 +63,7 @@ const ModalizeCategory: React.FC<ModalizeCategoryProps> = ({
               paddingBottom: 10,
             }}
           />
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.categoryOption}
             onPress={() => {
               handleChangeValue('category', 'Du lịch');
@@ -86,7 +86,7 @@ const ModalizeCategory: React.FC<ModalizeCategoryProps> = ({
             }}>
             <MaterialIcons name="cake" size={24} color={appColors.yellow} />
             <Text style={styles.categoryOptionText}>Sinh nhật</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
           <ScrollView>
             {categories.map(item => (
               <CategoryOption
