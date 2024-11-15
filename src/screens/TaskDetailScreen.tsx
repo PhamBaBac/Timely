@@ -1,43 +1,39 @@
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  StatusBar,
-  TouchableOpacity,
   Alert,
+  ScrollView,
+  Share,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import React, {useEffect, useState} from 'react';
 
+import firestore from '@react-native-firebase/firestore';
+import { format } from 'date-fns';
 import {
   AddSquare,
   ArrowLeft2,
   CalendarEdit,
   ClipboardClose,
   Clock,
-  Flag,
   Star1,
   StarSlash,
-  TickCircle,
-  TickSquare,
+  TickCircle
 } from 'iconsax-react-native';
-import firestore from '@react-native-firebase/firestore';
-import {SubTask, TaskModel} from '../models/taskModel';
-import {appColors, fontFamilies} from '../constants';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSelector } from 'react-redux';
 import {
-  ButtonComponent,
   CardComponent,
   RowComponent,
   SectionComponent,
   SpaceComponent,
   TextComponent,
-  TitleComponent,
+  TitleComponent
 } from '../components';
-import {format} from 'date-fns';
-import ModalAddSubTask from '../modal/ModalAddSubTask';
-import {useSelector} from 'react-redux';
-import {RootState} from '../redux/store';
+import { appColors, fontFamilies } from '../constants';
 import useCustomStatusBar from '../hooks/useCustomStatusBar';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import ModalAddSubTask from '../modal/ModalAddSubTask';
+import { SubTask, TaskModel } from '../models/taskModel';
+import { RootState } from '../redux/store';
 
 const TaskDetailScreen = ({navigation, route}: any) => {
   useCustomStatusBar('light-content', appColors.primary);
@@ -125,6 +121,49 @@ const TaskDetailScreen = ({navigation, route}: any) => {
       console.log(error);
     }
   };
+  
+  const getTaskTitleAndTime = () => {
+    if (taskDetail) {
+      const title = taskDetail.title;
+      const startTime = taskDetail.startTime ? formatTime(new Date(taskDetail.startTime)) : 'N/A';
+      const startDate = taskDetail.startDate ? fomatDate(new Date(taskDetail.startDate)) : 'N/A';
+      //cong viec phu 
+      const subTask = subTasks.map((item, index) => {
+        return {
+          description: item.description,
+        };
+      }) || [];
+      return { title, startTime, startDate, subTask };
+    }
+    return { title: 'N/A', startTime: 'N/A', startDate: 'N/A', subTask: [] };
+  };
+
+  const onShare = async () => {
+    const { title, startTime, startDate, subTask } = getTaskTitleAndTime();
+    try {
+      const result = await Share.share({
+        message: `
+        Tên công việc: ${title}
+        Thời gian bắt đầu: ${startTime}
+        Ngày bắt đầu: ${startDate}
+        ${subTask.length > 0 ? 'Công việc phụ: ' : ''}
+        `,
+     
+      });
+
+      if (result.action === Share.sharedAction) {
+        if (result.activityType) {
+          // shared with activity type of result.activityType
+        } else {
+          // shared
+        }
+      } else if (result.action === Share.dismissedAction) {
+        // dismissed
+      }
+    } catch (error: any) {
+      Alert.alert(error.message);
+    }
+  };
 
   const formatTime = (date: Date) => {
     return format(date, 'HH:mm');
@@ -193,6 +232,12 @@ const TaskDetailScreen = ({navigation, route}: any) => {
                   />
                 </RowComponent>
               )}
+              <MaterialCommunityIcons
+                name="share-variant"
+                size={24}
+                color={appColors.white}
+                onPress={onShare}
+              />
             </RowComponent>
           </View>
         </SectionComponent>
