@@ -1,43 +1,41 @@
-import auth, {firebase} from '@react-native-firebase/auth';
+import auth, { firebase } from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import {addDays, addMonths, addWeeks, format, set} from 'date-fns';
+import messaging from '@react-native-firebase/messaging';
+import { addDays, addMonths, addWeeks, format } from 'date-fns';
 import {
-  ArchiveTick,
-  Category,
+  Category2,
   Flag,
   Repeat,
   SearchNormal1,
   Star1,
   StarSlash,
   TickSquare,
-  Trash,
+  Trash
 } from 'iconsax-react-native';
-import React, {useEffect, useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {useDispatch, useSelector} from 'react-redux';
-import {RowComponent, SpaceComponent, TextComponent} from '../../components';
-import {appColors} from '../../constants/appColor';
+import { useDispatch, useSelector } from 'react-redux';
+import { RowComponent, SpaceComponent } from '../../components';
+import { appColors } from '../../constants/appColor';
 import useCustomStatusBar from '../../hooks/useCustomStatusBar';
-import {CategoryModel} from '../../models/categoryModel';
-import {TaskModel} from '../../models/taskModel';
-import {setCategories} from '../../redux/reducers/categoriesSlice';
-import {setTasks} from '../../redux/reducers/tasksSlice';
-import {RootState} from '../../redux/store';
+import { CategoryModel } from '../../models/categoryModel';
+import { TaskModel } from '../../models/taskModel';
+import { setCategories } from '../../redux/reducers/categoriesSlice';
+import { setTasks } from '../../redux/reducers/tasksSlice';
+import { RootState } from '../../redux/store';
+import { HandleNotification } from '../../utils/handleNotification';
 import {
   fetchCompletedTasks,
   fetchDeletedTasks,
   fetchImportantTasks,
-  handleDeleteAllTasks,
   handleDeleteMultipleTasks,
   handleDeleteTask,
   handleToggleComplete,
   handleToggleImportant,
-  handleUpdateRepeat,
+  handleUpdateRepeat
 } from '../../utils/taskUtil';
-import {HandleNotification} from '../../utils/handleNotification';
-import messaging from '@react-native-firebase/messaging';
 const initialState: CategoryModel[] = [
   {id: '1', name: 'Tất cả', icon: '', color: '#FF8A65'},
   {id: '2', name: 'Du lịch', icon: 'airplanemode-active', color: '#FF8A65'},
@@ -96,7 +94,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
       });
     return () => unsubscribe();
   }, [dispatch, user]);
-  const filters = categories.reduce<{name: string; icon: string}[]>(
+  const filters = categories.reduce<{name: string; icon: string, color?: string}[]>(
     (acc, category: CategoryModel) => {
       if (!acc.find(item => item.name === category.name)) {
         acc.push({name: category.name, icon: category.icon});
@@ -108,6 +106,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
       ...categories.map(category => ({
         name: category.name,
         icon: category.icon,
+        color: category.color,
       })),
     ],
   );
@@ -553,7 +552,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
                     color={
                       activeFilter === filter.name
                         ? appColors.white
-                        : appColors.black
+                        : filter.color
                     }
                   />
                 )}
@@ -575,7 +574,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
             // Xử lý sự kiện thêm danh mục
             navigation.navigate('Category');
           }}>
-          <Category size="24" color={appColors.primary} />
+          <Category2 size="24" color={appColors.primary} />
         </Pressable>
       </View>
       {tasks.length > 0 && (
@@ -725,7 +724,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 10,
     paddingTop: -10,
     paddingBottom: 20,
     backgroundColor: appColors.primary,
