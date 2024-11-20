@@ -1,14 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import {
-  Alert,
-  ScrollView,
-  Share,
-  TouchableOpacity,
-  View
-} from 'react-native';
+import React, {useEffect, useState} from 'react';
+import {Alert, ScrollView, Share, TouchableOpacity, View} from 'react-native';
 
 import firestore from '@react-native-firebase/firestore';
-import { format } from 'date-fns';
+import {format} from 'date-fns';
 import {
   AddSquare,
   ArrowLeft2,
@@ -17,29 +11,32 @@ import {
   Clock,
   Star1,
   StarSlash,
-  TickCircle
+  TickCircle,
+  MoreCircle,
 } from 'iconsax-react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useSelector } from 'react-redux';
+import {useSelector} from 'react-redux';
 import {
   CardComponent,
   RowComponent,
   SectionComponent,
   SpaceComponent,
   TextComponent,
-  TitleComponent
+  TitleComponent,
 } from '../components';
-import { appColors, fontFamilies } from '../constants';
+import {appColors, fontFamilies} from '../constants';
 import useCustomStatusBar from '../hooks/useCustomStatusBar';
 import ModalAddSubTask from '../modal/ModalAddSubTask';
-import { SubTask, TaskModel } from '../models/taskModel';
-import { RootState } from '../redux/store';
+import {SubTask, TaskModel} from '../models/taskModel';
+import {RootState} from '../redux/store';
 
 const TaskDetailScreen = ({navigation, route}: any) => {
   useCustomStatusBar('light-content', appColors.primary);
 
   const id = route.params;
+
   const taskId = id.id;
+
   const [taskDetail, setTaskDetail] = useState<TaskModel>();
   const [progress, setProgress] = useState(0);
   const [subTasks, setSubTasks] = useState<SubTask[]>([]);
@@ -121,25 +118,34 @@ const TaskDetailScreen = ({navigation, route}: any) => {
       console.log(error);
     }
   };
-  
+
   const getTaskTitleAndTime = () => {
     if (taskDetail) {
       const title = taskDetail.title;
-      const startTime = taskDetail.startTime ? formatTime(new Date(taskDetail.startTime)) : 'N/A';
-      const startDate = taskDetail.startDate ? fomatDate(new Date(taskDetail.startDate)) : 'N/A';
-      //cong viec phu 
-      const subTask = subTasks.map((item, index) => {
-        return {
-          description: item.description,
-        };
-      }) || [];
-      return { title, startTime, startDate, subTask };
+      const startTime = taskDetail.startTime
+        ? formatTime(new Date(taskDetail.startTime))
+        : 'N/A';
+      const startDate = taskDetail.startDate
+        ? fomatDate(new Date(taskDetail.startDate))
+        : 'N/A';
+      //cong viec phu
+      const subTask =
+        subTasks.map((item, index) => {
+          return {
+            description: item.description,
+          };
+        }) || [];
+      return {title, startTime, startDate, subTask};
     }
-    return { title: 'N/A', startTime: 'N/A', startDate: 'N/A', subTask: [] };
+    return {title: 'N/A', startTime: 'N/A', startDate: 'N/A', subTask: []};
+  };
+
+  const handleTaskPress = (task: TaskModel) => {
+    navigation.navigate('EditScreen', {task: task});
   };
 
   const onShare = async () => {
-    const { title, startTime, startDate, subTask } = getTaskTitleAndTime();
+    const {title, startTime, startDate, subTask} = getTaskTitleAndTime();
     try {
       const result = await Share.share({
         message: `
@@ -148,7 +154,6 @@ const TaskDetailScreen = ({navigation, route}: any) => {
         Ngày bắt đầu: ${startDate}
         ${subTask.length > 0 ? 'Công việc phụ: ' : ''}
         `,
-     
       });
 
       if (result.action === Share.sharedAction) {
@@ -198,6 +203,9 @@ const TaskDetailScreen = ({navigation, route}: any) => {
               size={22}
               color={appColors.white}
             />
+            <TouchableOpacity onPress={() => handleTaskPress(taskDetail)}>
+              <MoreCircle size={28} color={appColors.white} variant="Bold" />
+            </TouchableOpacity>
           </RowComponent>
           <View style={{marginTop: 20, marginHorizontal: 12}}>
             <RowComponent>
