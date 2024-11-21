@@ -1,22 +1,24 @@
 import React from 'react';
 import {View, Text, StyleSheet} from 'react-native';
-import {ScheduleItem} from './ScheduleItemProps ';
 
 const TIME_PERIODS = {
   MORNING: {
     name: 'Buổi sáng',
     periods: ['1-3', '4-6'],
-    color: '#E8F5E9', // Light green
+    color: '#E3F2FD', // Softer light blue
+    headerColor: '#2196F3', // Vibrant blue
   },
   AFTERNOON: {
     name: 'Buổi chiều',
     periods: ['7-9', '10-12'],
-    color: '#FFF3E0', // Light orange
+    color: '#FFF3E0', // Soft peach
+    headerColor: '#FF9800', // Warm orange
   },
   EVENING: {
     name: 'Buổi tối',
     periods: ['13-15'],
-    color: '#E1BEE7', // Light purple
+    color: '#F3E5F5', // Soft lavender
+    headerColor: '#9C27B0', // Deep purple
   },
 };
 
@@ -83,27 +85,31 @@ const ScheduleByPeriod = ({
     </View>
   );
 
-  const renderScheduleRow = (schedule: Schedule) => (
-    <View
-      key={schedule.id}
-      style={[
-        styles.tableRow,
-        schedule.isExam && styles.examRow,
-        {
-          backgroundColor:
-            TIME_PERIODS[getPeriodCategory(schedule.period)!].color,
-        },
-      ]}
-      onTouchEnd={() => onSchedulePress(schedule)}>
-      <Text style={[styles.cell, {flex: 2}]}>Tiết {schedule.period}</Text>
-      <Text style={[styles.cell, {flex: 3}]}>
-        {schedule.course}
-        {schedule.isExam && ' (Thi)'}
-      </Text>
-      <Text style={[styles.cell, {flex: 2}]}>{schedule.room}</Text>
-      <Text style={[styles.cell, {flex: 3}]}>{schedule.instructor}</Text>
-    </View>
-  );
+  const renderScheduleRow = (schedule: Schedule, periodKey: string) => {
+    const periodInfo = TIME_PERIODS[getPeriodCategory(schedule.period)!];
+    return (
+      <View
+        key={schedule.id}
+        style={[
+          styles.tableRow,
+          schedule.isExam && styles.examRow,
+          {
+            backgroundColor: periodInfo.color,
+            borderLeftColor: periodInfo.headerColor,
+            borderLeftWidth: 4,
+          },
+        ]}
+        onTouchEnd={() => onSchedulePress(schedule)}>
+        <Text style={[styles.cell, {flex: 2}]}>Tiết {schedule.period}</Text>
+        <Text style={[styles.cell, {flex: 3}]}>
+          {schedule.course}
+          {schedule.isExam && ' (Thi)'}
+        </Text>
+        <Text style={[styles.cell, {flex: 2}]}>{schedule.room}</Text>
+        <Text style={[styles.cell, {flex: 3}]}>{schedule.instructor}</Text>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -111,7 +117,11 @@ const ScheduleByPeriod = ({
         <View
           key={key}
           style={[styles.periodSection, {backgroundColor: period.color}]}>
-          <View style={styles.periodHeader}>
+          <View 
+            style={[
+              styles.periodHeader, 
+              {backgroundColor: period.headerColor}
+            ]}>
             <Text style={styles.periodTitle}>
               {period.name} (Tiết {period.periods.join(', ')})
             </Text>
@@ -120,7 +130,7 @@ const ScheduleByPeriod = ({
           <View style={styles.tableContainer}>
             {renderTableHeader()}
             {groupedSchedules[key].length > 0 ? (
-              groupedSchedules[key].map(schedule => renderScheduleRow(schedule))
+              groupedSchedules[key].map(schedule => renderScheduleRow(schedule, key))
             ) : (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>Không có lịch học</Text>
@@ -142,15 +152,21 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderRadius: 12,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   periodHeader: {
     padding: 12,
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
   },
   periodTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: 'white',
     textAlign: 'center',
   },
   tableContainer: {
@@ -158,7 +174,7 @@ const styles = StyleSheet.create({
   },
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f0f0f0',
     padding: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',

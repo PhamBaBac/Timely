@@ -1,36 +1,33 @@
+import React, {useEffect, useState, useRef} from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Switch,
+  Modal,
+  TouchableWithoutFeedback,
+  FlatList,
+  Alert,
+} from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import {Modalize} from 'react-native-modalize';
+import {Portal} from 'react-native-portalize';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {
   Calendar as CalendarIcon,
   Category,
   Clock,
   Flag,
   Repeat,
-  Sort,
   Star1,
   StarSlash,
-  Tag,
-  TickSquare,
 } from 'iconsax-react-native';
-import React, {useEffect, useRef, useState} from 'react';
-import {
-  Alert,
-  FlatList,
-  Modal,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
-} from 'react-native';
-import {Modalize} from 'react-native-modalize';
-import {Portal} from 'react-native-portalize';
-
 import {format} from 'date-fns';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+
 import {
   ButtonComponent,
   Container,
@@ -48,27 +45,9 @@ import ModalizeCategory from '../modal/ModalizeCategory';
 import ModalizeRepeat from '../modal/ModalizeRepeat';
 import ModalizeTime from '../modal/ModalizeTime';
 import {CategoryModel} from '../models/categoryModel';
-import {TaskModel} from '../models/taskModel';
-
-const now = new Date();
-const initValue: TaskModel = {
-  id: '',
-  uid: '',
-  title: '',
-  description: '',
-  dueDate: new Date(),
-  startTime: new Date(),
-  remind: '',
-  repeat: 'no' as 'no' | 'day' | 'week' | 'month',
-  repeatDays: [],
-  repeatCount: 0,
-  category: '',
-  isCompleted: false,
-  isImportant: false,
-  priority: 'low' as 'low' | 'medium' | 'high',
-  createdAt: Date.now(),
-  updatedAt: Date.now(),
-};
+import {SubTask, TaskModel} from '../models/taskModel';
+import {useSelector} from 'react-redux';
+import {RootState} from '../redux/store';
 
 const availableIcons = [
   'work',
@@ -95,149 +74,125 @@ const rainbowColors = [
   '#BA68C8',
 ];
 
-const AddNewScreen = ({navigation}: any) => {
+const EditScreen = ({route, navigation}: any) => {
+  const {task} = route.params;
   useCustomStatusBar('dark-content', appColors.lightPurple);
 
   const user = auth().currentUser;
+
   const [modalTimeVisible, setModalTimeVisible] = useState(false);
   const [modalDateVisible, setModalDateVisible] = useState(false);
   const [repeatModalVisible, setRepeatModalVisible] = useState(false);
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [isNewCategoryModalVisible, setNewCategoryModalVisible] =
     useState(false);
-  const [selectedTime, setSelectedTime] = useState(new Date());
-  const [selectedRepeat, setSelectedRepeat] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [taskDetail, setTaskDetail] = useState<TaskModel>(initValue);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+  const [selectedTime, setSelectedTime] = useState(new Date(task.startTime));
+  const [selectedRepeat, setSelectedRepeat] = useState(
+    task.repeat !== 'no' ? task.repeat : 'Không',
+  );
+  const [selectedCategory, setSelectedCategory] = useState(task.category);
+  const [taskDetail, setTaskDetail] = useState<TaskModel>(task);
+  const [selectedDate, setSelectedDate] = useState<Date>(
+    new Date(task.startDate),
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
-  const [selectedIcon, setSelectedIcon] = useState(availableIcons[0]);
-  const [selectedColor, setSelectedColor] = useState(appColors.primary);
+  const [selectedIcon, setSelectedIcon] = useState(task.icon || 'work');
+  const [selectedColor, setSelectedColor] = useState(
+    task.color || appColors.primary,
+  );
   const [categories, setCategories] = useState<CategoryModel[]>([]);
   const [tempCategory, setTempCategory] = useState('');
-  const [selectedPriority, setSelectedPriority] = useState('');
+  const [selectedPriority, setSelectedPriority] = useState(
+    task.priority === 'low'
+      ? 'Thấp'
+      : task.priority === 'medium'
+      ? 'Trung bình'
+      : 'Cao',
+  );
+
+  const [subtasks, setSubtasks] = useState(task.subtasks || []);
   const modalizePriority = useRef<Modalize>(null);
 
- // Updated state for subtasks
-  useEffect(() => {
-    user && setTaskDetail({...taskDetail, uid: user.uid});
-  }, [user]);
+  const id = task.id;
 
-  const handleAddNewTask = async () => {
-    if (!taskDetail.title) {
+  const getSubTaskById = () => {
+    firestore()
+      .collection('subTasks')
+      .where('taskId', '==', id)
+      .onSnapshot(snap => {
+        if (snap.empty) {
+          setSubtasks([]);
+        } else {
+          const items: SubTask[] = [];
+          snap.forEach((item: any) => {
+            items.push({
+              id: item.id,
+              ...item.data(),
+            });
+          });
+          setSubtasks(items);
+        }
+      });
+  };
+
+  const handleUpdateTask = async () => {
+    if (!taskDetail || !taskDetail.title) {
       setErrorText('Tiêu đề là bắt buộc');
       return;
     }
 
-    //rang buoc gio bat dau phai lon hon gio hien tai
-    if (
-      selectedDate &&
-      selectedDate.toDateString() === new Date().toDateString() &&
-      selectedTime < new Date()
-    ) {
-      setErrorText('Giờ bắt đầu không thể là giờ trong quá khứ');
-      return;
-    }
-    //rang buoc ngay bat dau phai lon hon hoac bang nga hien tai
-    if (
-      selectedDate &&
-      selectedDate <= new Date(new Date().setHours(0, 0, 0, 0))
-    ) {
-      setErrorText('Ngày bắt đầu không thể là ngày trong quá khứ');
-      return;
-    }
+    // Similar validation logic as in AddNewScreen
+    // if (
+    //   selectedDate &&
+    //   selectedDate.toDateString() === new Date().toDateString() &&
+    //   selectedTime < new Date()
+    // ) {
+    //   setErrorText('Giờ bắt đầu không thể là giờ trong quá khứ');
+    //   return;
+    // }
 
-    let startDate = selectedDate ? new Date(selectedDate) : new Date();
-
-    // Weekly repeat logic
-    if (taskDetail.repeat === 'week' && taskDetail.repeatDays.length > 0) {
-      const currentDay = startDate.getDay(); // Get the current day based on selected start date
-      const sortedRepeatDays = [
-        ...taskDetail.repeatDays.filter(day => day >= currentDay),
-        ...taskDetail.repeatDays.filter(day => day < currentDay),
-      ];
-
-      const nextRepeatDay = sortedRepeatDays[0];
-      startDate.setDate(
-        startDate.getDate() +
-          (nextRepeatDay - currentDay + (nextRepeatDay < currentDay ? 7 : 0)),
-      );
-    }
-
-    // Monthly repeat logic
-    else if (
-      taskDetail.repeat === 'month' &&
-      taskDetail.repeatDays.length > 0
-    ) {
-      const currentDay = startDate.getDate();
-      const sortedRepeatDays = [
-        ...taskDetail.repeatDays.filter(day => day >= currentDay),
-        ...taskDetail.repeatDays.filter(day => day < currentDay),
-      ];
-
-      let nextRepeatDay = sortedRepeatDays[0]; // Get the first valid repeat day
-
-      if (nextRepeatDay < currentDay) {
-        startDate.setMonth(startDate.getMonth() + 1); // Move to next month
-      }
-
-      startDate.setDate(nextRepeatDay);
-
-      if (startDate.getDate() !== nextRepeatDay) {
-        startDate = new Date(
-          startDate.getFullYear(),
-          startDate.getMonth() + 1,
-          0,
-        );
-      }
-    } else if (
-      (taskDetail.repeat === 'week' || taskDetail.repeat === 'month') &&
-      taskDetail.repeatDays.length === 0
-    ) {
-      startDate = selectedDate ? new Date(selectedDate) : new Date();
-    }
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (startDate <= today) {
-      setErrorText('Ngày đến hạn không thể là ngày trong quá khứ');
-      return;
-    }
-
-    const data = {
+    // Prepare updated task data
+    const updatedTask = {
       ...taskDetail,
-      uid: user?.uid,
+      subtasks,
+      category: selectedCategory,
+      startDate: selectedDate.toISOString(),
+      startTime: selectedTime.getTime(),
+      updatedAt: Date.now(),
       repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat,
     };
 
-    const taskRef = firestore().collection('tasks').doc();
-    const task = {
-      ...data,
-      id: taskRef.id,
-      category: selectedCategory,
-      startDate: startDate.toISOString(),
-      startTime: selectedTime.getTime(),
-      endDate: taskDetail.endDate ? taskDetail.endDate.toISOString() : null,
-    };
+    try {
+      setIsLoading(true);
+      await firestore().collection('tasks').doc(task.id).update(updatedTask);
 
-    await taskRef
-      .set(task)
-      .then(() => {
-        console.log('New task added with repeat information!!');
-        setIsLoading(false);
-        setTaskDetail(initValue);
-        setSelectedRepeat('');
-        setSelectedDate(null);
-        setErrorText('');
-        navigation.navigate('Trang chủ', {
-          screen: 'HomeScreen',
-        });
-      })
-      .catch(error => {
-        console.log(error);
-        setIsLoading(false);
+      setIsLoading(false);
+      navigation.navigate('Trang chủ', {
+        screen: 'HomeScreen',
       });
+    } catch (error) {
+      console.error('Error updating task:', error);
+      setIsLoading(false);
+      Alert.alert('Lỗi', 'Không thể cập nhật công việc');
+    }
+  };
+
+  const handleSubtaskChange = (index: number, value: string) => {
+    const updatedSubtasks = [...subtasks];
+    updatedSubtasks[index].description = value;
+    setSubtasks(updatedSubtasks);
+  };
+
+  const handleChangeValue = (
+    id: string,
+    value: string | Date | number | boolean,
+  ) => {
+    setTaskDetail(prevState => ({
+      ...prevState!,
+      [id]: value,
+    }));
   };
 
   const handleNewCategoryCreate = async () => {
@@ -280,16 +235,21 @@ const AddNewScreen = ({navigation}: any) => {
     }
   };
 
-  const handleChangeValue = (
-    id: string,
-    value: string | Date | number | number[] | boolean,
-  ) => {
-    setTaskDetail(prevState => ({
-      ...prevState,
-      [id]: value,
-    }));
-  };
+  // const handleChangeValue = (
+  //   id: string,
+  //   value: string | Date | number | number[] | boolean,
+  // ) => {
+  //   setTaskDetail(prevState => ({
+  //     ...prevState,
+  //     [id]: value,
+  //   }));
+  // };
 
+  // const handleSubtaskChange = (index: number, value: string) => {
+  //   const updatedSubtasks = [...subTasks];
+  //   updatedSubtasks[index].description = value;
+  //   setSubTasks(updatedSubtasks);
+  // };
 
   useEffect(() => {
     const unsubscribe = firestore()
@@ -313,21 +273,21 @@ const AddNewScreen = ({navigation}: any) => {
   };
 
   return (
-    <Container back title="Thêm công việc mới" isScroll>
+    <Container back title="Chỉnh sửa công việc" isScroll>
       <View style={styles.inputContainer}>
         <View
           style={{
             flexDirection: 'column',
           }}>
           <InputComponent
-            value={taskDetail.title}
+            value={taskDetail?.title || ''}
             onChange={val => handleChangeValue('title', val)}
             title="Tên công việc"
             allowClear
             placeholder="Nhập tên công việc"
           />
           <InputComponent
-            value={taskDetail.description}
+            value={taskDetail?.description || ''}
             onChange={val => handleChangeValue('description', val)}
             title="Mô tả công việc"
             allowClear
@@ -338,7 +298,15 @@ const AddNewScreen = ({navigation}: any) => {
         </View>
       </View>
       {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
-
+      {subtasks.map((subtask: SubTask, index: number) => (
+        <TextInput
+          key={index}
+          style={styles.subtaskInput}
+          placeholder={`Nhiệm vụ phụ ${index + 1}`}
+          value={subtask.description}
+          onChangeText={value => handleSubtaskChange(index, value)}
+        />
+      ))}
       <SpaceComponent height={20} />
       <View style={styles.optionsContainer}>
         <TouchableOpacity
@@ -357,7 +325,7 @@ const AddNewScreen = ({navigation}: any) => {
             <Text style={styles.optionText}>Chọn ngày bắt đầu </Text>
 
             <Text style={styles.selectedRepeatText}>
-              {taskDetail.dueDate
+              {taskDetail?.startDate
                 ? `${
                     selectedDate
                       ? fomatDate(selectedDate)
@@ -425,7 +393,7 @@ const AddNewScreen = ({navigation}: any) => {
             alignItems: 'center',
             marginBottom: 20,
           }}>
-          {taskDetail.isImportant ? (
+          {taskDetail?.isImportant ? (
             <Star1 size={24} color="#FF8A65" variant="Bold" />
           ) : (
             <StarSlash size={24} color="#FF8A65" variant="Bold" />
@@ -442,9 +410,9 @@ const AddNewScreen = ({navigation}: any) => {
             <Switch
               trackColor={{false: appColors.gray, true: appColors.primary}}
               thumbColor={
-                taskDetail.isImportant ? appColors.primary : appColors.gray2
+                taskDetail?.isImportant ? appColors.primary : appColors.gray2
               }
-              value={taskDetail.isImportant}
+              value={taskDetail?.isImportant ?? false}
               onValueChange={val => handleChangeValue('isImportant', val)}
             />
           </View>
@@ -721,11 +689,7 @@ const AddNewScreen = ({navigation}: any) => {
       </Modal>
       <SpaceComponent height={20} />
       <SectionComponent>
-        <ButtonComponent
-          text="Thêm công việc"
-          onPress={handleAddNewTask}
-          type="primary"
-        />
+        <ButtonComponent text="Lưu" onPress={handleUpdateTask} type="primary" />
       </SectionComponent>
       <LoadingModal visible={isLoading} />
     </Container>
@@ -923,4 +887,7 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AddNewScreen;
+export default EditScreen;
+function setProgress(completedPercent: number) {
+  throw new Error('Function not implemented.');
+}

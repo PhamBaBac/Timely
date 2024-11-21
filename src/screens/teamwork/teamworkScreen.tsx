@@ -22,7 +22,7 @@ import LoadingModal from '../../modal/LoadingModal';
 import {DateTime} from '../../utils/DateTime';
 import ScheduleByPeriod from '../../components/ScheduleByPeriod';
 import useCustomStatusBar from '../../hooks/useCustomStatusBar';
-import { appColors } from '../../constants';
+import {appColors} from '../../constants';
 
 // Định nghĩa period order ở ngoài component để tránh tạo lại mỗi lần render
 const PERIOD_ORDER: {[key: string]: number} = {
@@ -47,7 +47,7 @@ const DEFAULT_SCHEDULE: ScheduleModel = {
 };
 
 const Teamwork = () => {
-   useCustomStatusBar('light-content', appColors.primary);
+  useCustomStatusBar('light-content', appColors.primary);
   const user = auth().currentUser;
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -213,6 +213,7 @@ const Teamwork = () => {
         );
         return repeatedDates.map(date => ({
           ...item,
+          day: date, // Add this line to ensure the day is always displayed
           startDate: date,
           endDate: new Date(date.getTime() + 24 * 60 * 60 * 1000),
         }));
@@ -456,7 +457,6 @@ const Teamwork = () => {
       <View style={styles.weekDaysWrapper}>
         <FlatList
           data={weekDays}
-          
           renderItem={({item}) => (
             <View style={styles.dayItemContainer}>
               <ScheduleDayItem
@@ -515,7 +515,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     paddingVertical: 10,
     borderRadius: 15,
-    margin: 10,
+    margin: 2,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -526,10 +526,10 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   weekDaysContainer: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 5,
   },
   dayItemContainer: {
-    marginHorizontal: 4,
+    marginHorizontal: 0,
     borderRadius: 10,
     overflow: 'hidden',
   },
