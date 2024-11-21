@@ -119,9 +119,7 @@ const AddNewScreen = ({navigation}: any) => {
   const [selectedPriority, setSelectedPriority] = useState('');
   const modalizePriority = useRef<Modalize>(null);
 
-  const [subtasks, setSubtasks] = useState<
-    {description: string; isCompleted: boolean}[]
-  >([]); // Updated state for subtasks
+ // Updated state for subtasks
   useEffect(() => {
     user && setTaskDetail({...taskDetail, uid: user.uid});
   }, [user]);
@@ -205,7 +203,6 @@ const AddNewScreen = ({navigation}: any) => {
     const data = {
       ...taskDetail,
       uid: user?.uid,
-      subtasks,
       repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat,
     };
 
@@ -225,7 +222,6 @@ const AddNewScreen = ({navigation}: any) => {
         console.log('New task added with repeat information!!');
         setIsLoading(false);
         setTaskDetail(initValue);
-        setSubtasks([]);
         setSelectedRepeat('');
         setSelectedDate(null);
         setErrorText('');
@@ -289,11 +285,6 @@ const AddNewScreen = ({navigation}: any) => {
     }));
   };
 
-  const handleSubtaskChange = (index: number, value: string) => {
-    const updatedSubtasks = [...subtasks];
-    updatedSubtasks[index].description = value;
-    setSubtasks(updatedSubtasks);
-  };
 
   useEffect(() => {
     const unsubscribe = firestore()
@@ -342,15 +333,7 @@ const AddNewScreen = ({navigation}: any) => {
         </View>
       </View>
       {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
-      {subtasks.map((subtask, index) => (
-        <TextInput
-          key={index}
-          style={styles.subtaskInput}
-          placeholder={`Nhiệm vụ phụ ${index + 1}`}
-          value={subtask.description}
-          onChangeText={value => handleSubtaskChange(index, value)}
-        />
-      ))}
+
       <SpaceComponent height={20} />
       <View style={styles.optionsContainer}>
         <TouchableOpacity
