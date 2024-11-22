@@ -236,7 +236,6 @@ const Teamwork = () => {
 
   const handleDeleteSchedule = useCallback(
     (scheduleId: string) => {
-      // Find the schedule to be deleted
       const scheduleToDelete = schedules.find(s => s.id === scheduleId);
 
       if (!scheduleToDelete) {
@@ -254,70 +253,39 @@ const Teamwork = () => {
           onPress: async () => {
             setLoading(true);
             try {
-              // Get the specific date from the schedule
               const dateToDelete = scheduleToDelete.startDate;
-
-              // Create a new schedule that excludes this specific date
               const repeatedDates = calculateRepeatedDates(
                 scheduleToDelete.startDate,
                 scheduleToDelete.endDate,
               );
 
-              if (repeatedDates.length === 1) {
-                // If this is the only date, delete the entire schedule
+              // If only one date exists, delete entire schedule
+              if (repeatedDates.length <= 1) {
                 await firestore()
                   .collection('schedules')
                   .doc(scheduleId)
                   .delete();
               } else {
-                // Split the schedule into two parts if necessary
-                const datesToKeep = repeatedDates.filter(
-                  date => date.getTime() !== dateToDelete.getTime(),
-                );
+                // Update start/end dates to exclude deleted date
+                const newStartDate = repeatedDates
+                  .filter(date => date.getTime() !== dateToDelete.getTime())
+                  .reduce((earliest, current) =>
+                    current < earliest ? current : earliest,
+                  );
 
-                // Find the continuous date ranges
-                const ranges = datesToKeep.reduce((acc, date) => {
-                  if (acc.length === 0) {
-                    return [[date, date]];
-                  }
+                const newEndDate = repeatedDates
+                  .filter(date => date.getTime() !== dateToDelete.getTime())
+                  .reduce((latest, current) =>
+                    current > latest ? current : latest,
+                  );
 
-                  const lastRange = acc[acc.length - 1];
-                  const lastDate = lastRange[1];
-
-                  if (
-                    (date.getTime() - lastDate.getTime()) /
-                      (1000 * 60 * 60 * 24) ===
-                    7
-                  ) {
-                    lastRange[1] = date;
-                  } else {
-                    acc.push([date, date]);
-                  }
-
-                  return acc;
-                }, [] as Date[][]);
-
-                // Delete the original schedule
                 await firestore()
                   .collection('schedules')
                   .doc(scheduleId)
-                  .delete();
-
-                // Create new schedules for each continuous range
-                const batch = firestore().batch();
-                ranges.forEach(([startDate, endDate]) => {
-                  const newScheduleRef = firestore()
-                    .collection('schedules')
-                    .doc();
-                  batch.set(newScheduleRef, {
-                    ...scheduleToDelete,
-                    id: newScheduleRef.id,
-                    startDate,
-                    endDate,
+                  .update({
+                    startDate: newStartDate,
+                    endDate: newEndDate,
                   });
-                });
-
-                await batch.commit();
               }
 
               await fetchSchedules();
@@ -360,6 +328,7 @@ const Teamwork = () => {
     },
     [schedules, fetchSchedules, calculateRepeatedDates],
   );
+
   const handleSaveSchedule = useCallback(async () => {
     if (!user?.uid) return;
 
@@ -500,8 +469,6 @@ const Teamwork = () => {
         setShowStartDatePicker={setShowStartDatePicker}
         setShowEndDatePicker={setShowEndDatePicker}
       />
-
-      <LoadingModal visible={loading} />
     </SafeAreaView>
   );
 };
