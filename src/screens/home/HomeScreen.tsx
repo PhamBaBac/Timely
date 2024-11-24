@@ -1,7 +1,7 @@
-import auth, { firebase } from '@react-native-firebase/auth';
+import auth, {firebase} from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import messaging from '@react-native-firebase/messaging';
-import { addDays, addMonths, addWeeks, format } from 'date-fns';
+import {addDays, addMonths, addWeeks, format} from 'date-fns';
 import {
   Category2,
   Flag,
@@ -10,22 +10,22 @@ import {
   Star1,
   StarSlash,
   TickSquare,
-  Trash
+  Trash,
 } from 'iconsax-react-native';
-import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, {useEffect, useState} from 'react';
+import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { useDispatch, useSelector } from 'react-redux';
-import { RowComponent, SpaceComponent } from '../../components';
-import { appColors } from '../../constants/appColor';
+import {useDispatch, useSelector} from 'react-redux';
+import {RowComponent, SpaceComponent} from '../../components';
+import {appColors} from '../../constants/appColor';
 import useCustomStatusBar from '../../hooks/useCustomStatusBar';
-import { CategoryModel } from '../../models/categoryModel';
-import { TaskModel } from '../../models/taskModel';
-import { setCategories } from '../../redux/reducers/categoriesSlice';
-import { setTasks } from '../../redux/reducers/tasksSlice';
-import { RootState } from '../../redux/store';
-import { HandleNotification } from '../../utils/handleNotification';
+import {CategoryModel} from '../../models/categoryModel';
+import {TaskModel} from '../../models/taskModel';
+import {setCategories} from '../../redux/reducers/categoriesSlice';
+import {setTasks} from '../../redux/reducers/tasksSlice';
+import {RootState} from '../../redux/store';
+import {HandleNotification} from '../../utils/handleNotification';
 import {
   fetchCompletedTasks,
   fetchDeletedTasks,
@@ -34,7 +34,7 @@ import {
   handleDeleteTask,
   handleToggleComplete,
   handleToggleImportant,
-  handleUpdateRepeat
+  handleUpdateRepeat,
 } from '../../utils/taskUtil';
 const initialState: CategoryModel[] = [
   {id: '1', name: 'Tất cả', icon: '', color: '#FF8A65'},
@@ -94,7 +94,9 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
       });
     return () => unsubscribe();
   }, [dispatch, user]);
-  const filters = categories.reduce<{name: string; icon: string, color?: string}[]>(
+  const filters = categories.reduce<
+    {name: string; icon: string; color?: string}[]
+  >(
     (acc, category: CategoryModel) => {
       if (!acc.find(item => item.name === category.name)) {
         acc.push({name: category.name, icon: category.icon});
@@ -152,11 +154,17 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
               ? taskData.startTime.toDate().toISOString()
               : taskData.startTime;
 
+          const endDate =
+            taskData.endDate instanceof firebase.firestore.Timestamp
+              ? taskData.endDate.toDate().toISOString()
+              : taskData.endDate; // Giữ nguyên nếu không phải Timestamp
+
           return {
             ...taskData,
             id: doc.id,
             dueDate,
             startTime,
+            endDate,
           } as TaskModel;
         });
 
