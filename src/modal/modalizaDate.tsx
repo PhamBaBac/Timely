@@ -1,11 +1,10 @@
-// src/components/ModalizeDate.tsx
 import React, {useRef} from 'react';
 import {View, StyleSheet} from 'react-native';
 import {Portal} from 'react-native-portalize';
 import {Modalize} from 'react-native-modalize';
 import {Calendar as RNCalendar} from 'react-native-calendars';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { appColors } from '../constants';
+import {appColors} from '../constants';
 
 interface ModalizeDateProps {
   visible?: boolean;
@@ -32,6 +31,21 @@ const ModalizeDate: React.FC<ModalizeDateProps> = ({
     }
   }, [visible]);
 
+  // Thêm hàm này để xử lý an toàn việc format date
+  const getFormattedDate = () => {
+    if (selectedDate && selectedDate instanceof Date) {
+      return selectedDate.toISOString().split('T')[0];
+    }
+    if (taskDetail?.dueDate) {
+      try {
+        return new Date(taskDetail.dueDate).toISOString().split('T')[0];
+      } catch (e) {
+        console.warn('Invalid dueDate:', taskDetail.dueDate);
+      }
+    }
+    return new Date().toISOString().split('T')[0];
+  };
+
   return (
     <Portal>
       <Modalize ref={modalizeDateRef} adjustToContentHeight onClosed={onClose}>
@@ -40,23 +54,22 @@ const ModalizeDate: React.FC<ModalizeDateProps> = ({
             style={styles.calendar}
             markingType={'custom'}
             markedDates={{
-              [selectedDate
-                ? selectedDate.toISOString().split('T')[0]
-                : taskDetail.dueDate
-                ? new Date(taskDetail.dueDate).toISOString().split('T')[0]
-                : new Date().toISOString().split('T')[0]]: {
+              [getFormattedDate()]: {
+                // Sử dụng hàm mới
                 selected: true,
                 textColor: appColors.primary,
                 selectedColor: appColors.primary,
               },
             }}
-            onDayPress={({ dateString }: { dateString: string }) => {
+            onDayPress={({dateString}: {dateString: string}) => {
               const newSelectedDate = new Date(dateString);
               onDateChange(newSelectedDate);
             }}
             renderArrow={(direction: 'left' | 'right') => (
               <MaterialIcons
-                name={direction === 'left' ? 'arrow-back-ios' : 'arrow-forward-ios'}
+                name={
+                  direction === 'left' ? 'arrow-back-ios' : 'arrow-forward-ios'
+                }
                 size={14}
                 color={appColors.primary}
               />
