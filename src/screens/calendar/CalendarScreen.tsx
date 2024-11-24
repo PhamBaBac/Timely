@@ -286,6 +286,12 @@ const CalendarScreen = ({navigation}: any) => {
     return format(date, 'dd/MM/yyyy');
   };
 
+  const handleTaskPress = (task: TaskModel) => {
+    navigation.navigate('TaskDetailsScreen', {
+      id: task.id,
+    });
+  };
+
   const renderTask = (item: TaskModel) => {
     if (!item) return null;
 
@@ -320,7 +326,7 @@ const CalendarScreen = ({navigation}: any) => {
       <Swipeable
         renderRightActions={() => renderRightActions(item)}
         key={item.id}>
-        <Pressable onPress={() => {}}>
+        <Pressable onPress={() => handleTaskPress(item)}>
           <View
             style={[
               styles.taskItem,
