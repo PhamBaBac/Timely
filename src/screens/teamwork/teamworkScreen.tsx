@@ -205,6 +205,11 @@ const Teamwork = () => {
   );
 
   const filteredScheduleItems = useMemo(() => {
+    // Check if the displayed week is the current week
+    const isCurrentWeek = weekDays.some(
+      day => day.date === getTodayString().split('T')[0],
+    );
+
     return schedules
       .flatMap(item => {
         const repeatedDates = calculateRepeatedDates(
@@ -213,9 +218,13 @@ const Teamwork = () => {
         );
         return repeatedDates.map(date => ({
           ...item,
-          day: date, // Add this line to ensure the day is always displayed
+          day: date,
           startDate: date,
           endDate: new Date(date.getTime() + 24 * 60 * 60 * 1000),
+          // Add full date display for non-current week
+          fullDateDisplay: isCurrentWeek
+            ? null
+            : format(date, 'EEEE, dd/MM/yyyy'),
         }));
       })
       .filter(item => {
@@ -232,7 +241,13 @@ const Teamwork = () => {
         const periodB = PERIOD_ORDER[b.period] || 999;
         return periodA - periodB;
       });
-  }, [schedules, selectedDay, weekDays, calculateRepeatedDates]);
+  }, [
+    schedules,
+    selectedDay,
+    weekDays,
+    calculateRepeatedDates,
+    getTodayString,
+  ]);
 
   const handleDeleteSchedule = useCallback(
     (scheduleId: string) => {

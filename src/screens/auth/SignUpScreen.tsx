@@ -1,6 +1,6 @@
-import { Lock, Sms } from 'iconsax-react-native';
-import React, { useEffect, useState } from 'react';
-import { Image, StatusBar, Text, View } from 'react-native';
+import {Lock, Sms} from 'iconsax-react-native';
+import React, {useEffect, useState} from 'react';
+import {Image, StatusBar, Text, View} from 'react-native';
 import authenticationAPI from '../../apis/authApi';
 import {
   ButtonComponent,
@@ -12,9 +12,9 @@ import {
 } from '../../components';
 import TextComponent from '../../components/TextComponent';
 import TitleComponent from '../../components/TitleComponent';
-import { appColors, appInfo, fontFamilies } from '../../constants';
+import {appColors, appInfo, fontFamilies} from '../../constants';
 import LoadingModal from '../../modal/LoadingModal';
-import { globalStyles } from '../../styles/globalStyles';
+import {globalStyles} from '../../styles/globalStyles';
 
 const SignUpScreen = ({navigation}: any) => {
   const [email, setEmail] = useState('');
@@ -32,7 +32,7 @@ const SignUpScreen = ({navigation}: any) => {
   const handleSigninWithEmail = async () => {
     if (!email || !password || !confirmPassword) {
       setErrorText(
-        'Please enter your email, password, and confirm password!!!',
+        'Vui lòng nhập email, mật khẩu và xác nhận mật khẩu của bạn!!!',
       );
     } else if (password !== confirmPassword) {
       setErrorText('Passwords do not match!!!');
@@ -80,7 +80,7 @@ const SignUpScreen = ({navigation}: any) => {
           flex: 1,
         }}>
         <TitleComponent
-          text="Sign up"
+          text="Đăng kí"
           font={fontFamilies.medium}
           size={22}
           flex={0}
@@ -99,7 +99,7 @@ const SignUpScreen = ({navigation}: any) => {
             value={password}
             onChange={val => setPassword(val)}
             prefix={<Lock size={20} color={appColors.gray} />}
-            placeholder="Password"
+            placeholder="Mật khẩu"
             title=""
             isPassword
           />
@@ -107,7 +107,7 @@ const SignUpScreen = ({navigation}: any) => {
             value={confirmPassword}
             onChange={val => setConfirmPassword(val)}
             prefix={<Lock size={20} color={appColors.gray} />}
-            placeholder="Confirm Password"
+            placeholder="Nhập lại mật khẩu"
             title=""
             isPassword
           />
@@ -128,11 +128,11 @@ const SignUpScreen = ({navigation}: any) => {
 
         <SpaceComponent height={20} />
         <Text style={[globalStyles.text, {textAlign: 'center'}]}>
-          You have an already account?{' '}
+          Bạn đã có tài khoản?{' '}
           <Text
             style={{color: appColors.primary}}
             onPress={() => navigation.navigate('LoginScreen')}>
-            Login
+            Đăng nhập
           </Text>
         </Text>
       </SectionComponent>

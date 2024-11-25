@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, StyleSheet} from 'react-native';
+import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
 
 const TIME_PERIODS = {
   MORNING: {
@@ -88,7 +88,7 @@ const ScheduleByPeriod = ({
   const renderScheduleRow = (schedule: Schedule, periodKey: string) => {
     const periodInfo = TIME_PERIODS[getPeriodCategory(schedule.period)!];
     return (
-      <View
+      <TouchableOpacity
         key={schedule.id}
         style={[
           styles.tableRow,
@@ -96,10 +96,10 @@ const ScheduleByPeriod = ({
           {
             backgroundColor: periodInfo.color,
             borderLeftColor: periodInfo.headerColor,
-            borderLeftWidth: 4,
+            borderLeftWidth: 6,
           },
         ]}
-        onTouchEnd={() => onSchedulePress(schedule)}>
+        onPress={() => onSchedulePress(schedule)}>
         <Text style={[styles.cell, {flex: 2}]}>Tiết {schedule.period}</Text>
         <Text style={[styles.cell, {flex: 3}]}>
           {schedule.course}
@@ -107,7 +107,7 @@ const ScheduleByPeriod = ({
         </Text>
         <Text style={[styles.cell, {flex: 2}]}>{schedule.room}</Text>
         <Text style={[styles.cell, {flex: 3}]}>{schedule.instructor}</Text>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -116,11 +116,15 @@ const ScheduleByPeriod = ({
       {Object.entries(TIME_PERIODS).map(([key, period]) => (
         <View
           key={key}
-          style={[styles.periodSection, {backgroundColor: period.color}]}>
-          <View 
+          style={[
+            styles.periodSection,
+            {backgroundColor: period.color},
+            styles.shadow,
+          ]}>
+          <View
             style={[
-              styles.periodHeader, 
-              {backgroundColor: period.headerColor}
+              styles.periodHeader,
+              {backgroundColor: period.headerColor},
             ]}>
             <Text style={styles.periodTitle}>
               {period.name} (Tiết {period.periods.join(', ')})
@@ -130,7 +134,9 @@ const ScheduleByPeriod = ({
           <View style={styles.tableContainer}>
             {renderTableHeader()}
             {groupedSchedules[key].length > 0 ? (
-              groupedSchedules[key].map(schedule => renderScheduleRow(schedule, key))
+              groupedSchedules[key].map(schedule =>
+                renderScheduleRow(schedule, key),
+              )
             ) : (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>Không có lịch học</Text>
@@ -152,30 +158,34 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderRadius: 12,
     overflow: 'hidden',
+  },
+  shadow: {
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 6,
+    elevation: 5,
   },
   periodHeader: {
-    padding: 12,
+    padding: 16,
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
   },
   periodTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: 'white',
     textAlign: 'center',
   },
   tableContainer: {
     backgroundColor: 'white',
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
   },
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#f0f0f0',
-    padding: 8,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
   },
@@ -187,7 +197,8 @@ const styles = StyleSheet.create({
   },
   tableRow: {
     flexDirection: 'row',
-    padding: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
