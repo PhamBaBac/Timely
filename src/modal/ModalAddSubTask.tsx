@@ -18,7 +18,6 @@ interface Props {
 }
 
 const initValue = {
-  title: '',
   description: '',
   isCompleted: false,
 };
