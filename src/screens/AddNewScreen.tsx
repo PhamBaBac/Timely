@@ -5,6 +5,7 @@ import {
   Category,
   Clock,
   Flag,
+  Notification,
   Repeat,
   Sort,
   Star1,
@@ -28,7 +29,7 @@ import {
 import {Modalize} from 'react-native-modalize';
 import {Portal} from 'react-native-portalize';
 
-import {format} from 'date-fns';
+import {format, set} from 'date-fns';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
@@ -97,7 +98,12 @@ const rainbowColors = [
 
 const AddNewScreen = ({navigation}: any) => {
   useCustomStatusBar('dark-content', appColors.lightPurple);
-
+  const formatTime = (date: Date) => {
+    return format(date, 'HH:mm');
+  };
+  const fomatDate = (date: Date) => {
+    return format(date, 'dd/MM/yyyy');
+  };
   const user = auth().currentUser;
   const [modalTimeVisible, setModalTimeVisible] = useState(false);
   const [modalDateVisible, setModalDateVisible] = useState(false);
@@ -107,9 +113,12 @@ const AddNewScreen = ({navigation}: any) => {
     useState(false);
   const [selectedTime, setSelectedTime] = useState(new Date());
   const [selectedRepeat, setSelectedRepeat] = useState('');
+  //mac dinh la 5 phut
+  const [selectedRemind, setSelectedRemind] = useState('5 phút');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [taskDetail, setTaskDetail] = useState<TaskModel>(initValue);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
   const [isLoading, setIsLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
   const [selectedIcon, setSelectedIcon] = useState(availableIcons[0]);
@@ -118,6 +127,7 @@ const AddNewScreen = ({navigation}: any) => {
   const [tempCategory, setTempCategory] = useState('');
   const [selectedPriority, setSelectedPriority] = useState('');
   const modalizePriority = useRef<Modalize>(null);
+  const modalizeRemind = useRef<Modalize>(null);
 
  // Updated state for subtasks
   useEffect(() => {
@@ -229,6 +239,7 @@ const AddNewScreen = ({navigation}: any) => {
         setTaskDetail(initValue);
         setSelectedRepeat('');
         setSelectedDate(null);
+        setSelectedRemind('5 phút');
         setErrorText('');
         navigation.navigate('Trang chủ', {
           screen: 'HomeScreen',
@@ -287,6 +298,7 @@ const AddNewScreen = ({navigation}: any) => {
     setTaskDetail(prevState => ({
       ...prevState,
       [id]: value,
+       remind: '5',
     }));
   };
 
@@ -305,12 +317,7 @@ const AddNewScreen = ({navigation}: any) => {
     return () => unsubscribe();
   }, []);
 
-  const formatTime = (date: Date) => {
-    return format(date, 'HH:mm');
-  };
-  const fomatDate = (date: Date) => {
-    return format(date, 'dd/MM/yyyy');
-  };
+
 
   return (
     <Container back title="Thêm công việc mới" isScroll>
@@ -479,6 +486,7 @@ const AddNewScreen = ({navigation}: any) => {
             </View>
           </View>
         </TouchableOpacity>
+
         <Portal>
           <Modalize
             adjustToContentHeight
@@ -592,6 +600,130 @@ const AddNewScreen = ({navigation}: any) => {
             {selectedRepeat ? selectedRepeat : 'Không'}
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity onPress={() => modalizeRemind.current?.open()}>
+          <View style={styles.option}>
+            <Notification size="24" color="red" variant="Bold" />
+            <View
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+              }}>
+              <Text style={styles.optionText}>Chọn lời nhắc</Text>
+              <SpaceComponent width={10} />
+              <Text
+                style={styles.selectedTimeText}
+                numberOfLines={1}
+                ellipsizeMode="tail">
+                {selectedRemind}
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+        <Portal>
+          <Modalize
+            adjustToContentHeight
+            ref={modalizeRemind}
+            onClose={() => {}}>
+            <View
+              style={{
+                padding: 20,
+              }}>
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: 'bold',
+                  color: appColors.text,
+                  textAlign: 'center',
+                  paddingBottom: 10,
+                }}>
+                Nhắc nhở trước khi hết hạn
+              </Text>
+              <TouchableOpacity
+                style={{
+                  paddingVertical: 15,
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#eee',
+                }}
+                onPress={() => {
+                  setSelectedRemind('5 phút');
+                  handleChangeValue('remind', '5');
+                  modalizeRemind.current?.close();
+                }}>
+                <RowComponent
+                  styles={{
+                    justifyContent: 'flex-start',
+                    alignContent: 'center',
+                  }}>
+                  <Clock size="24" color={appColors.green} variant="Bold" />
+
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      color: '#666',
+                      paddingLeft: 10,
+                    }}>
+                    5 phút
+                  </Text>
+                </RowComponent>
+
+                <SpaceComponent width={10} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  paddingVertical: 15,
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#eee',
+                }}
+                onPress={() => {
+                  setSelectedRemind('15 phút');
+                  handleChangeValue('remind', '15');
+                  modalizeRemind.current?.close();
+                }}>
+                <RowComponent
+                  styles={{
+                    justifyContent: 'flex-start',
+                    alignContent: 'center',
+                  }}>
+                  <Clock size="24" color={appColors.yellow} variant="Bold" />
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      color: '#666',
+                      paddingLeft: 10,
+                    }}>
+                    15 phút
+                  </Text>
+                </RowComponent>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  paddingVertical: 15,
+                }}
+                onPress={() => {
+                  setSelectedRemind('30 phút');
+                  handleChangeValue('remind', '30');
+                  modalizeRemind.current?.close();
+                }}>
+                <RowComponent
+                  styles={{
+                    justifyContent: 'flex-start',
+                    alignContent: 'center',
+                  }}>
+                  <Clock size="24" color={appColors.red} variant="Bold" />
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      color: '#666',
+                      paddingLeft: 10,
+                    }}>
+                    30 phút
+                  </Text>
+                </RowComponent>
+              </TouchableOpacity>
+            </View>
+          </Modalize>
+        </Portal>
       </View>
       <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
         <ModalizeDate
@@ -636,6 +768,7 @@ const AddNewScreen = ({navigation}: any) => {
           onClose={() => setModalTimeVisible(false)}
           selectedTime={selectedTime}
           onTimeChange={setSelectedTime}
+          selectedDate={selectedDate}
         />
       </View>
       <Modal

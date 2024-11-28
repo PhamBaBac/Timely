@@ -20,6 +20,7 @@ const SignUpScreen = ({navigation}: any) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  console.log('email', email);
   const [isLoading, setIsLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
 

@@ -95,10 +95,7 @@ const Verification = ({route}: any) => {
 
           const user = userCredential.user;
           if (user) {
-            // Save user to the database (if you have custom logic for saving user data)
             await HandleUser.SaveToDatabase(user);
-
-            // Define default categories
             const defaultCategories = [
               {
                 name: 'Du lịch',
@@ -112,7 +109,7 @@ const Verification = ({route}: any) => {
             for (const category of defaultCategories) {
               await categoriesRef.add({
                 ...category,
-                uid: user.uid, // Store user's UID along with category
+                uid: user.uid, 
               });
             }
 
