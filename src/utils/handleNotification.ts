@@ -61,13 +61,14 @@ export class HandleNotification {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            // email: serviceAccount.client_email,
-            // key: serviceAccount.private_key,
+            email: serviceAccount.client_email,
+            key: serviceAccount.private_key,
           }),
         },
       );
       const result = await res.json();
       const accessToken = result.data.access_token;
+      console.log('Access Token:', accessToken);
       return accessToken;
     } catch (error) {
       console.log(error);
