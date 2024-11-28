@@ -100,7 +100,7 @@ const LoginScreen = ({navigation}: any) => {
 
         <RowComponent styles={{marginTop: 20}}>
           <Text style={[globalStyles.text]}>
-            Y Bạn chưa có tài khoản?{' '}
+            Bạn chưa có tài khoản?{' '}
             <Text
               style={{color: appColors.primary}}
               onPress={() => navigation.navigate('SignUpScreen')}>
