@@ -57,8 +57,16 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
   const [isDeleteAll, setIsDeleteAll] = useState(false);
 
   const tasks = useSelector((state: RootState) => state.tasks.tasks);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const formatTime = (date: Date) => {
+    return format(date, 'HH:mm');
+  };
+  const fomatDate = (date: Date) => {
+    return format(date, 'dd/MM/yyyy');
+  };
+
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
-  console.log('selectedTaskIds:', selectedTaskIds);
   useEffect(() => {
     HandleNotification.checkNotificationPersion();
     messaging().onMessage((mess: any) => {
@@ -270,15 +278,6 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     }
 
     return dates;
-  };
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const formatTime = (date: Date) => {
-    return format(date, 'HH:mm');
-  };
-  const fomatDate = (date: Date) => {
-    return format(date, 'dd/MM/yyyy');
   };
 
   const tasksBeforeToday = filteredTasks.filter(task => {

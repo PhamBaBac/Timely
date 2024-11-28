@@ -77,7 +77,7 @@ LocaleConfig.locales['vi'] = {
 LocaleConfig.defaultLocale = 'vi';
 
 const CalendarScreen = ({navigation}: any) => {
-  useCustomStatusBar('dark-content', appColors.white);
+  useCustomStatusBar('light-content', appColors.primary);
   const dispatch = useDispatch();
 
   // New state for view mode
@@ -431,7 +431,9 @@ const CalendarScreen = ({navigation}: any) => {
             viewMode === 'month' && styles.activeViewMode,
           ]}
           onPress={() => setViewMode('month')}>
-          <Text style={styles.viewModeText}>Tháng</Text>
+          <Text style={viewMode === 'month' ? {color: appColors.black, fontWeight: '600'} : {color: appColors.white, fontWeight: '600'}}>
+            Tháng
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[
@@ -439,7 +441,9 @@ const CalendarScreen = ({navigation}: any) => {
             viewMode === 'week' && styles.activeViewMode,
           ]}
           onPress={() => setViewMode('week')}>
-          <Text style={styles.viewModeText}>Tuần</Text>
+          <Text style={viewMode === 'week' ? {color: appColors.black, fontWeight: '600'} : {color: appColors.white, fontWeight: '600'}}>
+            Tuần
+          </Text>
         </TouchableOpacity>
       </RowComponent>
 
@@ -550,25 +554,27 @@ const styles = StyleSheet.create({
   },
   // New styles for view mode toggle and week view
   viewModeToggle: {
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     paddingVertical: 10,
-    backgroundColor: appColors.white,
+    backgroundColor: appColors.primary,
   },
   viewModeButton: {
     paddingHorizontal: 20,
     paddingVertical: 8,
     marginHorizontal: 5,
     borderRadius: 20,
-    backgroundColor: appColors.lightPurple,
+    backgroundColor: appColors.primary,
+    borderColor: appColors.white,
+    borderWidth: 1,
   },
   activeViewMode: {
-    backgroundColor: appColors.primary,
+    backgroundColor: appColors.lightPurple,
   },
-  viewModeText: {
-    color: appColors.black,
-    fontWeight: '600',
-  },
+  // viewModeText: {
+  //   color: appColors.black,
+  //   fontWeight: '600',
+  // },
   weekViewContainer: {
     backgroundColor: appColors.white,
     paddingVertical: 10,
