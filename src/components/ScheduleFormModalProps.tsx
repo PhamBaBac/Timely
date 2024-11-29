@@ -10,11 +10,13 @@ import {
   ScrollView,
   Switch,
   Alert,
+  Share,
 } from 'react-native';
 import {Picker} from '@react-native-picker/picker';
 import {Calendar} from 'react-native-calendars';
 import {ScheduleModel} from '../models/ScheduleModel';
 import {appColors} from '../constants';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 interface ScheduleFormModalProps {
   visible: boolean;
@@ -32,6 +34,8 @@ interface ScheduleFormModalProps {
   setShowStartDatePicker: (show: boolean) => void;
 
   setShowEndDatePicker: (show: boolean) => void;
+
+  onShare?: () => void;
 
   onStartDatePickerChange: (event: any, date?: Date) => void;
 
@@ -61,6 +65,7 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
   onSave,
   onDelete,
   onScheduleChange,
+  onShare,
 }) => {
   const [errors, setErrors] = useState<ValidationErrors>({
     course: '',
@@ -82,6 +87,37 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
       });
     }
   }, [schedule.startDate]);
+
+  const handleShare = async () => {
+    try {
+      const periodInfo = PERIOD_OPTIONS.find(p => p.value === schedule.period);
+      const shareMessage = `
+${schedule.isExam ? 'Lịch thi' : 'Lịch học'}:
+Môn: ${schedule.course}
+Thời gian: ${schedule.startDate.toLocaleDateString()} - ${schedule.endDate.toLocaleDateString()}
+${schedule.isExam ? 'Ca thi' : 'Tiết học'}: ${
+        periodInfo
+          ? `${periodInfo.label} (${periodInfo.time})`
+          : schedule.period
+      }
+Phòng: ${schedule.room}
+${schedule.isExam ? 'Giám thị' : 'Giảng viên'}: ${schedule.instructor}
+${schedule.group ? `Nhóm: ${schedule.group}` : ''}
+      `.trim();
+
+      const result = await Share.share({
+        message: shareMessage,
+      });
+
+      if (result.action === Share.sharedAction) {
+        // shared successfully
+      } else if (result.action === Share.dismissedAction) {
+        // dismissed
+      }
+    } catch (error: any) {
+      Alert.alert('Lỗi chia sẻ', error.message);
+    }
+  };
 
   const validateForm = (): boolean => {
     const newErrors: ValidationErrors = {
@@ -298,9 +334,11 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
               <Text style={styles.headerText}>
                 {schedule.id ? 'Chỉnh sửa lịch' : 'Thêm lịch'}
               </Text>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                <Text style={styles.closeButtonText}>✕</Text>
-              </TouchableOpacity>
+              <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                  <Text style={styles.closeButtonText}>✕</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.switchContainer}>
@@ -427,6 +465,18 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
                   <Text style={styles.buttonText}>Xóa</Text>
                 </TouchableOpacity>
               )}
+
+              <TouchableOpacity
+                style={[styles.button, styles.shareButton]}
+                onPress={handleShare}>
+                <MaterialCommunityIcons
+                  name="share-variant"
+                  size={20}
+                  color="white"
+                  style={{marginRight: 8}}
+                />
+                <Text style={styles.buttonText}>Chia sẻ</Text>
+              </TouchableOpacity>
             </View>
           </ScrollView>
         </View>
@@ -650,5 +700,11 @@ const styles = StyleSheet.create({
     color: '#495057',
     fontSize: 16,
     fontWeight: '600',
+  },
+  shareButton: {
+    backgroundColor: '#40C057', // A green color to distinguish it
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
