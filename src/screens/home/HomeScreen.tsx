@@ -13,7 +13,7 @@ import {
   Trash,
 } from 'iconsax-react-native';
 import React, {useEffect, useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {PermissionsAndroid, Platform, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {useDispatch, useSelector} from 'react-redux';
@@ -43,6 +43,7 @@ const initialState: CategoryModel[] = [
 ];
 
 const HomeScreen = ({navigation}: {navigation: any}) => {
+
   const user = auth().currentUser;
   //luu gia initialState vao redux
   const dispatch = useDispatch();
