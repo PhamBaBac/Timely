@@ -86,36 +86,36 @@ const AppRouters = () => {
       name: 'ic_launcher',
       type: 'mipmap',
     },
-    color: '#ff00ff',
+    color: '#fff',
     parameters: {
       delay: 3000, // Kiểm tra mỗi phút
     },
   };
 
   // Kích hoạt BackgroundActions
-  useEffect(() => {
-    const startBackgroundTask = async () => {
-      try {
-        console.log('Starting background task...');
-        await BackgroundActions.start(async taskData => {
-          while (BackgroundActions.isRunning()) {
-            await checkUpcomingTasks();
-            if (taskData) {
-              await new Promise(resolve => setTimeout(resolve, taskData.delay));
-            }
-          }
-        }, options);
-      } catch (error) {
-        console.error(error);
-      }
-    };
+  // useEffect(() => {
+  //   const startBackgroundTask = async () => {
+  //     try {
+  //       console.log('Starting background task...');
+  //       await BackgroundActions.start(async taskData => {
+  //         while (BackgroundActions.isRunning()) {
+  //           await checkUpcomingTasks();
+  //           if (taskData) {
+  //             await new Promise(resolve => setTimeout(resolve, taskData.delay));
+  //           }
+  //         }
+  //       }, options);
+  //     } catch (error) {
+  //       console.error(error);
+  //     }
+  //   };
 
-    startBackgroundTask();
+  //   startBackgroundTask();
 
-    return () => {
-      BackgroundActions.stop();
-    };
-  }, [tasks]);
+  //   return () => {
+  //     BackgroundActions.stop();
+  //   };
+  // }, [tasks]);
 
   return (
     <>

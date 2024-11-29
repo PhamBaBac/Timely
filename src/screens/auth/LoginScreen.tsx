@@ -1,6 +1,6 @@
 import React, {useState} from 'react';
 import {Lock, Sms} from 'iconsax-react-native';
-import {Image, StatusBar, Text, View} from 'react-native';
+import {Image, ImageBackground, StatusBar, Text, View} from 'react-native';
 import auth from '@react-native-firebase/auth';
 import {
   ButtonComponent,
@@ -50,10 +50,11 @@ const LoginScreen = ({navigation}: any) => {
           marginTop: 40,
         }}>
         <Image
-          source={require('../../assets/images/logo.png')}
+          source={require('../../assets/images/logoTimeLy1.png')}
           style={{
-            width: appInfo.sizes.WIDTH * 0.7,
+            width: appInfo.sizes.WIDTH,
             resizeMode: 'contain',
+            //Xoa mau background cua anh
           }}
         />
       </RowComponent>
