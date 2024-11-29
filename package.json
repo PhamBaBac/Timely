@@ -51,6 +51,7 @@
     "react-native-share": "^11.0.2",
     "react-native-svg": "^15.7.1",
     "react-native-swipeable": "^0.6.0",
+    "react-native-table-component": "^1.2.2",
     "react-native-vector-icons": "^10.1.0",
     "react-redux": "^9.1.2"
   },
@@ -68,6 +69,7 @@
     "@types/react-native": "^0.73.0",
     "@types/react-native-background-timer": "^2.0.2",
     "@types/react-native-push-notification": "^8.1.4",
+    "@types/react-native-table-component": "^1.2.8",
     "@types/react-native-vector-icons": "^6.4.18",
     "@types/react-test-renderer": "^18.0.0",
     "babel-jest": "^29.6.3",
