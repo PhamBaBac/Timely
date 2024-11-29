@@ -97,7 +97,7 @@ const LoginScreen = ({navigation}: any) => {
         )}
 
         <SpaceComponent height={20} />
-        <ButtonComponent type="primary" text="Login" onPress={handleLogin} />
+        <ButtonComponent type="primary" text="Đăng nhập" onPress={handleLogin} />
 
         <RowComponent styles={{marginTop: 20}}>
           <Text style={[globalStyles.text]}>

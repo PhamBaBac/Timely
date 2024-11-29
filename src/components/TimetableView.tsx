@@ -223,11 +223,12 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   cellText: {
-    fontSize: 14,
-    textAlign: 'center',
+    fontSize: 15,
+    textAlign: 'left',
+    fontWeight: 'bold',
   },
   scheduleContainer: {
     width: '100%',

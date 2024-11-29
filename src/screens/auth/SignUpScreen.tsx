@@ -33,7 +33,7 @@ const SignUpScreen = ({navigation}: any) => {
   const handleSigninWithEmail = async () => {
     if (!email || !password || !confirmPassword) {
       setErrorText(
-        'Vui lòng nhập email, mật khẩu và xác nhận mật khẩu của bạn!!!',
+        'Please enter your email, password, and confirm password!!!',
       );
     } else if (password !== confirmPassword) {
       setErrorText('Passwords do not match!!!');
@@ -47,6 +47,7 @@ const SignUpScreen = ({navigation}: any) => {
           'post',
         );
         setIsLoading(false);
+        console.log(res.data);
 
         navigation.navigate('Verification', {
           code: res.data.code,
@@ -81,7 +82,7 @@ const SignUpScreen = ({navigation}: any) => {
           flex: 1,
         }}>
         <TitleComponent
-          text="Đăng kí"
+          text="Sign up"
           font={fontFamilies.medium}
           size={22}
           flex={0}
@@ -100,7 +101,7 @@ const SignUpScreen = ({navigation}: any) => {
             value={password}
             onChange={val => setPassword(val)}
             prefix={<Lock size={20} color={appColors.gray} />}
-            placeholder="Mật khẩu"
+            placeholder="Password"
             title=""
             isPassword
           />
@@ -108,7 +109,7 @@ const SignUpScreen = ({navigation}: any) => {
             value={confirmPassword}
             onChange={val => setConfirmPassword(val)}
             prefix={<Lock size={20} color={appColors.gray} />}
-            placeholder="Nhập lại mật khẩu"
+            placeholder="Confirm Password"
             title=""
             isPassword
           />
@@ -129,11 +130,11 @@ const SignUpScreen = ({navigation}: any) => {
 
         <SpaceComponent height={20} />
         <Text style={[globalStyles.text, {textAlign: 'center'}]}>
-          Bạn đã có tài khoản?{' '}
+          You have an already account?{' '}
           <Text
             style={{color: appColors.primary}}
             onPress={() => navigation.navigate('LoginScreen')}>
-            Đăng nhập
+            Login
           </Text>
         </Text>
       </SectionComponent>
