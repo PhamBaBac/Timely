@@ -68,9 +68,9 @@ const SignUpScreen = ({navigation}: any) => {
           marginTop: 40,
         }}>
         <Image
-          source={require('../../assets/images/logo.png')}
+          source={require('../../assets/images/logoTimeLy1.png')}
           style={{
-            width: appInfo.sizes.WIDTH * 0.7,
+            width: appInfo.sizes.WIDTH,
             resizeMode: 'contain',
           }}
         />
