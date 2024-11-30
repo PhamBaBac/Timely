@@ -129,7 +129,7 @@ const AddNewScreen = ({navigation}: any) => {
   const modalizePriority = useRef<Modalize>(null);
   const modalizeRemind = useRef<Modalize>(null);
 
- // Updated state for subtasks
+  // Updated state for subtasks
   useEffect(() => {
     user && setTaskDetail({...taskDetail, uid: user.uid});
   }, [user]);
@@ -298,10 +298,9 @@ const AddNewScreen = ({navigation}: any) => {
     setTaskDetail(prevState => ({
       ...prevState,
       [id]: value,
-       remind: '5',
+      remind: '5',
     }));
   };
-
 
   useEffect(() => {
     const unsubscribe = firestore()
@@ -316,8 +315,6 @@ const AddNewScreen = ({navigation}: any) => {
 
     return () => unsubscribe();
   }, []);
-
-
 
   return (
     <Container back title="Thêm công việc mới" isScroll>

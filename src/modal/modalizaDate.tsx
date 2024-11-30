@@ -1,4 +1,3 @@
-// src/components/ModalizeDate.tsx
 import React, {useRef} from 'react';
 import {View, StyleSheet} from 'react-native';
 import {Portal} from 'react-native-portalize';
@@ -32,6 +31,21 @@ const ModalizeDate: React.FC<ModalizeDateProps> = ({
     }
   }, [visible]);
 
+  // Thêm hàm này để xử lý an toàn việc format date
+  const getFormattedDate = () => {
+    if (selectedDate && selectedDate instanceof Date) {
+      return selectedDate.toISOString().split('T')[0];
+    }
+    if (taskDetail?.dueDate) {
+      try {
+        return new Date(taskDetail.dueDate).toISOString().split('T')[0];
+      } catch (e) {
+        console.warn('Invalid dueDate:', taskDetail.dueDate);
+      }
+    }
+    return new Date().toISOString().split('T')[0];
+  };
+
   return (
     <Portal>
       <Modalize ref={modalizeDateRef} adjustToContentHeight onClosed={onClose}>
@@ -40,11 +54,8 @@ const ModalizeDate: React.FC<ModalizeDateProps> = ({
             style={styles.calendar}
             markingType={'custom'}
             markedDates={{
-              [selectedDate
-                ? selectedDate.toISOString().split('T')[0]
-                : taskDetail.dueDate
-                ? new Date(taskDetail.dueDate).toISOString().split('T')[0]
-                : new Date().toISOString().split('T')[0]]: {
+              [getFormattedDate()]: {
+                // Sử dụng hàm mới
                 selected: true,
                 textColor: appColors.primary,
                 selectedColor: appColors.primary,

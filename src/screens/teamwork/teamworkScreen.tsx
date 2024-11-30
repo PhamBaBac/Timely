@@ -23,6 +23,7 @@ import {DateTime} from '../../utils/DateTime';
 import ScheduleByPeriod from '../../components/ScheduleByPeriod';
 import useCustomStatusBar from '../../hooks/useCustomStatusBar';
 import {appColors} from '../../constants';
+import TimetableView from '../../components/TimetableView';
 
 // Định nghĩa period order ở ngoài component để tránh tạo lại mỗi lần render
 const PERIOD_ORDER: {[key: string]: number} = {
@@ -220,9 +221,7 @@ const Teamwork = () => {
       })
       .filter(item => {
         const itemDate = item.startDate.toISOString().split('T')[0];
-        return selectedDay
-          ? itemDate === selectedDay
-          : weekDays.some(day => day.date === itemDate);
+        return weekDays.some(day => day.date === itemDate);
       })
       .sort((a, b) => {
         if (a.startDate.getTime() !== b.startDate.getTime()) {
@@ -232,11 +231,10 @@ const Teamwork = () => {
         const periodB = PERIOD_ORDER[b.period] || 999;
         return periodA - periodB;
       });
-  }, [schedules, selectedDay, weekDays, calculateRepeatedDates]);
+  }, [schedules, weekDays, calculateRepeatedDates]);
 
   const handleDeleteSchedule = useCallback(
     (scheduleId: string) => {
-      // Find the schedule to be deleted
       const scheduleToDelete = schedules.find(s => s.id === scheduleId);
 
       if (!scheduleToDelete) {
@@ -244,122 +242,44 @@ const Teamwork = () => {
         return;
       }
 
-      Alert.alert('Xóa lịch học', 'Bạn muốn xóa lịch học này như thế nào?', [
-        {
-          text: 'Hủy',
-          style: 'cancel',
-        },
-        {
-          text: 'Chỉ xóa ngày này',
-          onPress: async () => {
-            setLoading(true);
-            try {
-              // Get the specific date from the schedule
-              const dateToDelete = scheduleToDelete.startDate;
-
-              // Create a new schedule that excludes this specific date
-              const repeatedDates = calculateRepeatedDates(
-                scheduleToDelete.startDate,
-                scheduleToDelete.endDate,
-              );
-
-              if (repeatedDates.length === 1) {
-                // If this is the only date, delete the entire schedule
+      Alert.alert(
+        'Xóa lịch học',
+        'Bạn có chắc chắn muốn xóa lịch học này không?',
+        [
+          {
+            text: 'Hủy',
+            style: 'cancel',
+          },
+          {
+            text: 'Xóa',
+            style: 'destructive',
+            onPress: async () => {
+              setLoading(true);
+              try {
                 await firestore()
                   .collection('schedules')
                   .doc(scheduleId)
                   .delete();
-              } else {
-                // Split the schedule into two parts if necessary
-                const datesToKeep = repeatedDates.filter(
-                  date => date.getTime() !== dateToDelete.getTime(),
+
+                await fetchSchedules();
+                Alert.alert('Thành công', 'Đã xóa lịch học thành công.');
+              } catch (error) {
+                console.error('Error deleting schedule:', error);
+                Alert.alert(
+                  'Lỗi',
+                  'Không thể xóa lịch học. Vui lòng thử lại sau.',
                 );
-
-                // Find the continuous date ranges
-                const ranges = datesToKeep.reduce((acc, date) => {
-                  if (acc.length === 0) {
-                    return [[date, date]];
-                  }
-
-                  const lastRange = acc[acc.length - 1];
-                  const lastDate = lastRange[1];
-
-                  if (
-                    (date.getTime() - lastDate.getTime()) /
-                      (1000 * 60 * 60 * 24) ===
-                    7
-                  ) {
-                    lastRange[1] = date;
-                  } else {
-                    acc.push([date, date]);
-                  }
-
-                  return acc;
-                }, [] as Date[][]);
-
-                // Delete the original schedule
-                await firestore()
-                  .collection('schedules')
-                  .doc(scheduleId)
-                  .delete();
-
-                // Create new schedules for each continuous range
-                const batch = firestore().batch();
-                ranges.forEach(([startDate, endDate]) => {
-                  const newScheduleRef = firestore()
-                    .collection('schedules')
-                    .doc();
-                  batch.set(newScheduleRef, {
-                    ...scheduleToDelete,
-                    id: newScheduleRef.id,
-                    startDate,
-                    endDate,
-                  });
-                });
-
-                await batch.commit();
+              } finally {
+                setLoading(false);
               }
-
-              await fetchSchedules();
-              Alert.alert('Thành công', 'Đã xóa lịch học thành công.');
-            } catch (error) {
-              console.error('Error deleting schedule:', error);
-              Alert.alert(
-                'Lỗi',
-                'Không thể xóa lịch học. Vui lòng thử lại sau.',
-              );
-            } finally {
-              setLoading(false);
-            }
+            },
           },
-        },
-        {
-          text: 'Xóa tất cả',
-          onPress: async () => {
-            setLoading(true);
-            try {
-              await firestore()
-                .collection('schedules')
-                .doc(scheduleId)
-                .delete();
-              await fetchSchedules();
-              Alert.alert('Thành công', 'Đã xóa tất cả lịch học thành công.');
-            } catch (error) {
-              console.error('Error deleting schedule:', error);
-              Alert.alert(
-                'Lỗi',
-                'Không thể xóa lịch học. Vui lòng thử lại sau.',
-              );
-            } finally {
-              setLoading(false);
-            }
-          },
-          style: 'destructive',
-        },
-      ]);
+        ],
+      );
     },
-    [schedules, fetchSchedules, calculateRepeatedDates],
+    [schedules, fetchSchedules],
   );
+
   const handleSaveSchedule = useCallback(async () => {
     if (!user?.uid) return;
 
@@ -437,9 +357,6 @@ const Teamwork = () => {
   );
 
   // Thêm useEffect này
-  useEffect(() => {
-    setSelectedDay(getTodayString());
-  }, [getTodayString]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -454,35 +371,11 @@ const Teamwork = () => {
         onNextWeek={() => navigateWeek('next')}
       />
 
-      <View style={styles.weekDaysWrapper}>
-        <FlatList
-          data={weekDays}
-          renderItem={({item}) => (
-            <View style={styles.dayItemContainer}>
-              <ScheduleDayItem
-                item={item}
-                selectedDay={selectedDay}
-                onPress={date =>
-                  setSelectedDay(date === selectedDay ? null : date)
-                }
-              />
-            </View>
-          )}
-          keyExtractor={item => item.date}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.weekDaysContainer}
-        />
-      </View>
-
-      <View style={styles.scheduleListContainer}>
-        <View style={styles.scheduleListContainer}>
-          <ScheduleByPeriod
-            schedules={filteredScheduleItems}
-            onSchedulePress={handleSchedulePress}
-          />
-        </View>
-      </View>
+      <TimetableView
+        schedules={filteredScheduleItems}
+        weekDays={weekDays}
+        onSchedulePress={handleSchedulePress} // This was already defined in your original code
+      />
 
       <ScheduleFormModal
         visible={modalVisible}
@@ -500,8 +393,6 @@ const Teamwork = () => {
         setShowStartDatePicker={setShowStartDatePicker}
         setShowEndDatePicker={setShowEndDatePicker}
       />
-
-      <LoadingModal visible={loading} />
     </SafeAreaView>
   );
 };
@@ -555,20 +446,7 @@ const styles = StyleSheet.create({
     padding: 10,
     height: 300,
   },
-  scheduleItemContainer: {
-    marginVertical: 5,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#f8f8f8',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
+
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -579,6 +457,115 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+  },
+
+  timetableContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+    width: '100%', // Đảm bảo container chiếm toàn bộ chiều ngang
+  },
+  timetableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderColor: '#e0e0e0',
+    width: '100%', // Mở rộng hàng chiếm toàn bộ chiều ngang
+  },
+  timetableCell: {
+    flex: 1, // Để các ô mở rộng đều nhau
+    padding: 5,
+    borderLeftWidth: 1,
+    borderLeftColor: '#e0e4e8',
+    justifyContent: 'flex-start',
+    minWidth: 100, // Đặt chiều rộng tối thiểu nếu muốn
+  },
+  timetableHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    width: '100%', // Đảm bảo header chiếm toàn bộ chiều ngang
+  },
+  timetableHeaderText: {
+    flex: 1,
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
+
+  scheduleText: {
+    fontSize: 12,
+    marginBottom: 2,
+  },
+
+  timetableDateText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  headerColumn: {
+    flex: 1, // Mở rộng đều các cột
+    alignItems: 'center',
+    minWidth: 100, // Đặt chiều rộng tối thiểu nếu muốn
+  },
+
+  weekendHeaderColumn: {
+    backgroundColor: '#f9f9f9',
+  },
+  timetableHeaderDayText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  timetableHeaderDateText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+
+  timetableRowContent: {
+    flexDirection: 'row',
+  },
+
+  periodText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#666',
+  },
+
+  weekendCell: {
+    backgroundColor: '#f9f9f9',
+  },
+  scheduleItemContainer: {
+    backgroundColor: '#e6f2ff',
+    borderRadius: 5,
+    padding: 5,
+    marginVertical: 2,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+    width: 500,
+  },
+  scheduleCourseText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#2c3e50',
+  },
+  scheduleRoomText: {
+    fontSize: 10,
+    color: '#7f8c8d',
+    marginTop: 2,
+  },
+  scheduleInstructorText: {
+    fontSize: 10,
+    color: '#34495e',
+    marginTop: 2,
+  },
+  periodColumn: {
+    width: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f9f9f9',
+    borderRightWidth: 1,
+    borderRightColor: '#e0e0e0',
   },
 });
 
