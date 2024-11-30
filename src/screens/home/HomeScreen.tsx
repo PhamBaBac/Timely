@@ -163,11 +163,17 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
               ? taskData.startTime.toDate().toISOString()
               : taskData.startTime;
 
+          const endDate =
+            taskData.endDate instanceof firebase.firestore.Timestamp
+              ? taskData.endDate.toDate().toISOString()
+              : taskData.endDate; // Giữ nguyên nếu không phải Timestamp
+
           return {
             ...taskData,
             id: doc.id,
             dueDate,
             startTime,
+            endDate,
           } as TaskModel;
         });
 

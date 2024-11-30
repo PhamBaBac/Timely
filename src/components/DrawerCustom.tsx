@@ -13,12 +13,17 @@ import {RowComponent, TextComponent} from '.';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import {useSelector} from 'react-redux';
+import {RootState} from '../redux/store';
 
 const DrawerCustom = ({navigation}: any) => {
   const size = 24;
   const color = appColors.gray;
+  const tasks = useSelector((state: RootState) => state.tasks.tasks);
 
   const profileMenu = [
+
+    
     {
       key: 'StartTask',
       title: 'Nhiệm vụ nổi bật',
@@ -31,7 +36,10 @@ const DrawerCustom = ({navigation}: any) => {
       key: 'CompletedTasks',
       title: 'Nhiệm vụ đã hoàn thành', // Added new menu item for completed tasks
       icon: <MaterialIcons name="done" size={size} color={color} />,
-      action: () => navigation.navigate('CompletedScreen'), // Add navigation action here
+      action: () =>
+        navigation.navigate('IsCompleTaskScreen', {
+          tasks: tasks.filter(task => task.isCompleted),
+        }),
     },
     {
       key: 'Habits',

@@ -1,6 +1,6 @@
-import { Lock, Sms } from 'iconsax-react-native';
-import React, { useEffect, useState } from 'react';
-import { Image, StatusBar, Text, View } from 'react-native';
+import {Lock, Sms} from 'iconsax-react-native';
+import React, {useEffect, useState} from 'react';
+import {Image, StatusBar, Text, View} from 'react-native';
 import authenticationAPI from '../../apis/authApi';
 import {
   ButtonComponent,
@@ -12,9 +12,9 @@ import {
 } from '../../components';
 import TextComponent from '../../components/TextComponent';
 import TitleComponent from '../../components/TitleComponent';
-import { appColors, appInfo, fontFamilies } from '../../constants';
+import {appColors, appInfo, fontFamilies} from '../../constants';
 import LoadingModal from '../../modal/LoadingModal';
-import { globalStyles } from '../../styles/globalStyles';
+import {globalStyles} from '../../styles/globalStyles';
 
 const SignUpScreen = ({navigation}: any) => {
   const [email, setEmail] = useState('');
@@ -47,6 +47,7 @@ const SignUpScreen = ({navigation}: any) => {
           'post',
         );
         setIsLoading(false);
+        console.log(res.data);
 
         navigation.navigate('Verification', {
           code: res.data.code,

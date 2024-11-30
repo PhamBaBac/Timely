@@ -21,6 +21,7 @@ import {
   Category,
   Clock,
   Flag,
+  Notification,
   Repeat,
   Star1,
   StarSlash,
@@ -111,31 +112,104 @@ const EditScreen = ({route, navigation}: any) => {
       ? 'Trung bình'
       : 'Cao',
   );
+  const [selectedRemind, setSelectedRemind] = useState(task.remind + ' phút');
 
   const [subtasks, setSubtasks] = useState(task.subtasks || []);
   const modalizePriority = useRef<Modalize>(null);
+  const modalizeRemind = useRef<Modalize>(null);
 
   const id = task.id;
 
-  const getSubTaskById = () => {
-    firestore()
-      .collection('subTasks')
-      .where('taskId', '==', id)
-      .onSnapshot(snap => {
-        if (snap.empty) {
-          setSubtasks([]);
-        } else {
-          const items: SubTask[] = [];
-          snap.forEach((item: any) => {
-            items.push({
-              id: item.id,
-              ...item.data(),
-            });
-          });
-          setSubtasks(items);
-        }
-      });
-  };
+  console.log('task', task.repeat);
+  console.log('id', task.id);
+
+  // const handleUpdateTask = async () => {
+  //   if (!taskDetail || !taskDetail.title) {
+  //     setErrorText('Tiêu đề là bắt buộc');
+  //     return;
+  //   }
+
+  //   let startDate = selectedDate ? new Date(selectedDate) : new Date();
+
+  //   // Weekly repeat logic
+  //   if (taskDetail.repeat === 'week' && taskDetail.repeatDays.length > 0) {
+  //     const currentDay = startDate.getDay(); // Get the current day based on selected start date
+  //     const sortedRepeatDays = [
+  //       ...taskDetail.repeatDays.filter(day => day >= currentDay),
+  //       ...taskDetail.repeatDays.filter(day => day < currentDay),
+  //     ];
+
+  //     const nextRepeatDay = sortedRepeatDays[0];
+  //     startDate.setDate(
+  //       startDate.getDate() +
+  //         (nextRepeatDay - currentDay + (nextRepeatDay < currentDay ? 7 : 0)),
+  //     );
+  //   }
+
+  //   // Monthly repeat logic
+  //   else if (
+  //     taskDetail.repeat === 'month' &&
+  //     taskDetail.repeatDays.length > 0
+  //   ) {
+  //     const currentDay = startDate.getDate();
+  //     const sortedRepeatDays = [
+  //       ...taskDetail.repeatDays.filter(day => day >= currentDay),
+  //       ...taskDetail.repeatDays.filter(day => day < currentDay),
+  //     ];
+
+  //     let nextRepeatDay = sortedRepeatDays[0]; // Get the first valid repeat day
+
+  //     if (nextRepeatDay < currentDay) {
+  //       startDate.setMonth(startDate.getMonth() + 1); // Move to next month
+  //     }
+
+  //     startDate.setDate(nextRepeatDay);
+
+  //     if (startDate.getDate() !== nextRepeatDay) {
+  //       startDate = new Date(
+  //         startDate.getFullYear(),
+  //         startDate.getMonth() + 1,
+  //         0,
+  //       );
+  //     }
+  //   } else if (
+  //     (taskDetail.repeat === 'week' || taskDetail.repeat === 'month') &&
+  //     taskDetail.repeatDays.length === 0
+  //   ) {
+  //     startDate = selectedDate ? new Date(selectedDate) : new Date();
+  //   }
+  //   const today = new Date();
+  //   today.setHours(0, 0, 0, 0);
+
+  //   const updatedTask = {
+  //     ...taskDetail,
+  //     subtasks,
+  //     category: selectedCategory,
+  //     startDate: selectedDate.toISOString(),
+  //     startTime: selectedTime.getTime(),
+  //     updatedAt: Date.now(),
+  //     repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat,
+  //     endDate:
+  //       taskDetail.endDate instanceof Date
+  //         ? taskDetail.endDate.toISOString()
+  //         : null,
+  //     dueDate: startDate.toISOString(),
+  //   };
+
+  //   try {
+  //     setIsLoading(true);
+  //     await firestore().collection('tasks').doc(task.id).update(updatedTask);
+
+  //     setIsLoading(false);
+  //     navigation.navigate('Trang chủ', {
+  //       screen: 'HomeScreen',
+  //     });
+  //   } catch (error) {
+  //     console.error('Error updating task:', error);
+  //     setIsLoading(false);
+  //     Alert.alert('Lỗi', 'Không thể cập nhật công việc');
+  //   }
+  // };
 
   const handleUpdateTask = async () => {
     if (!taskDetail || !taskDetail.title) {
@@ -143,30 +217,111 @@ const EditScreen = ({route, navigation}: any) => {
       return;
     }
 
-    // Similar validation logic as in AddNewScreen
-    // if (
-    //   selectedDate &&
-    //   selectedDate.toDateString() === new Date().toDateString() &&
-    //   selectedTime < new Date()
-    // ) {
-    //   setErrorText('Giờ bắt đầu không thể là giờ trong quá khứ');
-    //   return;
-    // }
+    // Extract the base Firebase ID by taking everything before the first hyphen
+    const baseId = task.id.split('-')[0];
 
-    // Prepare updated task data
-    const updatedTask = {
-      ...taskDetail,
-      subtasks,
-      category: selectedCategory,
-      startDate: selectedDate.toISOString(),
-      startTime: selectedTime.getTime(),
-      updatedAt: Date.now(),
-      repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat,
-    };
+    if (!baseId) {
+      console.error('Task ID is missing or invalid');
+      Alert.alert('Lỗi', 'Không thể xác định công việc cần cập nhật');
+      return;
+    }
 
     try {
       setIsLoading(true);
-      await firestore().collection('tasks').doc(task.id).update(updatedTask);
+
+      let startDate = selectedDate ? new Date(selectedDate) : new Date();
+      // Xác định trạng thái lặp lại mới
+      const newRepeatSetting =
+        selectedRepeat === 'Không'
+          ? 'no'
+          : selectedRepeat === 'Tuần'
+          ? 'week'
+          : selectedRepeat === 'Tháng'
+          ? 'month'
+          : 'no';
+
+      // Tạo object cập nhật cơ bản
+      const updatedTask = {
+        ...taskDetail,
+        subtasks,
+        category: selectedCategory,
+        startDate: selectedDate.toISOString(),
+        startTime: selectedTime.getTime(),
+        updatedAt: Date.now(),
+        repeat: newRepeatSetting,
+        endDate:
+          taskDetail.endDate instanceof Date
+            ? taskDetail.endDate.toISOString()
+            : null,
+      };
+
+      // Tính toán ngày cho task lặp lại (nếu có)
+      if (newRepeatSetting !== 'no') {
+        if (newRepeatSetting === 'week' && taskDetail.repeatDays?.length > 0) {
+          const currentDay = startDate.getDay();
+          const sortedRepeatDays = [
+            ...taskDetail.repeatDays.filter(day => day >= currentDay),
+            ...taskDetail.repeatDays.filter(day => day < currentDay),
+          ];
+          const nextRepeatDay = sortedRepeatDays[0];
+
+          // Tính ngày bắt đầu mới cho task lặp lại theo tuần
+          const daysUntilNext =
+            nextRepeatDay - currentDay + (nextRepeatDay < currentDay ? 7 : 0);
+          const nextDate = new Date(startDate);
+          nextDate.setDate(startDate.getDate() + daysUntilNext);
+          updatedTask.dueDate = nextDate;
+        } else if (
+          newRepeatSetting === 'month' &&
+          taskDetail.repeatDays?.length > 0
+        ) {
+          const currentDay = startDate.getDate();
+          const sortedRepeatDays = [
+            ...taskDetail.repeatDays.filter(day => day >= currentDay),
+            ...taskDetail.repeatDays.filter(day => day < currentDay),
+          ];
+          let nextRepeatDay = sortedRepeatDays[0];
+
+          // Tính ngày bắt đầu mới cho task lặp lại theo tháng
+          const nextDate = new Date(startDate);
+          if (nextRepeatDay < currentDay) {
+            nextDate.setMonth(nextDate.getMonth() + 1);
+          }
+          nextDate.setDate(nextRepeatDay);
+
+          // Kiểm tra ngày hợp lệ trong tháng
+          if (nextDate.getDate() !== nextRepeatDay) {
+            nextDate.setDate(0); // Lấy ngày cuối cùng của tháng
+          }
+          updatedTask.dueDate = nextDate;
+        }
+      } else {
+        // Nếu không lặp lại, sử dụng ngày được chọn
+        updatedTask.dueDate = startDate;
+      }
+
+      // Tạo batch để xử lý nhiều thao tác Firestore cùng lúc
+      const batch = firestore().batch();
+      const taskRef = firestore().collection('tasks').doc(baseId);
+
+      // Xóa tất cả các task con được tạo từ task gốc này (nếu có)
+      const relatedTasksSnapshot = await firestore()
+        .collection('tasks')
+        .where('parentTaskId', '==', baseId)
+        .get();
+
+      relatedTasksSnapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      // Cập nhật task gốc
+      batch.update(taskRef, {
+        ...updatedTask,
+        parentTaskId: null, // Đảm bảo task gốc không có parentTaskId
+      });
+
+      // Thực hiện tất cả các thao tác trong batch
+      await batch.commit();
 
       setIsLoading(false);
       navigation.navigate('Trang chủ', {
@@ -175,25 +330,24 @@ const EditScreen = ({route, navigation}: any) => {
     } catch (error) {
       console.error('Error updating task:', error);
       setIsLoading(false);
-      Alert.alert('Lỗi', 'Không thể cập nhật công việc');
+      Alert.alert('Lỗi', 'Không thể cập nhật công việc. Vui lòng thử lại sau.');
     }
   };
-
   const handleSubtaskChange = (index: number, value: string) => {
     const updatedSubtasks = [...subtasks];
     updatedSubtasks[index].description = value;
     setSubtasks(updatedSubtasks);
   };
 
-  const handleChangeValue = (
-    id: string,
-    value: string | Date | number | boolean,
-  ) => {
-    setTaskDetail(prevState => ({
-      ...prevState!,
-      [id]: value,
-    }));
-  };
+  // const handleChangeValue = (
+  //   id: string,
+  //   value: string | Date | number | boolean,
+  // ) => {
+  //   setTaskDetail(prevState => ({
+  //     ...prevState!,
+  //     [id]: value,
+  //   }));
+  // };
 
   const handleNewCategoryCreate = async () => {
     try {
@@ -235,15 +389,15 @@ const EditScreen = ({route, navigation}: any) => {
     }
   };
 
-  // const handleChangeValue = (
-  //   id: string,
-  //   value: string | Date | number | number[] | boolean,
-  // ) => {
-  //   setTaskDetail(prevState => ({
-  //     ...prevState,
-  //     [id]: value,
-  //   }));
-  // };
+  const handleChangeValue = (
+    id: string,
+    value: string | Date | number | number[] | boolean,
+  ) => {
+    setTaskDetail(prevState => ({
+      ...prevState,
+      [id]: value,
+    }));
+  };
 
   // const handleSubtaskChange = (index: number, value: string) => {
   //   const updatedSubtasks = [...subTasks];
@@ -560,6 +714,130 @@ const EditScreen = ({route, navigation}: any) => {
             {selectedRepeat ? selectedRepeat : 'Không'}
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity onPress={() => modalizeRemind.current?.open()}>
+          <View style={styles.option}>
+            <Notification size="24" color="red" variant="Bold" />
+            <View
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+              }}>
+              <Text style={styles.optionText}>Chọn lời nhắc</Text>
+              <SpaceComponent width={10} />
+              <Text
+                style={styles.selectedTimeText}
+                numberOfLines={1}
+                ellipsizeMode="tail">
+                {selectedRemind}
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+        <Portal>
+          <Modalize
+            adjustToContentHeight
+            ref={modalizeRemind}
+            onClose={() => {}}>
+            <View
+              style={{
+                padding: 20,
+              }}>
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: 'bold',
+                  color: appColors.text,
+                  textAlign: 'center',
+                  paddingBottom: 10,
+                }}>
+                Nhắc nhở trước khi hết hạn
+              </Text>
+              <TouchableOpacity
+                style={{
+                  paddingVertical: 15,
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#eee',
+                }}
+                onPress={() => {
+                  setSelectedRemind('5 phút');
+                  handleChangeValue('remind', '5');
+                  modalizeRemind.current?.close();
+                }}>
+                <RowComponent
+                  styles={{
+                    justifyContent: 'flex-start',
+                    alignContent: 'center',
+                  }}>
+                  <Clock size="24" color={appColors.green} variant="Bold" />
+
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      color: '#666',
+                      paddingLeft: 10,
+                    }}>
+                    5 phút
+                  </Text>
+                </RowComponent>
+
+                <SpaceComponent width={10} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  paddingVertical: 15,
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#eee',
+                }}
+                onPress={() => {
+                  setSelectedRemind('15 phút');
+                  handleChangeValue('remind', '15');
+                  modalizeRemind.current?.close();
+                }}>
+                <RowComponent
+                  styles={{
+                    justifyContent: 'flex-start',
+                    alignContent: 'center',
+                  }}>
+                  <Clock size="24" color={appColors.yellow} variant="Bold" />
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      color: '#666',
+                      paddingLeft: 10,
+                    }}>
+                    15 phút
+                  </Text>
+                </RowComponent>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  paddingVertical: 15,
+                }}
+                onPress={() => {
+                  setSelectedRemind('30 phút');
+                  handleChangeValue('remind', '30');
+                  modalizeRemind.current?.close();
+                }}>
+                <RowComponent
+                  styles={{
+                    justifyContent: 'flex-start',
+                    alignContent: 'center',
+                  }}>
+                  <Clock size="24" color={appColors.red} variant="Bold" />
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      color: '#666',
+                      paddingLeft: 10,
+                    }}>
+                    30 phút
+                  </Text>
+                </RowComponent>
+              </TouchableOpacity>
+            </View>
+          </Modalize>
+        </Portal>
       </View>
       <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
         <ModalizeDate
@@ -604,6 +882,7 @@ const EditScreen = ({route, navigation}: any) => {
           onClose={() => setModalTimeVisible(false)}
           selectedTime={selectedTime}
           onTimeChange={setSelectedTime}
+          selectedDate={selectedDate}
         />
       </View>
       <Modal

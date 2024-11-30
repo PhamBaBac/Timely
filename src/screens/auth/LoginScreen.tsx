@@ -2,10 +2,18 @@ import React, {useState} from 'react';
 import {Lock, Sms} from 'iconsax-react-native';
 import {Image, ImageBackground, StatusBar, Text, View} from 'react-native';
 import auth from '@react-native-firebase/auth';
-import { ButtonComponent, Container, InputComponent, RowComponent, SectionComponent, SpaceComponent, TextComponent } from '../../components';
+import {
+  ButtonComponent,
+  Container,
+  InputComponent,
+  RowComponent,
+  SectionComponent,
+  SpaceComponent,
+  TextComponent,
+} from '../../components';
 import TitleComponent from '../../components/TitleComponent';
-import { appColors, appInfo, fontFamilies } from '../../constants';
-import { globalStyles } from '../../styles/globalStyles';
+import {appColors, appInfo, fontFamilies} from '../../constants';
+import {globalStyles} from '../../styles/globalStyles';
 
 const LoginScreen = ({navigation}: any) => {
   const [email, setEmail] = useState('');
@@ -56,7 +64,7 @@ const LoginScreen = ({navigation}: any) => {
           flex: 1,
         }}>
         <TitleComponent
-          text="Login"
+          text="Đăng nhập"
           font={fontFamilies.medium}
           size={22}
           flex={0}
@@ -76,11 +84,11 @@ const LoginScreen = ({navigation}: any) => {
           isPassword
           value={password}
           onChange={val => setPassword(val)}
-          placeholder="Password"
+          placeholder="Mật khẩu"
           prefix={<Lock size={22} color={appColors.gray} />}
         />
         <ButtonComponent
-          text="Forgot Password?"
+          text="Quên mật khẩu?"
           onPress={() => navigation.navigate('ForgotPassword')}
           type="link"
         />
@@ -89,15 +97,15 @@ const LoginScreen = ({navigation}: any) => {
         )}
 
         <SpaceComponent height={20} />
-        <ButtonComponent type="primary" text="Login" onPress={handleLogin} />
+        <ButtonComponent type="primary" text="Đăng nhập" onPress={handleLogin} />
 
         <RowComponent styles={{marginTop: 20}}>
           <Text style={[globalStyles.text]}>
-            You don't have an account?{' '}
+            Bạn chưa có tài khoản?{' '}
             <Text
               style={{color: appColors.primary}}
               onPress={() => navigation.navigate('SignUpScreen')}>
-              Create an account
+              Tạo tài khoản
             </Text>
           </Text>
         </RowComponent>
@@ -107,4 +115,3 @@ const LoginScreen = ({navigation}: any) => {
 };
 
 export default LoginScreen;
-

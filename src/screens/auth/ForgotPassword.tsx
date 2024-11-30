@@ -14,14 +14,14 @@ import authenticationAPI from '../../apis/authApi';
 import {Alert} from 'react-native';
 import auth from '@react-native-firebase/auth';
 
-const ForgotPassword = ({navigation} :any) => {
+const ForgotPassword = ({navigation}: any) => {
   const [email, setEmail] = useState('');
   const [isDisable, setIsDisable] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleForgotPassword = async () => {
     if (!email) {
-      Alert.alert('Error', 'Please enter your email address.');
+      Alert.alert('Lỗi', 'Vui lòng nhập địa chỉ email của bạn.');
       return;
     }
 
@@ -30,8 +30,9 @@ const ForgotPassword = ({navigation} :any) => {
       await auth().sendPasswordResetEmail(email);
       setIsLoading(false);
       Alert.alert(
-        'Success',
-        'Password reset email sent.',
+        'Thành công',
+        'Email đặt lại mật khẩu đã được gửi.',
+
         [
           {
             text: 'OK',
@@ -52,9 +53,9 @@ const ForgotPassword = ({navigation} :any) => {
   return (
     <Container back>
       <SectionComponent>
-        <TextComponent text="Reset Password" title />
+        <TextComponent text="Khôi phục mật khẩu" title />
         <SpaceComponent height={12} />
-        <TextComponent text="Please enter your email address to request a password reset" />
+        <TextComponent text="Vui lòng nhập địa chỉ email của bạn để yêu cầu đặt lại mật khẩu" />
         <SpaceComponent height={26} />
         <InputComponent
           value={email}
@@ -67,7 +68,7 @@ const ForgotPassword = ({navigation} :any) => {
         <ButtonComponent
           onPress={handleForgotPassword}
           disable={isDisable}
-          text="Send"
+          text="Gửi "
           type="primary"
           icon={<ArrowRight size={20} color={appColors.white} />}
           iconFlex="right"

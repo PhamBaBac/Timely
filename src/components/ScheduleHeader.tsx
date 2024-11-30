@@ -23,11 +23,11 @@ export const ScheduleHeader: React.FC<ScheduleHeaderProps> = ({
           alignItems: 'center',
           flex: 1,
         }}>
-        <TouchableOpacity onPress={onTodayPress} style={styles.todayButton}>
-          <MaterialIcons name="today" size={24} color="white" />
-        </TouchableOpacity>
         <Text style={styles.headerTitle}>Lịch học/ Lịch thi</Text>
       </RowComponent>
+      <TouchableOpacity onPress={onTodayPress} style={styles.todayButton}>
+        <MaterialIcons name="today" size={24} color="white" />
+      </TouchableOpacity>
       <View style={styles.headerButtons}>
         <TouchableOpacity onPress={onAddPress} style={styles.addButton}>
           <Text style={styles.addButtonText}>+</Text>
