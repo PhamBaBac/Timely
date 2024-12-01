@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {BarChart} from 'react-native-chart-kit';
+import {BarChart, PieChart} from 'react-native-chart-kit';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {useSelector} from 'react-redux';
 import {RowComponent, TextComponent} from '../../components';
@@ -21,7 +21,8 @@ import {appColors} from '../../constants';
 import CicularComponent from '../../components/CicularComponent';
 import auth from '@react-native-firebase/auth';
 import useCustomStatusBar from '../../hooks/useCustomStatusBar';
-import { TaskModel } from '../../models/taskModel';
+import {TaskModel} from '../../models/taskModel';
+import TaskProgressPieChart from '../../components/PieChartProps';
 
 const ProfileScreen = ({navigation}: {navigation: any}) => {
   useCustomStatusBar('dark-content', appColors.lightPurple);
@@ -53,51 +54,73 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
   const [weekOffset, setWeekOffset] = useState(0);
   const tasks = useSelector((state: RootState) => state.tasks.tasks);
 
-const filterTasksByPeriod = (tasks: TaskModel[], period: string) => {
-  const currentDate = new Date();
-  if (period === 'all') return tasks;
+  const calculateTaskStats = (tasks: TaskModel[]) => {
+    const currentDate = new Date();
 
-  const days = parseInt(period);
-  const futureDate = new Date();
-  futureDate.setDate(currentDate.getDate() + days);
+    const completedTasks = tasks.filter(task => task.isCompleted).length;
 
-  return tasks.filter(task => {
-    const taskDate = task.dueDate
-      ? new Date(task.dueDate)
-      : new Date();
-    // Check if the task date is between the current date and the future date
-    return taskDate >= currentDate && taskDate <= futureDate;
+    const incompleteTasks = tasks.filter(
+      task =>
+        !task.isCompleted &&
+        task.dueDate &&
+        new Date(task.dueDate) <= currentDate,
+    ).length;
+
+    return {completedTasks, incompleteTasks};
+  };
+
+  const calculateTaskCompletionStats = (tasks: TaskModel[]) => {
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(task => task.isCompleted).length;
+
+    const completedAheadOfSchedule = tasks.filter(
+      task =>
+        task.isCompleted &&
+        task.dueDate &&
+        task.updatedAt &&
+        new Date(task.updatedAt) < new Date(task.dueDate),
+    ).length;
+
+    return {
+      totalTasks,
+      completedTasks,
+      completedAheadOfSchedule,
+      incompleteTasks: totalTasks - completedTasks,
+    };
+  };
+
+  const [taskStats, setTaskStats] = useState({
+    totalTasks: 0,
+    completedTasks: 0,
+    completedAheadOfSchedule: 0,
+    incompleteTasks: 0,
   });
-};
-
-const filteredTasks = filterTasksByPeriod(tasks, selectedPeriod);
 
   useEffect(() => {
-    let completed = 0;
-    let incomplete = 0;
-    const categoryCount: {[key: string]: number} = {};
-    let uncategorizedCount = 0;
-
-    tasks.forEach(task => {
-      if (task.isCompleted) {
-        completed++;
-      } else {
-        incomplete++;
-      }
-
-      if (task.category) {
-        if (!categoryCount[task.category]) {
-          categoryCount[task.category] = 0;
-        }
-        categoryCount[task.category]++;
-      } else {
-        uncategorizedCount++;
-      }
-    });
-
+    const {completedTasks: completed, incompleteTasks: incomplete} =
+      calculateTaskStats(tasks);
     setCompletedTasks(completed);
     setIncompleteTasks(incomplete);
+
+    const stats = calculateTaskCompletionStats(tasks);
+    setTaskStats(stats);
   }, [tasks]);
+
+  const filterTasksByPeriod = (tasks: TaskModel[], period: string) => {
+    const currentDate = new Date();
+    if (period === 'all') return tasks;
+
+    const days = parseInt(period);
+    const futureDate = new Date();
+    futureDate.setDate(currentDate.getDate() + days);
+
+    return tasks.filter(task => {
+      const taskDate = task.dueDate ? new Date(task.dueDate) : new Date();
+      return taskDate >= currentDate && taskDate <= futureDate;
+    });
+  };
+
+  const filteredTasks = filterTasksByPeriod(tasks, selectedPeriod);
 
   const isWithinWeek = (date: number, offset: number) => {
     const taskDate = new Date(date);
@@ -111,6 +134,30 @@ const filteredTasks = filterTasksByPeriod(tasks, selectedPeriod);
   const handleViewTasks = (isCompleted: boolean) => {
     navigation.navigate('TaskListScreen', {isCompleted});
   };
+
+  const pieChartData = [
+    {
+      name: 'Hoàn thành trước hạn',
+      population: taskStats.completedAheadOfSchedule,
+      color: appColors.primary,
+      legendFontColor: '#7F7F7F',
+      legendFontSize: 15,
+    },
+    {
+      name: 'Hoàn thành đúng hạn',
+      population: taskStats.completedTasks - taskStats.completedAheadOfSchedule,
+      color: '#5FD068',
+      legendFontColor: '#7F7F7F',
+      legendFontSize: 15,
+    },
+    {
+      name: 'Chưa hoàn thành',
+      population: taskStats.incompleteTasks,
+      color: '#FF6B6B',
+      legendFontColor: '#7F7F7F',
+      legendFontSize: 15,
+    },
+  ];
 
   return (
     <View style={styles.container}>
@@ -129,13 +176,13 @@ const filteredTasks = filterTasksByPeriod(tasks, selectedPeriod);
             style={styles.statBox}
             onPress={() => handleViewTasks(true)}>
             <Text style={styles.statNumber}>{completedTasks}</Text>
-            <Text style={styles.statLabel}>Công việc đã hoàn thành</Text>
+            <Text style={styles.statLabel}>Công việc đã hoàn thành</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.statBox}
             onPress={() => handleViewTasks(false)}>
             <Text style={styles.statNumber}>{incompleteTasks}</Text>
-            <Text style={styles.statLabel}>Công việc chưa hoàn thành</Text>
+            <Text style={styles.statLabel}>Công việc chưa hoàn thành</Text>
           </TouchableOpacity>
         </View>
 
@@ -264,8 +311,8 @@ const filteredTasks = filterTasksByPeriod(tasks, selectedPeriod);
               justifyContent: 'center',
             },
             propsForBackgroundLines: {
-              strokeDasharray: '', // Loại bỏ các đường gạch ngang
-              strokeWidth: 0, // Đặt độ dày đường kẻ ngang về 0
+              strokeDasharray: '',
+              strokeWidth: 0,
             },
             barPercentage: 0.4,
             formatYLabel: () => '',
@@ -309,6 +356,29 @@ const filteredTasks = filterTasksByPeriod(tasks, selectedPeriod);
         <View style={{padding: 10}}>
           <CicularComponent tasks={filteredTasks} />
         </View>
+
+        <RowComponent>
+          <TextComponent
+            text="Thống kê tiến độ công việc"
+            styles={{
+              fontSize: 16,
+              fontWeight: 'bold',
+              color: '#000',
+              flex: 1,
+              textAlign: 'left',
+
+              padding: 10,
+            }}
+          />
+        </RowComponent>
+
+        <TaskProgressPieChart
+          completedAheadOfSchedule={taskStats.completedAheadOfSchedule}
+          completedOnTime={
+            taskStats.completedTasks - taskStats.completedAheadOfSchedule
+          }
+          incompleteTasks={taskStats.incompleteTasks}
+        />
       </ScrollView>
     </View>
   );
@@ -399,8 +469,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: appColors.white,
-    paddingHorizontal: 8, // Adjusted padding
-    paddingVertical: 4, // Adjusted padding
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 8,
   },
   periodSelectorText: {
@@ -410,16 +480,16 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'center', // Center the modal vertically
-    alignItems: 'flex-end', // Align the modal to the right
+    justifyContent: 'center',
+    alignItems: 'flex-end',
   },
   modalContent: {
     backgroundColor: 'white',
-    width: '40%', // Adjust the width as needed
+    width: '40%',
     borderRadius: 12,
     overflow: 'hidden',
-    marginRight: 20, // Adjust the margin to position the modal next to the selector
-    marginTop: 328, // Move the modal slightly higher
+    marginRight: 20,
+    marginTop: 328,
   },
   modalOption: {
     paddingVertical: 12,
