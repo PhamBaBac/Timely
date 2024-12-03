@@ -85,6 +85,11 @@ const TaskDetailScreen = ({navigation, route}: any) => {
       });
   };
 
+  console.log('taskDetail', taskDetail);
+  console.log('statr day', taskDetail?.startDate);
+  console.log('due day', taskDetail?.dueDate);
+  console.log('end day', taskDetail?.endDate);
+
   const handleUpdateTask = async () => {
     const data = {
       ...taskDetail,
