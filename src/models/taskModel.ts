@@ -12,6 +12,7 @@ export interface TaskModel {
   repeatDays: number[];
   repeatCount: number;
   category: string;
+  notified: boolean;
   isCompleted: boolean;
   isImportant: boolean;
   priority: 'low' | 'medium' | 'high';

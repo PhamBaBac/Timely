@@ -67,6 +67,7 @@ const initValue: TaskModel = {
   isCompleted: false,
   isImportant: false,
   priority: 'low' as 'low' | 'medium' | 'high',
+  notified: false,
   createdAt: Date.now(),
   updatedAt: Date.now(),
 };
