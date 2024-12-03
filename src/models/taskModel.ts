@@ -15,6 +15,7 @@ export interface TaskModel {
   isCompleted: boolean;
   isImportant: boolean;
   priority: 'low' | 'medium' | 'high';
+  notified: boolean;
   createdAt: number;
   updatedAt: number;
 }

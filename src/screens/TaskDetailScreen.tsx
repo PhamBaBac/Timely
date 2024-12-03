@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {Alert, ScrollView, Share, TouchableOpacity, View} from 'react-native';
-
+import auth, {firebase} from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import {format} from 'date-fns';
 import {
@@ -28,7 +28,8 @@ import {appColors, fontFamilies} from '../constants';
 import useCustomStatusBar from '../hooks/useCustomStatusBar';
 import ModalAddSubTask from '../modal/ModalAddSubTask';
 import {SubTask, TaskModel} from '../models/taskModel';
-import {RootState} from '../redux/store';
+import {fetchTasks} from '../utils/taskUtil';
+import {CategoryModel} from '../models/categoryModel';
 
 const TaskDetailScreen = ({navigation, route}: any) => {
   useCustomStatusBar('light-content', appColors.primary);
@@ -36,15 +37,31 @@ const TaskDetailScreen = ({navigation, route}: any) => {
   const id = route.params;
 
   const taskId = id.id;
+  console.log('id', id);
 
   const [taskDetail, setTaskDetail] = useState<TaskModel>();
+  console.log('taskDetail', taskDetail);
   const [progress, setProgress] = useState(0);
   const [subTasks, setSubTasks] = useState<SubTask[]>([]);
+  const [categories, setCategories] = useState<CategoryModel[]>([]);
   const [isVisibleModalSubTask, setIsVisibleModalSubTask] = useState(false);
-  const tasks = useSelector((state: RootState) => state.tasks.tasks);
-  const categories = useSelector(
-    (state: RootState) => state.categories.categories,
-  );
+  const user = auth().currentUser;
+  const [tasks, setTasks] = useState<TaskModel[]>([]);
+
+
+  useEffect(() => {
+    const unsubscribe = firestore()
+      .collection('categories')
+      .where('uid', '==', user?.uid)
+      .onSnapshot(snapshot => {
+        const categoriesList = snapshot.docs.map(
+          doc => doc.data() as CategoryModel,
+        );
+        setCategories(categoriesList);
+      });
+    return () => unsubscribe();
+  }, [user]);
+
   useEffect(() => {
     getTaskDetail();
     getSubTaskById();
@@ -61,24 +78,25 @@ const TaskDetailScreen = ({navigation, route}: any) => {
   }, [subTasks]);
 
   const getTaskDetail = () => {
-    const task = tasks.find(task => task.id === taskId);
-    if (task) {
-      setTaskDetail(task);
-    }
+    firestore()
+      .doc(`tasks/${taskId}`)
+      .onSnapshot(snapshot => {
+        setTaskDetail(snapshot.data() as TaskModel);
+      });
   };
 
   const handleUpdateTask = async () => {
-    // const data = {
-    //   ...taskDetail,
-    //   updatedAt: Date.now(),
-    // };
-    // await firestore()
-    //   .doc(`tasks/${id}`)
-    //   .update(data)
-    //   .then(() => {
-    //     Alert.alert('Task updated');
-    //   })
-    //   .catch(error => console.log(error));
+    const data = {
+      ...taskDetail,
+      updatedAt: Date.now(),
+    };
+    await firestore()
+      .doc(`tasks/${taskId}`)
+      .update(data)
+      .then(() => {
+        Alert.alert('Task updated');
+      })
+      .catch(error => console.log(error));
   };
 
   const getSubTaskById = () => {
