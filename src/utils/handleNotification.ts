@@ -68,7 +68,6 @@ export class HandleNotification {
       );
       const result = await res.json();
       const accessToken = result.data.access_token;
-      console.log('Access Token:', accessToken);
       return accessToken;
     } catch (error) {
       console.log(error);
