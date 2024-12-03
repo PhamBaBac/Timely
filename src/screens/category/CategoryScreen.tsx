@@ -8,8 +8,9 @@ import {
   TextInput,
   FlatList,
   StyleSheet,
+  Alert,
 } from 'react-native';
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   Container,
   RowComponent,
@@ -18,12 +19,16 @@ import {
 } from '../../components';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {useSelector, useDispatch} from 'react-redux';
-import {RootState} from '../../redux/store';
 import {appColors} from '../../constants';
 import {Portal} from 'react-native-portalize';
 import {Modalize} from 'react-native-modalize';
 import {CardEdit, Flag, Trash} from 'iconsax-react-native';
-import {handleDeleteCategory, handleUpdateCategory} from '../../utils/taskUtil';
+import { CategoryModel } from '../../models/categoryModel';
+import firestore from '@react-native-firebase/firestore';
+import auth from '@react-native-firebase/auth';
+import { TaskModel } from '../../models/taskModel';
+import { fetchTasks } from '../../utils/taskUtil';
+
 const availableIcons = [
   'work',
   'cake',
@@ -49,57 +54,137 @@ const rainbowColors = [
   '#BA68C8',
 ];
 const CategoryScreen = () => {
-  const dispatch = useDispatch();
+    const user = auth().currentUser;
+
   const modalizePriority = React.useRef<Modalize>(null);
   const [selectedCategory, setSelectedCategory] = React.useState<string>(
     '',
   );
+    const [selectedIdCategory, setSelectedIdCategory] =
+      React.useState<string>('');
+  console.log('selectedCategory', selectedCategory);
   const [isNewCategoryModalVisible, setNewCategoryModalVisible] =
     useState(false);
-    console.log('isNewCategoryModalVisible', isNewCategoryModalVisible);
   const [selectedColor, setSelectedColor] = useState(appColors.primary);
-  console.log('selectedColor', selectedColor);
   const [selectedIcon, setSelectedIcon] = useState(availableIcons[0]);
-  console.log('selectedIcon', selectedIcon);
-  const [oldCategory, setOldCategory] = useState<string >('');
+  
+const [categories, setCategories] = useState<CategoryModel[]>([]);
+const categoryNames = categories.map(cat => cat.name);
+useEffect(() => {
+  const unsubscribe = firestore()
+    .collection('categories')
+    .where('uid', '==', user?.uid)
+    .onSnapshot(snapshot => {
+      const categoriesList = snapshot.docs.map(doc => ({
+        id: doc.id, // Lấy docId từ tài liệu Firestore
+        ...doc.data(),
+      })) as CategoryModel[];
+      setCategories(categoriesList);
+    });
+  return () => unsubscribe();
+}, [user]);
 
 
-  const categories = useSelector(
-    (state: RootState) => state.categories.categories,
-  );
+  //Liet ke so Task cua moi Category
+   const [tasks, setTasks] = useState<TaskModel[]>([]);
+ 
+   useEffect(() => {
+     if (user?.uid) {
+       const unsubscribe = fetchTasks(user.uid, setTasks);
 
-  const tasks = useSelector((state: RootState) => state.tasks.tasks);
-
-
-  const categoryData = tasks.reduce((acc: {[key: string]: number}, task) => {
-    // Count tasks by category
-    if (acc[task.category]) {
-      acc[task.category]++;
-    } else {
-      acc[task.category] = 1;
+       // Cleanup on unmount
+       return () => unsubscribe();
+     }
+   }, [user?.uid]);
+ 
+  const categoryData = tasks.reduce((acc: { [key: string]: number }, task) => {
+    if (task.category) {
+      acc[task.category] = (acc[task.category] || 0) + 1;
     }
     return acc;
-  }, {});
+  }, {} as { [key: string]: number });
+const handleCategoryUpdate = async () => {
+  try {
+    const category = categories.find(cat => cat.id === selectedIdCategory);
+    if (!category || !category.id) {
+      throw new Error('Không tìm thấy danh mục');
+    }
+  
+    if (categoryNames.includes(selectedCategory)) {
+      Alert.alert('Thông báo', 'Danh mục đã tồn tại');
+      return;
+    }
 
-  const handleDeleteCategoryAndTasks = (category: string) => {
-    handleDeleteCategory(category, tasks, dispatch);
-  };
+    const batch = firestore().batch();
 
-  const handleCategoryUpdate = (
-    oldCategory: string,
-    newCategory: string,
-    newIcon: string,
-    newColor: string,
-  ) => {
-    handleUpdateCategory(
-      oldCategory,
-      newCategory,
-      newIcon,
-      newColor,
-      tasks,
-      dispatch,
-    );
-  };
+    // 1. Cập nhật danh mục trong collection `categories`
+    const categoryRef = firestore().collection('categories').doc(category.id);
+    batch.update(categoryRef, {
+      name: selectedCategory,
+      color: selectedColor,
+      icon: selectedIcon,
+    });
+
+    // 2. Lấy tất cả các task liên quan trong collection `tasks`
+    const tasksSnapshot = await firestore()
+      .collection('tasks')
+      .where('category', '==', category.name)
+      .get();
+
+    // 3. Cập nhật từng task với thông tin danh mục mới
+    tasksSnapshot.forEach(doc => {
+      const taskRef = firestore().collection('tasks').doc(doc.id);
+      batch.update(taskRef, {
+        category: selectedCategory, // Cập nhật tên danh mục mới
+      });
+    });
+
+    // 4. Thực hiện batch update
+    await batch.commit();
+    console.log('Cập nhật danh mục và các task liên quan thành công!');
+  } catch (error) {
+    console.error('Error updating category and tasks: ', error);
+  }
+};
+
+const handleDeleteCategoryAndTasks = async (categoryId: string) => {
+  try {
+    //Xac nhan truoc khi xoa
+    Alert.alert('Xác nhận xóa', 'Bạn có chắc chắn muốn xóa loại công việc này?', [
+      {text: 'Hủy', style: 'cancel'},
+      {
+        text: 'Xóa',
+        style: 'destructive',
+        onPress: async () => {
+          const batch = firestore().batch();
+
+          // 1. Xóa danh mục trong collection `categories`
+          const categoryRef = firestore().collection('categories').doc(categoryId);
+          batch.delete(categoryRef);
+
+          // 2. Xóa tất cả các task liên quan trong collection `tasks`
+          const tasksSnapshot = await firestore()
+            .collection('tasks')
+            .where('category', '==', categories.find(cat => cat.id === categoryId)?.name)
+            .get();
+
+          tasksSnapshot.forEach(doc => {
+            const taskRef = firestore().collection('tasks').doc(doc.id);
+            batch.delete(taskRef);
+          });
+
+          // 3. Thực hiện batch delete
+          await batch.commit();
+          console.log('Xóa danh mục và các task liên quan thành công!');
+        },
+      },
+    ]);
+  } catch (error) {
+    console.error('Error deleting category and tasks: ', error);
+  }
+}
+
+
 
   return (
     <Container back title="Quản lý loại công việc">
@@ -149,7 +234,7 @@ const CategoryScreen = () => {
               </Text>
               <Pressable
                 onPress={() => {
-                  setSelectedCategory(category.name);
+                  setSelectedIdCategory(category.id);
                   modalizePriority.current?.open();
                 }}>
                 <MaterialIcons
@@ -188,12 +273,14 @@ const CategoryScreen = () => {
                 borderBottomColor: '#eee',
               }}
               onPress={() => {
-                if (selectedCategory) {
+                  console.log('selectedIdCategory', selectedIdCategory);
+                if (selectedIdCategory) {
                   const category = categories.find(
-                    cat => cat.name === selectedCategory,
+                    cat => cat.id === selectedIdCategory,
                   );
+                  console.log('category', category);
                   if (category) {
-                    setOldCategory(category.name);
+                    
                     setSelectedCategory(category.name); // Lưu tên danh mục
                     setSelectedColor(category.color); // Lưu màu của danh mục
                     setSelectedIcon(category.icon); // Lưu icon của danh mục
@@ -226,11 +313,12 @@ const CategoryScreen = () => {
                 borderBottomColor: '#eee',
               }}
               onPress={() => {
-                if (selectedCategory) {
-                  handleDeleteCategoryAndTasks(selectedCategory);
+                if (selectedIdCategory) {
+                  handleDeleteCategoryAndTasks(selectedIdCategory);
                 }
                 modalizePriority.current?.close();
-              }}>
+              }}
+            >
               <RowComponent
                 styles={{
                   justifyContent: 'flex-start',
@@ -270,12 +358,7 @@ const CategoryScreen = () => {
                     style={styles.newCategoryAddButton}
                     onPress={() => {
                       setNewCategoryModalVisible(false);
-                      handleCategoryUpdate(
-                        oldCategory,
-                        selectedCategory ,
-                        selectedIcon,
-                        selectedColor,
-                      );
+                      handleCategoryUpdate();
                     }}>
                     <MaterialIcons name="check" size={24} color="#ffffff" />
                   </TouchableOpacity>
@@ -310,20 +393,20 @@ const CategoryScreen = () => {
                   renderItem={({item}) => (
                     <TouchableOpacity
                       style={[
-                      styles.iconOption,
-                      selectedIcon === item && {
-                        borderColor: selectedColor,
-                      },
+                        styles.iconOption,
+                        selectedIcon === item && {
+                          borderColor: selectedColor,
+                        },
                       ]}
                       onPress={() => setSelectedIcon(item)}>
                       <MaterialIcons
-                      name={item}
-                      size={18}
-                      color={
-                        selectedIcon === item
-                        ? selectedColor
-                        : appColors.gray2
-                      }
+                        name={item}
+                        size={18}
+                        color={
+                          selectedIcon === item
+                            ? selectedColor
+                            : appColors.gray2
+                        }
                       />
                     </TouchableOpacity>
                   )}

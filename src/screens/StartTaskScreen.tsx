@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -16,62 +16,23 @@ import {RowComponent} from '../components';
 import {appColors} from '../constants/appColor';
 import {format} from 'date-fns';
 import {useDispatch, useSelector} from 'react-redux';
-import {
-  handleDeleteTask,
-  handleToggleComplete,
-  handleToggleImportant,
-  handleUpdateRepeat,
-} from '../utils/taskUtil';
-import {RootState} from '../redux/store';
-import {setTasks} from '../redux/reducers/tasksSlice';
+import { fetchTasks } from '../utils/taskUtil';
 
 interface Props {
   navigation: any;
 }
 
 const StartTaskScreen: React.FC<Props> = ({navigation}) => {
-  const dispatch = useDispatch();
-  const tasks = useSelector((state: RootState) => state.tasks.tasks);
-  const user = auth().currentUser;
-  const deletedTaskIds = useSelector(
-    (state: RootState) => state.tasks.deletedTaskIds,
-  );
-  const completedTasks = useSelector(
-    (state: RootState) => state.tasks.completedTasks,
-  );
-  const isImportantTasks = useSelector(
-    (state: RootState) => state.tasks.isImportantTasks,
-  );
+   const user = auth().currentUser;
+   const [tasks, setTasks] = useState<TaskModel[]>([]);
+    useEffect(() => {
+      if (user?.uid) {
+        const unsubscribe = fetchTasks(user.uid, setTasks);
 
-  useEffect(() => {
-    if (!user?.uid) return;
-
-    const unsubscribe = firestore()
-      .collection('tasks')
-      .where('uid', '==', user.uid)
-      .onSnapshot(snapshot => {
-        const tasksList = snapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id,
-          dueDate: doc.data().dueDate?.toDate?.()?.toISOString() || null,
-          startTime: doc.data().startTime?.toDate?.()?.toISOString() || null,
-        })) as TaskModel[];
-
-        const filteredTasks = tasksList.filter(
-          task => !deletedTaskIds.includes(task.id),
-        );
-
-        const restoredTasks = filteredTasks.map(task => ({
-          ...task,
-          isCompleted: completedTasks[task.id] || task.isCompleted || false,
-          isImportant: isImportantTasks[task.id] || task.isImportant || false,
-        }));
-
-        dispatch(setTasks(restoredTasks));
-      });
-
-    return () => unsubscribe();
-  }, [dispatch, user?.uid, deletedTaskIds, completedTasks, isImportantTasks]);
+        // Cleanup on unmount
+        return () => unsubscribe();
+      }
+    }, [user?.uid]);
 
   const formatTime = (date?: Date | string) => {
     if (!date) return 'No start time';
@@ -87,7 +48,7 @@ const StartTaskScreen: React.FC<Props> = ({navigation}) => {
     <View style={styles.swipeActions}>
       <Pressable
         style={styles.swipeActionButton}
-        onPress={() => handleDeleteTask(task.id, dispatch, deletedTaskIds)}>
+        >
         <MaterialIcons name="delete" size={24} color={appColors.red} />
         <Text style={styles.actionText}>Xóa</Text>
       </Pressable>
@@ -95,7 +56,7 @@ const StartTaskScreen: React.FC<Props> = ({navigation}) => {
       {task.repeat !== 'no' && (
         <Pressable
           style={styles.swipeActionButton}
-          onPress={() => handleUpdateRepeat(task.id)}>
+          >
           <MaterialIcons name="repeat" size={24} color={appColors.blue} />
           <Text style={styles.actionText}>Bỏ lặp lại</Text>
         </Pressable>
@@ -115,7 +76,7 @@ const StartTaskScreen: React.FC<Props> = ({navigation}) => {
           <View style={styles.taskItem}>
             <Pressable
               style={styles.roundButton}
-              onPress={() => handleToggleComplete(task.id, tasks, dispatch)}>
+             >
               <MaterialIcons
                 name={
                   task.isCompleted ? 'check-circle' : 'radio-button-unchecked'
@@ -139,7 +100,7 @@ const StartTaskScreen: React.FC<Props> = ({navigation}) => {
               </View>
               <Pressable
                 style={styles.starButton}
-                onPress={() => handleToggleImportant(task.id, tasks, dispatch)}>
+                onPress={() =>{}}>
                 <MaterialIcons
                   name="star"
                   size={24}
