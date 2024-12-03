@@ -14,14 +14,16 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {BarChart, PieChart} from 'react-native-chart-kit';
+import {BarChart} from 'react-native-chart-kit';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {useSelector} from 'react-redux';
 import {RowComponent, TextComponent} from '../../components';
 import {appColors} from '../../constants';
 import CicularComponent from '../../components/CicularComponent';
 import useCustomStatusBar from '../../hooks/useCustomStatusBar';
-import { TaskModel } from '../../models/taskModel';
+import {TaskModel} from '../../models/taskModel';
+import {fetchTasks} from '../../utils/taskUtil';
+
+import TaskCompletionChart from '../../components/TaskCompletionChart';
 
 const ProfileScreen = ({navigation}: {navigation: any}) => {
   useCustomStatusBar('dark-content', appColors.lightPurple);
@@ -52,16 +54,16 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
   };
   const [weekOffset, setWeekOffset] = useState(0);
   const [tasks, setTasks] = useState<TaskModel[]>([]);
-   const user = auth().currentUser;
+  const user = auth().currentUser;
 
-   useEffect(() => {
-     if (user?.uid) {
-       const unsubscribe = fetchTasks(user.uid, setTasks);
+  useEffect(() => {
+    if (user?.uid) {
+      const unsubscribe = fetchTasks(user.uid, setTasks);
 
-       // Cleanup on unmount
-       return () => unsubscribe();
-     }
-   }, [user?.uid]);
+      // Cleanup on unmount
+      return () => unsubscribe();
+    }
+  }, [user?.uid]);
 
   const calculateTaskStats = (tasks: TaskModel[]) => {
     const currentDate = new Date();
@@ -79,6 +81,7 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
   };
 
   const calculateTaskCompletionStats = (tasks: TaskModel[]) => {
+    const currentDate = new Date();
     const totalTasks = tasks.length;
     const completedTasks = tasks.filter(task => task.isCompleted).length;
 
@@ -90,11 +93,29 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
         new Date(task.updatedAt) < new Date(task.dueDate),
     ).length;
 
+    const completedOnTime = tasks.filter(
+      task =>
+        task.isCompleted &&
+        task.dueDate &&
+        new Date(task.updatedAt) <= new Date(task.dueDate) &&
+        new Date(task.dueDate) <= currentDate,
+    ).length;
+
+    const overdueTasks = tasks.filter(
+      task =>
+        !task.isCompleted &&
+        task.dueDate &&
+        new Date(task.dueDate) < currentDate,
+    ).length;
+
+    const incompleteTasks = tasks.filter(task => !task.isCompleted).length;
     return {
       totalTasks,
       completedTasks,
       completedAheadOfSchedule,
-      incompleteTasks: totalTasks - completedTasks,
+      completedOnTime,
+      incompleteTasks,
+      overdueTasks,
     };
   };
 
@@ -144,29 +165,28 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
     navigation.navigate('TaskListScreen', {isCompleted});
   };
 
-  const pieChartData = [
-    {
-      name: 'Hoàn thành trước hạn',
-      population: taskStats.completedAheadOfSchedule,
-      color: appColors.primary,
-      legendFontColor: '#7F7F7F',
-      legendFontSize: 15,
-    },
-    {
-      name: 'Hoàn thành đúng hạn',
-      population: taskStats.completedTasks - taskStats.completedAheadOfSchedule,
-      color: '#5FD068',
-      legendFontColor: '#7F7F7F',
-      legendFontSize: 15,
-    },
-    {
-      name: 'Chưa hoàn thành',
-      population: taskStats.incompleteTasks,
-      color: '#FF6B6B',
-      legendFontColor: '#7F7F7F',
-      legendFontSize: 15,
-    },
-  ];
+  const completedOnTime = tasks.filter(task => {
+    const startDate = task.startDate ? new Date(task.startDate) : null;
+    const endDate = task.endDate ? new Date(task.endDate) : null;
+    const completedAt = new Date(task.updatedAt);
+    return (
+      task.isCompleted &&
+      ((startDate && completedAt <= startDate) ||
+        (endDate && completedAt <= endDate))
+    );
+  }).length;
+
+  const overdueTasks = tasks.filter(task => {
+    const startDate = task.startDate ? new Date(task.startDate) : null;
+    const endDate = task.endDate ? new Date(task.endDate) : null;
+    const completedAt = new Date(task.updatedAt);
+    return (
+      task.isCompleted &&
+      ((startDate && completedAt > startDate) ||
+        (endDate && completedAt > endDate) ||
+        (!startDate && !endDate))
+    );
+  }).length;
 
   return (
     <View style={styles.container}>
@@ -366,27 +386,10 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
           <CicularComponent tasks={filteredTasks} />
         </View>
 
-        <RowComponent>
-          <TextComponent
-            text="Thống kê tiến độ công việc"
-            styles={{
-              fontSize: 16,
-              fontWeight: 'bold',
-              color: '#000',
-              flex: 1,
-              textAlign: 'left',
-
-              padding: 10,
-            }}
-          />
-        </RowComponent>
-
-        <TaskProgressPieChart
+        <TaskCompletionChart
+          completedOnTime={completedOnTime}
+          overdueTasks={overdueTasks}
           completedAheadOfSchedule={taskStats.completedAheadOfSchedule}
-          completedOnTime={
-            taskStats.completedTasks - taskStats.completedAheadOfSchedule
-          }
-          incompleteTasks={taskStats.incompleteTasks}
         />
       </ScrollView>
     </View>
