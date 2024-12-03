@@ -1,5 +1,7 @@
 import {addDays, endOfWeek, format, startOfWeek} from 'date-fns';
 import React, {useEffect, useState} from 'react';
+import auth, {firebase} from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
 import {
   Dimensions,
   FlatList,
@@ -16,13 +18,10 @@ import {BarChart, PieChart} from 'react-native-chart-kit';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {useSelector} from 'react-redux';
 import {RowComponent, TextComponent} from '../../components';
-import {RootState} from '../../redux/store';
 import {appColors} from '../../constants';
 import CicularComponent from '../../components/CicularComponent';
-import auth from '@react-native-firebase/auth';
 import useCustomStatusBar from '../../hooks/useCustomStatusBar';
-import {TaskModel} from '../../models/taskModel';
-import TaskProgressPieChart from '../../components/PieChartProps';
+import { TaskModel } from '../../models/taskModel';
 
 const ProfileScreen = ({navigation}: {navigation: any}) => {
   useCustomStatusBar('dark-content', appColors.lightPurple);
@@ -52,7 +51,17 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
     return `${format(start, 'dd/MM')} - ${format(end, 'dd/MM')}`;
   };
   const [weekOffset, setWeekOffset] = useState(0);
-  const tasks = useSelector((state: RootState) => state.tasks.tasks);
+  const [tasks, setTasks] = useState<TaskModel[]>([]);
+   const user = auth().currentUser;
+
+   useEffect(() => {
+     if (user?.uid) {
+       const unsubscribe = fetchTasks(user.uid, setTasks);
+
+       // Cleanup on unmount
+       return () => unsubscribe();
+     }
+   }, [user?.uid]);
 
   const calculateTaskStats = (tasks: TaskModel[]) => {
     const currentDate = new Date();
