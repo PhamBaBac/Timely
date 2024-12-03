@@ -20,7 +20,6 @@ import {ScheduleModel} from '../../models/ScheduleModel';
 import {WeekDayModel} from '../../models/WeekDayModel';
 import LoadingModal from '../../modal/LoadingModal';
 import {DateTime} from '../../utils/DateTime';
-import ScheduleByPeriod from '../../components/ScheduleByPeriod';
 import useCustomStatusBar from '../../hooks/useCustomStatusBar';
 import {appColors} from '../../constants';
 import TimetableView from '../../components/TimetableView';

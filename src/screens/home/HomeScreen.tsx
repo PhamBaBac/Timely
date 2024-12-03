@@ -1,7 +1,7 @@
-import auth, {firebase} from '@react-native-firebase/auth';
+import auth, { firebase } from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import messaging from '@react-native-firebase/messaging';
-import {addDays, addMonths, addWeeks, format} from 'date-fns';
+import { format, set } from 'date-fns';
 import {
   Category2,
   Flag,
@@ -12,52 +12,39 @@ import {
   TickSquare,
   Trash,
 } from 'iconsax-react-native';
-import React, {useEffect, useState} from 'react';
-import {PermissionsAndroid, Platform, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {useDispatch, useSelector} from 'react-redux';
-import {RowComponent, SpaceComponent} from '../../components';
-import {appColors} from '../../constants/appColor';
+import { useDispatch, useSelector } from 'react-redux';
+import { RowComponent, SpaceComponent } from '../../components';
+import { appColors } from '../../constants/appColor';
 import useCustomStatusBar from '../../hooks/useCustomStatusBar';
-import {CategoryModel} from '../../models/categoryModel';
-import {TaskModel} from '../../models/taskModel';
-import {setCategories} from '../../redux/reducers/categoriesSlice';
-import {setTasks} from '../../redux/reducers/tasksSlice';
-import {RootState} from '../../redux/store';
-import {HandleNotification} from '../../utils/handleNotification';
+import { CategoryModel } from '../../models/categoryModel';
+import { TaskModel } from '../../models/taskModel';
+import { HandleNotification } from '../../utils/handleNotification';
 import {
-  fetchCompletedTasks,
-  fetchDeletedTasks,
-  fetchImportantTasks,
-  handleDeleteMultipleTasks,
-  handleDeleteTask,
-  handleToggleComplete,
-  handleToggleImportant,
-  handleUpdateRepeat,
+  fetchTasks,
+  handleDelete,
+  handleHighlight,
+  handleToggleCompleteTask,
+  handleUpdateRepeatTask
 } from '../../utils/taskUtil';
-const initialState: CategoryModel[] = [
-  {id: '1', name: 'Tất cả', icon: '', color: '#FF8A65'},
-  {id: '2', name: 'Du lịch', icon: 'airplanemode-active', color: '#FF8A65'},
-  {id: '3', name: 'Sinh nhật', icon: 'cake', color: '#FF8A65'},
-];
+
 
 const HomeScreen = ({navigation}: {navigation: any}) => {
 
   const user = auth().currentUser;
-  //luu gia initialState vao redux
-  const dispatch = useDispatch();
-  useEffect(() => {
-    dispatch(setCategories(initialState));
-  }, [dispatch]);
+
   useCustomStatusBar('light-content', appColors.primary);
 
   const [activeFilter, setActiveFilter] = useState('Tất cả');
   const [showBeforeToday, setShowBeforeToday] = useState(true);
   const [showToday, setShowToday] = useState(true);
   const [isDeleteAll, setIsDeleteAll] = useState(false);
+  const [categories, setCategories] = useState<CategoryModel[]>([]);
 
-  const tasks = useSelector((state: RootState) => state.tasks.tasks);
+ const [tasks, setTasks] = useState<TaskModel[]>([]);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const formatTime = (date: Date) => {
@@ -76,20 +63,16 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     });
   }, []);
 
-  const categories = useSelector(
-    (state: RootState) => state.categories.categories,
-  );
+   useEffect(() => {
+     if (user?.uid) {
+       const unsubscribe = fetchTasks(user.uid, setTasks);
 
-  const deletedTaskIds = useSelector(
-    (state: RootState) => state.tasks.deletedTaskIds,
-  );
-  const completedTasks = useSelector(
-    (state: RootState) => state.tasks.completedTasks,
-  );
+       // Cleanup on unmount
+       return () => unsubscribe();
+     }
+   }, [user?.uid]);
 
-  const isImportantTasks = useSelector(
-    (state: RootState) => state.tasks.isImportantTasks,
-  );
+
 
   useEffect(() => {
     const unsubscribe = firestore()
@@ -99,10 +82,10 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
         const categoriesList = snapshot.docs.map(
           doc => doc.data() as CategoryModel,
         );
-        dispatch(setCategories(categoriesList));
+       setCategories(categoriesList);
       });
     return () => unsubscribe();
-  }, [dispatch, user]);
+  }, [user]);
   const filters = categories.reduce<
     {name: string; icon: string; color?: string}[]
   >(
@@ -126,160 +109,14 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     if (activeFilter === 'Tất cả') return true;
     return task.category === activeFilter;
   });
-  useEffect(() => {
-    fetchDeletedTasks(dispatch);
-    fetchCompletedTasks(dispatch);
-    fetchImportantTasks(dispatch);
-  }, [dispatch]);
 
-  useEffect(() => {
-    const unsubscribe = firestore()
-      .collection('categories')
-      .where('uid', '==', user?.uid)
-      .onSnapshot(snapshot => {
-        const categoriesList = snapshot.docs.map(
-          doc => doc.data() as CategoryModel,
-        );
-        dispatch(setCategories(categoriesList));
-      });
-    return () => unsubscribe();
-  }, [dispatch, user]);
-  useEffect(() => {
-    const unsubscribe = firestore()
-      .collection('tasks')
-      .where('uid', '==', user?.uid)
-      .onSnapshot(snapshot => {
-        const tasksList = snapshot.docs.map(doc => {
-          const taskData = doc.data() as TaskModel;
 
-          // Chuyển đổi dueDate và startTime (nếu có) thành Date hoặc chuỗi ISO
-          const dueDate =
-            taskData.dueDate instanceof firebase.firestore.Timestamp
-              ? taskData.dueDate.toDate().toISOString()
-              : taskData.dueDate;
-
-          const startTime =
-            taskData.startTime instanceof firebase.firestore.Timestamp
-              ? taskData.startTime.toDate().toISOString()
-              : taskData.startTime;
-
-          const endDate =
-            taskData.endDate instanceof firebase.firestore.Timestamp
-              ? taskData.endDate.toDate().toISOString()
-              : taskData.endDate; // Giữ nguyên nếu không phải Timestamp
-
-          return {
-            ...taskData,
-            id: doc.id,
-            dueDate,
-            startTime,
-            endDate,
-          } as TaskModel;
-        });
-
-        const allTasksWithRepeats = tasksList.flatMap(task => {
-          if (task.repeat === 'no' || !task.repeat || !task.startDate) {
-            return [task];
-          }
-
-          const repeatedDates = calculateRepeatedDates(
-            task.startDate,
-            task.repeat as 'day' | 'week' | 'month',
-            task.repeatCount as number,
-            task.repeatDays as number[],
-          );
-
-          return repeatedDates.map(date => ({
-            ...task,
-            id: `${task.id}-${date}`,
-            startDate: date,
-          }));
-        });
-
-        const filteredTasks = allTasksWithRepeats.filter(
-          task => !deletedTaskIds.includes(task.id),
-        );
-
-        const restoredTasks = filteredTasks.map(task => ({
-          ...task,
-          isCompleted: completedTasks[task.id] || task.isCompleted,
-          isImportant: isImportantTasks[task.id] || task.isImportant,
-        }));
-
-        dispatch(setTasks(restoredTasks));
-      });
-
-    return () => unsubscribe();
-  }, [dispatch, user, deletedTaskIds, completedTasks, isImportantTasks]);
-
-  const handleDelete = (taskId: string, repeatCount: number) => {
-    handleDeleteTask(taskId, dispatch, repeatCount);
-  };
-
-  const handleToggleCompleteTask = (taskId: string) => {
-    handleToggleComplete(taskId, tasks, dispatch);
-  };
-
-  const handleHighlight = async (taskId: string) => {
-    handleToggleImportant(taskId, tasks, dispatch);
-  };
-
-  const handleUpdateRepeatTask = (taskId: string) => {
-    handleUpdateRepeat(taskId);
-  };
-
-  // const handleDeleteAll = () => {
-  //   handleDeleteAllTasks(tasks, dispatch);
-  // }
 
   const handleDeleteSelectedTasks = () => {
-    handleDeleteMultipleTasks(tasks, selectedTaskIds, dispatch);
     setSelectedTaskIds([]);
     setIsDeleteAll(false);
   };
-  const calculateRepeatedDates = (
-    startDate: string,
-    repeat: 'day' | 'week' | 'month',
-    count: number,
-    repeatDays: number[],
-  ) => {
-    const dates = [];
-    let currentDate = new Date(startDate);
 
-    for (let i = 0; i < count; i++) {
-      dates.push(currentDate.toISOString());
-
-      if (repeat === 'day') {
-        currentDate = addDays(currentDate, 1);
-      } else if (repeat === 'week' && repeatDays.length === 0) {
-        currentDate = addWeeks(currentDate, 1);
-      } else if (repeat === 'month' && repeatDays.length === 0) {
-        currentDate = addMonths(currentDate, 1);
-      } else if (repeat === 'week' && repeatDays.length > 0) {
-        repeatDays.forEach(day => {
-          let tempDate = new Date(currentDate);
-          tempDate.setDate(
-            tempDate.getDate() + ((day + 7 - tempDate.getDay()) % 7),
-          );
-          if (tempDate > currentDate) {
-            dates.push(tempDate.toISOString());
-          }
-        });
-        currentDate = addWeeks(currentDate, 1);
-      } else if (repeat === 'month' && repeatDays.length > 0) {
-        repeatDays.forEach(day => {
-          let tempDate = new Date(currentDate);
-          tempDate.setDate(day);
-          if (tempDate > currentDate) {
-            dates.push(tempDate.toISOString());
-          }
-        });
-        currentDate = addMonths(currentDate, 1);
-      }
-    }
-
-    return dates;
-  };
 
   const tasksBeforeToday = filteredTasks.filter(task => {
     const taskStartDate = new Date(task.startDate || '');
@@ -358,7 +195,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
       <View style={styles.swipeActions}>
         <Pressable
           style={styles.swipeActionButton}
-          onPress={() => handleDelete(item.id, item.repeatCount)}>
+          onPress={() => handleDelete(item.id)}>
           <Trash size={24} color={appColors.red} variant="Bold" />
           <Text style={styles.actionText}>Xóa</Text>
         </Pressable>
@@ -366,7 +203,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
         {item.repeat !== 'no' && (
           <Pressable
             style={styles.swipeActionButton}
-            onPress={() => handleUpdateRepeatTask(item.id)}>
+            onPress={() => handleUpdateRepeatTask(item.id, item.title)}>
             <Repeat size="24" color={appColors.blue} />
             <Text style={styles.actionText}>Bỏ lặp lại</Text>
           </Pressable>

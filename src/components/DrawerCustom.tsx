@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   View,
   FlatList,
@@ -11,15 +11,54 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {appColors} from '../constants';
 import {RowComponent, TextComponent} from '.';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import auth from '@react-native-firebase/auth';
+import auth, {firebase} from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import {useSelector} from 'react-redux';
-import {RootState} from '../redux/store';
+import { TaskModel } from '../models/taskModel';
+
 
 const DrawerCustom = ({navigation}: any) => {
   const size = 24;
   const color = appColors.gray;
-  const tasks = useSelector((state: RootState) => state.tasks.tasks);
+   const user = auth().currentUser;
+   const [tasks, setTasks] = useState<TaskModel[]>([]);
+   useEffect(() => {
+     const unsubscribe = firestore()
+       .collection('tasks')
+       .where('uid', '==', user?.uid)
+       .onSnapshot(snapshot => {
+         const tasksList = snapshot.docs.map(doc => {
+           const taskData = doc.data() as TaskModel;
+
+           // Chuyển đổi dueDate và startTime (nếu có) thành Date hoặc chuỗi ISO
+           const dueDate =
+             taskData.dueDate instanceof firebase.firestore.Timestamp
+               ? taskData.dueDate.toDate().toISOString()
+               : taskData.dueDate;
+
+           const startTime =
+             taskData.startTime instanceof firebase.firestore.Timestamp
+               ? taskData.startTime.toDate().toISOString()
+               : taskData.startTime;
+
+           const endDate =
+             taskData.endDate instanceof firebase.firestore.Timestamp
+               ? taskData.endDate.toDate().toISOString()
+               : taskData.endDate; // Giữ nguyên nếu không phải Timestamp
+
+           return {
+             ...taskData,
+             id: doc.id,
+             dueDate,
+             startTime,
+             endDate,
+           } as TaskModel;
+         });
+
+         setTasks(tasksList);
+       });
+
+     return () => unsubscribe();
+   }, [user]);
 
   const profileMenu = [
 
