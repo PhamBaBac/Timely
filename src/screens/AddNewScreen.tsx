@@ -29,7 +29,7 @@ import {
 import {Modalize} from 'react-native-modalize';
 import {Portal} from 'react-native-portalize';
 
-import {format, set} from 'date-fns';
+import {addDays, addMonths, addWeeks, format, set} from 'date-fns';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
@@ -67,6 +67,7 @@ const initValue: TaskModel = {
   isCompleted: false,
   isImportant: false,
   priority: 'low' as 'low' | 'medium' | 'high',
+  notified: false,
   createdAt: Date.now(),
   updatedAt: Date.now(),
 };
@@ -229,7 +230,24 @@ const AddNewScreen = ({navigation}: any) => {
       startDate: startDate.toISOString(),
       startTime: selectedTime.getTime(),
       endDate: taskDetail.endDate ? taskDetail.endDate.toISOString() : null,
+      notified: false,
     };
+    if (task.repeat !== 'no') {
+      const repeatedDates = calculateRepeatedDates(
+        startDate.toISOString(),
+        task.repeat as 'day' | 'week' | 'month',
+        task.repeatCount,
+        task.repeatDays,
+      );
+      repeatedDates.forEach(date => {
+        firestore()
+          .collection('tasks')
+          .add({
+            ...task,
+            startDate: date,
+          });
+      });
+    }
 
     await taskRef
       .set(task)
@@ -249,6 +267,51 @@ const AddNewScreen = ({navigation}: any) => {
         console.log(error);
         setIsLoading(false);
       });
+  };
+  const calculateRepeatedDates = (
+    startDate: string,
+    repeat: 'day' | 'week' | 'month',
+    count: number,
+    repeatDays: number[],
+  ) => {
+    const dates = [];
+    let currentDate = new Date(startDate);
+
+    for (let i = 0; i < count; i++) {
+      if (i > 0) {
+        dates.push(currentDate.toISOString());
+      }
+
+      if (repeat === 'day') {
+        currentDate = addDays(currentDate, 1);
+      } else if (repeat === 'week' && repeatDays.length === 0) {
+        currentDate = addWeeks(currentDate, 1);
+      } else if (repeat === 'month' && repeatDays.length === 0) {
+        currentDate = addMonths(currentDate, 1);
+      } else if (repeat === 'week' && repeatDays.length > 0) {
+        repeatDays.forEach(day => {
+          let tempDate = new Date(currentDate);
+          tempDate.setDate(
+            tempDate.getDate() + ((day + 7 - tempDate.getDay()) % 7),
+          );
+          if (tempDate > currentDate) {
+            dates.push(tempDate.toISOString());
+          }
+        });
+        currentDate = addWeeks(currentDate, 1);
+      } else if (repeat === 'month' && repeatDays.length > 0) {
+        repeatDays.forEach(day => {
+          let tempDate = new Date(currentDate);
+          tempDate.setDate(day);
+          if (tempDate > currentDate) {
+            dates.push(tempDate.toISOString());
+          }
+        });
+        currentDate = addMonths(currentDate, 1);
+      }
+    }
+
+    return dates;
   };
 
   const handleNewCategoryCreate = async () => {

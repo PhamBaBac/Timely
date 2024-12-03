@@ -1,7 +1,12 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {StyleSheet, ScrollView, View, Text} from 'react-native';
 import PieChart from 'react-native-pie-chart';
-import * as Animatable from 'react-native-animatable';
+import {appColors} from '../constants';
+import RowComponent from './RowComponent';
+import SpaceComponent from './SpaceComponent';
+import { CategoryModel } from '../models/categoryModel';
+import firestore from '@react-native-firebase/firestore';
+import auth from '@react-native-firebase/auth';
 
 interface Task {
   category: string;
@@ -12,10 +17,27 @@ interface Props {
   tasks?: Task[];
 }
 
-const CircularComponent = ({tasks = []}: Props) => {
+const CicularComponent = ({tasks = []}: Props) => {
+  const [categories, setCategories] = useState<CategoryModel[]>([]);
+    const user = auth().currentUser;
+
+  useEffect(() => {
+    const unsubscribe = firestore()
+      .collection('categories')
+      .where('uid', '==', user?.uid)
+      .onSnapshot(snapshot => {
+        const categoriesList = snapshot.docs.map(doc => ({
+          id: doc.id, // Lấy docId từ tài liệu Firestore
+          ...doc.data(),
+        })) as CategoryModel[];
+        setCategories(categoriesList);
+      });
+    return () => unsubscribe();
+  }, [user]);
   const categoryData = tasks.reduce((acc: {[key: string]: number}, task) => {
     if (!task.isCompleted) {
       const category = task.category || 'Khác';
+
       acc[category] = (acc[category] || 0) + 1;
     }
     return acc;

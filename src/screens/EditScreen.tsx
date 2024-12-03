@@ -48,7 +48,6 @@ import ModalizeTime from '../modal/ModalizeTime';
 import {CategoryModel} from '../models/categoryModel';
 import {SubTask, TaskModel} from '../models/taskModel';
 import {useSelector} from 'react-redux';
-import {RootState} from '../redux/store';
 
 const availableIcons = [
   'work',

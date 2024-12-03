@@ -1,37 +1,33 @@
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  Pressable,
-  StyleSheet,
-  StatusBar,
-  ScrollView,
-} from 'react-native';
-import React, {useState, useEffect, useCallback, useMemo} from 'react';
-import {Calendar, LocaleConfig} from 'react-native-calendars';
-import {isSameDay, addDays, format, startOfWeek, endOfWeek} from 'date-fns';
-import {appColors} from '../../constants';
-import {useSelector} from 'react-redux';
-import {RootState} from '../../redux/store';
-import {TaskModel} from '../../models/taskModel';
-import {useNavigation} from '@react-navigation/native';
-import {DateTime} from '../../utils/DateTime';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {Swipeable} from 'react-native-gesture-handler';
-import {RowComponent, SpaceComponent} from '../../components';
-import {
-  fetchCompletedTasks,
-  fetchDeletedTasks,
-  fetchImportantTasks,
-  handleDeleteTask,
-  handleToggleComplete,
-  handleToggleImportant,
-  handleUpdateRepeat,
-} from '../../utils/taskUtil';
-import {useDispatch} from 'react-redux';
-import useCustomStatusBar from '../../hooks/useCustomStatusBar';
+import auth, {firebase} from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
+import {addDays, endOfWeek, format, isSameDay, startOfWeek} from 'date-fns';
 import {Flag, Repeat, Star1, StarSlash, Trash} from 'iconsax-react-native';
+import React, {useEffect, useMemo, useState} from 'react';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import {Calendar, LocaleConfig} from 'react-native-calendars';
+import {Swipeable} from 'react-native-gesture-handler';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import {useSelector} from 'react-redux';
+import {RowComponent, SpaceComponent} from '../../components';
+import {appColors} from '../../constants';
+import useCustomStatusBar from '../../hooks/useCustomStatusBar';
+import {TaskModel} from '../../models/taskModel';
+import {
+  fetchTasks,
+  handleDelete,
+  handleHighlight,
+  handleToggleCompleteTask,
+  handleUpdateRepeatTask,
+} from '../../utils/taskUtil';
+import { CategoryModel } from '../../models/categoryModel';
+
 
 // Set Vietnamese locale for the calendar
 LocaleConfig.locales['vi'] = {
@@ -101,22 +97,43 @@ const hourRanges = [
 
 const CalendarScreen = ({navigation}: any) => {
   useCustomStatusBar('light-content', appColors.primary);
-  const dispatch = useDispatch();
+  const user = auth().currentUser;
+  const [tasks, setTasks] = useState<TaskModel[]>([]);
+  useEffect(() => {
+    if (user?.uid) {
+      const unsubscribe = fetchTasks(user.uid, setTasks);
 
+      // Cleanup on unmount
+      return () => unsubscribe();
+    }
+  }, [user?.uid]);
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [currentWeek, setCurrentWeek] = useState(
     startOfWeek(new Date(), {weekStartsOn: 1}),
   );
   const [selectedWeekDay, setSelectedWeekDay] = useState<Date | null>(null);
   const [showAllWeekTasks, setShowAllWeekTasks] = useState(true);
+  const [categories, setCategories] = useState<CategoryModel[]>([]);
 
   const [selected, setSelected] = useState(
     new Date().toISOString().split('T')[0],
   );
-  const tasks = useSelector((state: RootState) => state.tasks.tasks);
-  const categories = useSelector(
-    (state: RootState) => state.categories.categories,
-  );
+
+  
+  useEffect(() => {
+    const unsubscribe = firestore()
+      .collection('categories')
+      .where('uid', '==', user?.uid)
+      .onSnapshot(snapshot => {
+        const categoriesList = snapshot.docs.map(
+          doc => doc.data() as CategoryModel,
+        );
+        setCategories(categoriesList);
+      });
+    return () => unsubscribe();
+  }, [user]);
+
+
   const [filteredTasks, setFilteredTasks] = useState<TaskModel[]>([]);
   const [markedDates, setMarkedDates] = useState<{[key: string]: any}>({});
 
@@ -137,12 +154,6 @@ const CalendarScreen = ({navigation}: any) => {
 
     setMarkedDates(newMarkedDates);
   }, [tasks]);
-
-  useEffect(() => {
-    fetchDeletedTasks(dispatch);
-    fetchCompletedTasks(dispatch);
-    fetchImportantTasks(dispatch);
-  }, [dispatch]);
 
   useEffect(() => {
     let filtered: TaskModel[] = [];
@@ -197,22 +208,6 @@ const CalendarScreen = ({navigation}: any) => {
     showAllWeekTasks,
   ]);
 
-  const handleDelete = (taskId: string, repeatCount: number) => {
-    handleDeleteTask(taskId, dispatch, repeatCount);
-  };
-
-  const handleToggleCompleteTask = (taskId: string) => {
-    handleToggleComplete(taskId, tasks, dispatch);
-  };
-
-  const handleHighlight = async (taskId: string) => {
-    handleToggleImportant(taskId, tasks, dispatch);
-  };
-
-  const handleUpdateRepeatTask = (taskId: string) => {
-    handleUpdateRepeat(taskId);
-  };
-
   const formatTime = (date: Date) => {
     return format(date, 'HH:mm');
   };
@@ -234,7 +229,7 @@ const CalendarScreen = ({navigation}: any) => {
       <View style={styles.swipeActions}>
         <Pressable
           style={styles.swipeActionButton}
-          onPress={() => handleDelete(item.id, item.repeatCount)}>
+          onPress={() => handleDelete(item.id)}>
           <Trash size={24} color={appColors.red} variant="Bold" />
           <Text style={styles.actionText}>Xóa</Text>
         </Pressable>
@@ -242,7 +237,7 @@ const CalendarScreen = ({navigation}: any) => {
         {item.repeat !== 'no' && (
           <Pressable
             style={styles.swipeActionButton}
-            onPress={() => handleUpdateRepeatTask(item.id)}>
+            onPress={() => handleUpdateRepeatTask(item.id, item.title)}>
             <Repeat size={24} color={appColors.blue} />
             <Text style={styles.actionText}>Bỏ lặp lại</Text>
           </Pressable>
