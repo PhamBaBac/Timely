@@ -60,15 +60,15 @@ LocaleConfig.locales['vi'] = {
     'Th12',
   ],
   dayNames: [
-    'Chủ nhật',
     'Thứ hai',
     'Thứ ba',
     'Thứ tư',
     'Thứ năm',
     'Thứ sáu',
     'Thứ bảy',
+    'Chủ nhật',
   ],
-  dayNamesShort: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'],
+  dayNamesShort: [, 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
   today: 'Hôm nay',
 };
 LocaleConfig.defaultLocale = 'vi';
@@ -108,7 +108,9 @@ const CalendarScreen = ({navigation}: any) => {
     }
   }, [user?.uid]);
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
-  const [currentWeek, setCurrentWeek] = useState(new Date());
+  const [currentWeek, setCurrentWeek] = useState(
+    startOfWeek(new Date(), {weekStartsOn: 1}),
+  );
   const [selectedWeekDay, setSelectedWeekDay] = useState<Date | null>(null);
   const [showAllWeekTasks, setShowAllWeekTasks] = useState(true);
   const [categories, setCategories] = useState<CategoryModel[]>([]);
@@ -163,39 +165,36 @@ const CalendarScreen = ({navigation}: any) => {
           isSameDay(new Date(task.startDate), new Date(selected)),
       );
     } else {
-      const weekStart = startOfWeek(currentWeek);
-      const weekEnd = endOfWeek(currentWeek);
+      const weekStart = startOfWeek(currentWeek, {weekStartsOn: 1});
+      const weekEnd = endOfWeek(currentWeek, {weekStartsOn: 1}); // Đảm bảo tuần kết thúc đúng
 
       filtered = tasks
         .filter(task => {
           if (!task.startDate) return false;
           const taskDate = new Date(task.startDate);
 
+          // Logic xử lý task trong tuần
           if (showAllWeekTasks) {
             return taskDate >= weekStart && taskDate <= weekEnd;
           }
 
+          // Kiểm tra khi đã chọn một ngày cụ thể
           return (
             taskDate >= weekStart &&
             taskDate <= weekEnd &&
-            selectedWeekDay &&
-            isSameDay(taskDate, selectedWeekDay)
+            (selectedWeekDay === null || isSameDay(taskDate, selectedWeekDay))
           );
         })
         .sort((a, b) => {
           const getDateTime = (task: TaskModel) => {
             if (task.startDate) return new Date(task.startDate).getTime();
-
-            return Infinity; // Push tasks without date/time to the end
+            return Infinity;
           };
           const getHour = (task: TaskModel) => {
             if (task.startTime) return new Date(task.startTime).getHours();
-
-            return Infinity; // Push tasks without date/time to the end
+            return Infinity;
           };
-          return getDateTime(a) - getDateTime(b) || getHour(a) - getHour(b); // This is already in ascending order (tăng dần)
-
-          return getDateTime(a) - getDateTime(b); // This is already in ascending order (tăng dần)
+          return getDateTime(a) - getDateTime(b) || getHour(a) - getHour(b);
         });
     }
 
@@ -399,7 +398,7 @@ const CalendarScreen = ({navigation}: any) => {
     );
   };
   const renderWeekView = () => {
-    const weekStart = startOfWeek(currentWeek, {weekStartsOn: 1});
+    const weekStart = startOfWeek(currentWeek, {weekStartsOn: 1}); // Starts on Monday
     const weekDates = Array.from({length: 7}, (_, i) => addDays(weekStart, i));
     const today = new Date();
 
@@ -431,9 +430,8 @@ const CalendarScreen = ({navigation}: any) => {
         </RowComponent>
 
         <View style={styles.weekDaysContainer}>
-          {weekDates.map(date => {
-            const dayIndex = date.getDay() || 7;
-            const vietnameseDayShort = vietnameseDays[dayIndex - 1];
+          {weekDates.map((date, index) => {
+            const vietnameseDayShort = vietnameseDays[index];
             const isToday = isSameDay(date, today);
             const isSelected = selectedWeekDay
               ? isSameDay(date, selectedWeekDay)
