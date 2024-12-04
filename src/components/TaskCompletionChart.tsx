@@ -53,16 +53,9 @@ const TaskCompletionChart: React.FC<TaskCompletionChartProps> = ({
         alignItems: 'center',
         backgroundColor: '#fff',
         borderRadius: 16,
-        padding: 10,
+        paddingLeft: 20,
       }}>
-      <Text
-        style={{
-          fontSize: 18,
-          fontWeight: 'bold',
-          marginBottom: 16,
-        }}>
-        Thống kê trạng thái công việc
-      </Text>
+      
       <PieChart
         data={data}
         width={screenWidth - 32}

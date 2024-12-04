@@ -298,9 +298,9 @@ const TaskDetailScreen = ({navigation, route}: any) => {
 
             <TouchableOpacity>
               {taskDetail.isImportant ? (
-                <Star1 size={24} color="#FF8A65" variant="Bold" />
+                <Star1 size={24} color="#FF8A65" />
               ) : (
-                <StarSlash size={24} color="#FF8A65" variant="Bold" />
+                <StarSlash size={24} color="#FF8A65" />
               )}
             </TouchableOpacity>
           </RowComponent>
