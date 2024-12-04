@@ -19,8 +19,6 @@ const AppRouters = () => {
       user ? setIsLogin(true) : setIsLogin(false);
     });
 
-    HandleNotification.getAccessToken();
-
     messaging().onNotificationOpenedApp((mess: any) => {
       console.log('Notification opened from background', mess);
     });

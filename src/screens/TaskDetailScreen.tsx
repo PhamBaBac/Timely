@@ -13,6 +13,7 @@ import {
   StarSlash,
   TickCircle,
   MoreCircle,
+  Trash,
 } from 'iconsax-react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useSelector} from 'react-redux';
@@ -221,8 +222,12 @@ const TaskDetailScreen = ({navigation, route}: any) => {
               size={22}
               color={appColors.white}
             />
-            <TouchableOpacity onPress={() => handleTaskPress(taskDetail)}>
-              <MoreCircle size={28} color={appColors.white} variant="Bold" />
+            <TouchableOpacity
+              onPress={() => handleTaskPress(taskDetail)}
+              style={{
+                right: 10,
+              }}>
+              <CalendarEdit size="28" color={appColors.white} />
             </TouchableOpacity>
           </RowComponent>
           <View style={{marginTop: 20, marginHorizontal: 12}}>
@@ -258,6 +263,23 @@ const TaskDetailScreen = ({navigation, route}: any) => {
                   />
                 </RowComponent>
               )}
+              {taskDetail.endDate && (
+                <RowComponent
+                  styles={{
+                    flex: 1,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}>
+                  <CalendarEdit size={20} color={appColors.white} />
+                  <SpaceComponent width={4} />
+
+                  <TextComponent
+                    flex={0}
+                    text={fomatDate(new Date(taskDetail.endDate || '')) ?? ''}
+                    styles={{color: appColors.white}}
+                  />
+                </RowComponent>
+              )}
               <MaterialCommunityIcons
                 name="share-variant"
                 size={24}
@@ -269,22 +291,6 @@ const TaskDetailScreen = ({navigation, route}: any) => {
         </SectionComponent>
 
         <View style={{marginHorizontal: 10, marginVertical: 20}}>
-          <SectionComponent>
-            <TitleComponent text="Mô tả công việc" size={22} />
-            <CardComponent
-              bgColor={appColors.white}
-              styles={{
-                borderWidth: 1,
-                borderColor: appColors.primary,
-                borderRadius: 12,
-                marginTop: 12,
-              }}>
-              <TextComponent
-                text={taskDetail.description}
-                styles={{textAlign: 'justify'}}
-              />
-            </CardComponent>
-          </SectionComponent>
           <RowComponent
             styles={{
               marginHorizontal: 16,
@@ -299,9 +305,9 @@ const TaskDetailScreen = ({navigation, route}: any) => {
 
             <TouchableOpacity>
               {taskDetail.isImportant ? (
-                <Star1 size={24} color="#FF8A65" variant="Bold" />
+                <Star1 size={24} color="#FF8A65" />
               ) : (
-                <StarSlash size={24} color="#FF8A65" variant="Bold" />
+                <StarSlash size={24} color="#FF8A65" />
               )}
             </TouchableOpacity>
           </RowComponent>
@@ -383,6 +389,24 @@ const TaskDetailScreen = ({navigation, route}: any) => {
 
           <SpaceComponent height={12} />
           <SectionComponent>
+            <TitleComponent text="Mô tả công việc" size={22} />
+            <CardComponent
+              bgColor={appColors.white}
+              styles={{
+                borderWidth: 1,
+                borderColor: appColors.primary,
+                borderRadius: 12,
+                marginTop: 12,
+              }}>
+              <TextComponent
+                text={taskDetail.description}
+                styles={{textAlign: 'justify'}}
+              />
+            </CardComponent>
+          </SectionComponent>
+          <SpaceComponent height={12} />
+
+          <SectionComponent>
             <RowComponent>
               <TitleComponent flex={1} text="Thêm nhiệm vụ phụ" size={20} />
               <TouchableOpacity
@@ -419,11 +443,7 @@ const TaskDetailScreen = ({navigation, route}: any) => {
                     </View>
                     <TouchableOpacity
                       onPress={() => handleDeleteSubTask(item.id)}>
-                      <ClipboardClose
-                        size={24}
-                        color={appColors.red}
-                        variant="Bold"
-                      />
+                      <Trash size={24} color={appColors.red} variant="Bold" />
                     </TouchableOpacity>
                   </RowComponent>
                 </CardComponent>

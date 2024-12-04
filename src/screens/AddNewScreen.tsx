@@ -150,7 +150,7 @@ const AddNewScreen = ({navigation}: any) => {
       setErrorText('Giờ bắt đầu không thể là giờ trong quá khứ');
       return;
     }
-    //rang buoc ngay bat dau phai lon hon hoac bang nga hien tai
+    // rang buoc ngay bat dau phai lon hon hoac bang nga hien tai
     if (
       selectedDate &&
       selectedDate <= new Date(new Date().setHours(0, 0, 0, 0))
@@ -319,6 +319,7 @@ const AddNewScreen = ({navigation}: any) => {
       setIsLoading(true);
       const categorySnapshot = await firestore()
         .collection('categories')
+        .where('uid', '==', user?.uid)
         .where('name', '==', tempCategory)
         .get();
 
@@ -476,7 +477,7 @@ const AddNewScreen = ({navigation}: any) => {
               flex: 1,
               justifyContent: 'space-between',
             }}>
-            <Text style={styles.optionText}>Chọn loại công việc</Text>
+            <Text style={styles.optionText}>Lựa chọn loại công việc</Text>
             <SpaceComponent width={10} />
             <Text
               style={styles.selectedTimeText}
@@ -493,9 +494,9 @@ const AddNewScreen = ({navigation}: any) => {
             marginBottom: 20,
           }}>
           {taskDetail.isImportant ? (
-            <Star1 size={24} color="#FF8A65" variant="Bold" />
+            <Star1 size={24} color="#FF8A65" />
           ) : (
-            <StarSlash size={24} color="#FF8A65" variant="Bold" />
+            <StarSlash size={24} color="#FF8A65" />
           )}
           <View
             style={{
@@ -504,7 +505,7 @@ const AddNewScreen = ({navigation}: any) => {
               justifyContent: 'space-between',
               alignItems: 'center', // Add this line to align items in the center
             }}>
-            <Text style={styles.optionText}>Chọn quan trọng</Text>
+            <Text style={styles.optionText}>Đánh giá mức độ quan trọng</Text>
             <SpaceComponent width={10} />
             <Switch
               trackColor={{false: appColors.gray, true: appColors.primary}}
@@ -535,7 +536,7 @@ const AddNewScreen = ({navigation}: any) => {
                 flexDirection: 'row',
                 justifyContent: 'space-between',
               }}>
-              <Text style={styles.optionText}>Chọn mức độ ưu tiên</Text>
+              <Text style={styles.optionText}>Cài đặt mức độ ưu tiên</Text>
               <SpaceComponent width={10} />
               <Text
                 style={styles.selectedTimeText}
@@ -655,7 +656,7 @@ const AddNewScreen = ({navigation}: any) => {
           style={styles.option}
           onPress={() => setRepeatModalVisible(true)}>
           <Ionicons name="repeat" size={24} color={appColors.blue} />
-          <Text style={styles.modalOptionText}>Chọn lặp lại</Text>
+          <Text style={styles.modalOptionText}>Cài đặt tần suất lặp lại</Text>
           <Text style={styles.selectedRepeatText}>
             {selectedRepeat ? selectedRepeat : 'Không'}
           </Text>
@@ -669,7 +670,7 @@ const AddNewScreen = ({navigation}: any) => {
                 flexDirection: 'row',
                 justifyContent: 'space-between',
               }}>
-              <Text style={styles.optionText}>Chọn lời nhắc</Text>
+              <Text style={styles.optionText}>Thiết lập lời nhắc</Text>
               <SpaceComponent width={10} />
               <Text
                 style={styles.selectedTimeText}
@@ -915,7 +916,7 @@ const AddNewScreen = ({navigation}: any) => {
       <SpaceComponent height={20} />
       <SectionComponent>
         <ButtonComponent
-          text="Thêm công việc"
+          text="Lưu"
           onPress={handleAddNewTask}
           type="primary"
         />

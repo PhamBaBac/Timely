@@ -21,8 +21,8 @@ import {RowComponent, TextComponent} from '../../components';
 import {appColors} from '../../constants';
 import CicularComponent from '../../components/CicularComponent';
 import useCustomStatusBar from '../../hooks/useCustomStatusBar';
-import { TaskModel } from '../../models/taskModel';
-import { fetchTasks } from '../../utils/taskUtil';
+import {TaskModel} from '../../models/taskModel';
+import {fetchTasks} from '../../utils/taskUtil';
 
 const ProfileScreen = ({navigation}: {navigation: any}) => {
   useCustomStatusBar('dark-content', appColors.lightPurple);
@@ -53,35 +53,33 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
   };
   const [weekOffset, setWeekOffset] = useState(0);
   const [tasks, setTasks] = useState<TaskModel[]>([]);
-   const user = auth().currentUser;
+  const user = auth().currentUser;
 
-   useEffect(() => {
-     if (user?.uid) {
-       const unsubscribe = fetchTasks(user.uid, setTasks);
+  useEffect(() => {
+    if (user?.uid) {
+      const unsubscribe = fetchTasks(user.uid, setTasks);
 
-       // Cleanup on unmount
-       return () => unsubscribe();
-     }
-   }, [user?.uid]);
+      // Cleanup on unmount
+      return () => unsubscribe();
+    }
+  }, [user?.uid]);
 
-const filterTasksByPeriod = (tasks: TaskModel[], period: string) => {
-  const currentDate = new Date();
-  if (period === 'all') return tasks;
+  const filterTasksByPeriod = (tasks: TaskModel[], period: string) => {
+    const currentDate = new Date();
+    if (period === 'all') return tasks;
 
-  const days = parseInt(period);
-  const futureDate = new Date();
-  futureDate.setDate(currentDate.getDate() + days);
+    const days = parseInt(period);
+    const futureDate = new Date();
+    futureDate.setDate(currentDate.getDate() + days);
 
-  return tasks.filter(task => {
-    const taskDate = task.dueDate
-      ? new Date(task.dueDate)
-      : new Date();
-    // Check if the task date is between the current date and the future date
-    return taskDate >= currentDate && taskDate <= futureDate;
-  });
-};
+    return tasks.filter(task => {
+      const taskDate = task.dueDate ? new Date(task.dueDate) : new Date();
+      // Check if the task date is between the current date and the future date
+      return taskDate >= currentDate && taskDate <= futureDate;
+    });
+  };
 
-const filteredTasks = filterTasksByPeriod(tasks, selectedPeriod);
+  const filteredTasks = filterTasksByPeriod(tasks, selectedPeriod);
 
   useEffect(() => {
     let completed = 0;
@@ -295,7 +293,7 @@ const filteredTasks = filterTasksByPeriod(tasks, selectedPeriod);
         />
         <RowComponent>
           <TextComponent
-            text="Công việc chưa hoàn thành"
+            text="Thể loại công việc chưa hoàn thành"
             styles={{
               fontSize: 16,
               fontWeight: 'bold',

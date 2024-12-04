@@ -251,14 +251,8 @@ const CalendarScreen = ({navigation}: any) => {
       category => category.name === item.category,
     );
     const categoryColor = category?.color || appColors.gray2;
-    const categoryIcon =
-      category?.icon ||
-      (item.category === 'Du lịch'
-        ? 'airplanemode-active'
-        : item.category === 'Sinh nhật'
-        ? 'cake'
-        : '');
-
+    const categoryIcon = category?.icon;
+     
     return (
       <Swipeable
         renderRightActions={() => renderRightActions(item)}
@@ -271,6 +265,11 @@ const CalendarScreen = ({navigation}: any) => {
                 borderLeftColor: item.isCompleted
                   ? appColors.gray
                   : categoryColor,
+              },
+              {
+                backgroundColor: item.isCompleted
+                  ? appColors.gray2
+                  : appColors.white,
               },
             ]}>
             <Pressable
@@ -309,24 +308,25 @@ const CalendarScreen = ({navigation}: any) => {
                     ? formatTime(item.startTime)
                     : 'No start time'}
                   <SpaceComponent width={10} />
+                  <View
+                    style={{
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexDirection: 'row',
+                    }}>
+                    {categoryIcon && (
+                      <MaterialIcons
+                        name={categoryIcon}
+                        size={16}
+                        color={categoryColor}
+                      />
+                    )}
+                    <SpaceComponent width={10} />
+                    {item.repeat !== 'no' && (
+                      <Repeat size="16" color={appColors.red} />
+                    )}
+                  </View>
                 </Text>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                  }}>
-                  {categoryIcon && (
-                    <MaterialIcons
-                      name={categoryIcon}
-                      size={16}
-                      color={categoryColor}
-                    />
-                  )}
-                  <SpaceComponent width={10} />
-                  {item.repeat !== 'no' && (
-                    <Repeat size="16" color={appColors.red} />
-                  )}
-                </View>
               </View>
               <View>
                 {item.priority === 'low' && (
@@ -605,7 +605,6 @@ const styles = StyleSheet.create({
     color: appColors.black,
   },
   completedTaskTitle: {
-    textDecorationLine: 'line-through',
     color: appColors.gray,
   },
   taskDate: {

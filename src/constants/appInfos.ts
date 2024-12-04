@@ -5,7 +5,7 @@ export const appInfo = {
     WIDTH: Dimensions.get('window').width,
     HEIGHT: Dimensions.get('window').height,
   },
-  BASE_URL: 'http://192.168.1.5:3001',
+  BASE_URL: 'https://server-timely-1.onrender.com',
   monthNames: [
     '01',
     '02',
