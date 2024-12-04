@@ -48,7 +48,6 @@ const TaskDetailScreen = ({navigation, route}: any) => {
   const user = auth().currentUser;
   const [tasks, setTasks] = useState<TaskModel[]>([]);
 
-
   useEffect(() => {
     const unsubscribe = firestore()
       .collection('categories')
@@ -84,11 +83,6 @@ const TaskDetailScreen = ({navigation, route}: any) => {
         setTaskDetail(snapshot.data() as TaskModel);
       });
   };
-
-  console.log('taskDetail', taskDetail);
-  console.log('statr day', taskDetail?.startDate);
-  console.log('due day', taskDetail?.dueDate);
-  console.log('end day', taskDetail?.endDate);
 
   const handleUpdateTask = async () => {
     const data = {
@@ -304,9 +298,9 @@ const TaskDetailScreen = ({navigation, route}: any) => {
 
             <TouchableOpacity>
               {taskDetail.isImportant ? (
-                <Star1 size={24} color="#FF8A65" variant="Bold" />
+                <Star1 size={24} color="#FF8A65" />
               ) : (
-                <StarSlash size={24} color="#FF8A65" variant="Bold" />
+                <StarSlash size={24} color="#FF8A65" />
               )}
             </TouchableOpacity>
           </RowComponent>

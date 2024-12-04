@@ -1,7 +1,7 @@
-import auth, { firebase } from '@react-native-firebase/auth';
+import auth, {firebase} from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import messaging from '@react-native-firebase/messaging';
-import { format, set } from 'date-fns';
+import messaging, { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
+import {format, set} from 'date-fns';
 import {
   Category2,
   Flag,
@@ -12,28 +12,35 @@ import {
   TickSquare,
   Trash,
 } from 'iconsax-react-native';
-import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, {useEffect, useState} from 'react';
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { useDispatch, useSelector } from 'react-redux';
-import { RowComponent, SpaceComponent } from '../../components';
-import { appColors } from '../../constants/appColor';
+import {useDispatch, useSelector} from 'react-redux';
+import {RowComponent, SpaceComponent, TextComponent} from '../../components';
+import {appColors} from '../../constants/appColor';
 import useCustomStatusBar from '../../hooks/useCustomStatusBar';
-import { CategoryModel } from '../../models/categoryModel';
-import { TaskModel } from '../../models/taskModel';
-import { HandleNotification } from '../../utils/handleNotification';
+import {CategoryModel} from '../../models/categoryModel';
+import {TaskModel} from '../../models/taskModel';
+import {HandleNotification} from '../../utils/handleNotification';
 import {
   fetchTasks,
   handleDelete,
   handleHighlight,
   handleToggleCompleteTask,
-  handleUpdateRepeatTask
+  handleUpdateRepeatTask,
 } from '../../utils/taskUtil';
-
+import LoadingModal from '../../modal/LoadingModal';
+import Toast from 'react-native-toast-message';
 
 const HomeScreen = ({navigation}: {navigation: any}) => {
-
   const user = auth().currentUser;
 
   useCustomStatusBar('light-content', appColors.primary);
@@ -44,7 +51,8 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
   const [isDeleteAll, setIsDeleteAll] = useState(false);
   const [categories, setCategories] = useState<CategoryModel[]>([]);
 
- const [tasks, setTasks] = useState<TaskModel[]>([]);
+  const [tasks, setTasks] = useState<TaskModel[]>([]);
+  
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const formatTime = (date: Date) => {
@@ -57,22 +65,24 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   useEffect(() => {
     HandleNotification.checkNotificationPersion();
-    messaging().onMessage((mess: any) => {
-      // getNofiticationsUnRead;
-      console.log('mess:', mess);
-    });
+    messaging().onMessage(
+      async (mess: FirebaseMessagingTypes.RemoteMessage) => {
+        Toast.show({
+          text1: mess.notification?.title,
+          text2: mess.notification?.body,
+        })
+      }
+    );
   }, []);
 
-   useEffect(() => {
-     if (user?.uid) {
-       const unsubscribe = fetchTasks(user.uid, setTasks);
+  useEffect(() => {
+    if (user?.uid) {
+      const unsubscribe = fetchTasks(user.uid, setTasks);
 
-       // Cleanup on unmount
-       return () => unsubscribe();
-     }
-   }, [user?.uid]);
-
-
+      // Cleanup on unmount
+      return () => unsubscribe();
+    }
+  }, [user?.uid]);
 
   useEffect(() => {
     const unsubscribe = firestore()
@@ -82,7 +92,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
         const categoriesList = snapshot.docs.map(
           doc => doc.data() as CategoryModel,
         );
-       setCategories(categoriesList);
+        setCategories(categoriesList);
       });
     return () => unsubscribe();
   }, [user]);
@@ -110,13 +120,35 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     return task.category === activeFilter;
   });
 
-
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleDeleteSelectedTasks = () => {
-    setSelectedTaskIds([]);
-    setIsDeleteAll(false);
+    Alert.alert('Xác nhận', 'Bạn có chắc chắn muốn xóa các công việc này?', [
+      {
+        text: 'Hủy',
+        style: 'cancel',
+      },
+      {
+        text: 'Xóa',
+        onPress: async () => {
+          setIsLoading(true);
+          try {
+            await Promise.all(
+              selectedTaskIds.map(async id => {
+                await firestore().collection('tasks').doc(id).delete();
+              })
+            );
+            setSelectedTaskIds([]);
+            setIsDeleteAll(false);
+          } catch (error) {
+            console.error('Error deleting tasks: ', error);
+          } finally {
+            setIsLoading(false);
+          }
+        },
+      },
+    ]);
   };
-
 
   const tasksBeforeToday = filteredTasks.filter(task => {
     const taskStartDate = new Date(task.startDate || '');
@@ -210,13 +242,11 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
         )}
       </View>
     );
-    const categoryIcon =
-      categories.find(category => category.name === item.category)?.icon ||
-      (item.category === 'Du lịch'
-        ? 'airplanemode-active'
-        : item.category === 'Sinh nhật'
-        ? 'cake'
-        : '');
+    const category = categories.find(
+      category => category.name === item.category,
+    );
+    const categoryColor = category?.color || appColors.gray2;
+    const categoryIcon = category?.icon;
 
     return (
       <Swipeable
@@ -229,7 +259,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
               {
                 borderLeftColor: item.isCompleted
                   ? appColors.gray
-                  : appColors.primary,
+                  : categoryColor,
               },
               {
                 backgroundColor: selectedTaskIds.includes(item.id)
@@ -316,12 +346,12 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
                       <MaterialIcons
                         name={categoryIcon}
                         size={16}
-                        color={appColors.gray2}
+                        color={categoryColor}
                       />
                     )}
                     <SpaceComponent width={10} />
                     {item.repeat !== 'no' && (
-                      <Repeat size="16" color={appColors.gray2} />
+                      <Repeat size="16" color={appColors.red} />
                     )}
                   </View>
                 </View>
@@ -438,7 +468,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
               }}>
               <TickSquare size={24} color={appColors.primary} />
               <SpaceComponent width={5} />
-              <Text style={{color: appColors.black}}>Nhấn để chọn tất cả</Text>
+              <Text style={{color: appColors.black}}>Nhấn để xoá tất cả</Text>
             </Pressable>
           ) : (
             <Pressable
@@ -462,7 +492,9 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
                   justifyContent: 'flex-start',
                   alignItems: 'center',
                 }}>
-                <Text style={{color: appColors.black}}>Xóa tất cả</Text>
+                <Text style={{color: appColors.black}}>
+                  Xác nhận xóa tất cả
+                </Text>
               </Pressable>
             </Pressable>
           )}
@@ -484,22 +516,35 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
             {showBeforeToday && uniqueTasksBeforeToday.map(renderTask)}
           </View>
         )}
-
-        {tasksToday.length > 0 && (
+        <View style={styles.section}>
+          <Pressable
+            onPress={() => setShowToday(!showToday)}
+            style={styles.sectionHeaderContainer}>
+            <Text style={styles.sectionHeader}>Hôm nay </Text>
+            <MaterialIcons
+              name={showToday ? 'expand-less' : 'expand-more'}
+              size={24}
+              color={appColors.gray}
+            />
+          </Pressable>
+        </View>
+        {tasksToday.length > 0 ? (
           <View style={styles.section}>
-            <Pressable
-              onPress={() => setShowToday(!showToday)}
-              style={styles.sectionHeaderContainer}>
-              <Text style={styles.sectionHeader}>Hôm nay </Text>
-              <MaterialIcons
-                name={showToday ? 'expand-less' : 'expand-more'}
-                size={24}
-                color={appColors.gray}
-              />
-            </Pressable>
             {showToday && tasksToday.map(renderTask)}
           </View>
+        ) : (
+          <View style={styles.section}>
+            <Text
+              style={{
+                textAlign: 'center',
+                color: appColors.black,
+                padding: 10,
+              }}>
+              Không có công việc nào cho hôm nay. Hãy thêm công việc mới
+            </Text>
+          </View>
         )}
+
         {tasksAfterToday.length > 0 && (
           <View style={styles.section}>
             <Pressable
@@ -556,6 +601,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
         </Pressable>
       </ScrollView>
       <SpaceComponent height={28} />
+      <LoadingModal visible={isLoading} />
     </View>
   );
 };
@@ -633,7 +679,7 @@ const styles = StyleSheet.create({
   sectionHeader: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: appColors.gray,
+    color: appColors.black,
   },
   taskItem: {
     flexDirection: 'row',
@@ -662,7 +708,6 @@ const styles = StyleSheet.create({
     color: appColors.black,
   },
   completedTaskTitle: {
-    textDecorationLine: 'line-through',
     color: appColors.gray,
   },
   taskDate: {

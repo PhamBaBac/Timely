@@ -360,7 +360,7 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
         />
         <RowComponent>
           <TextComponent
-            text="Công việc chưa hoàn thành"
+            text="Loại công việc chưa hoàn thành"
             styles={{
               fontSize: 16,
               fontWeight: 'bold',
@@ -385,12 +385,27 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
         <View style={{padding: 10}}>
           <CicularComponent tasks={filteredTasks} />
         </View>
+        <Text
+          style={{
+            fontSize: 16,
+            fontWeight: 'bold',
+            marginBottom: 16,
+            paddingTop: 10,
+            marginHorizontal: 10,
+            color: '#000',
+          }}>
+          Thống kê trạng thái công việc
+        </Text>
 
-        <TaskCompletionChart
-          completedOnTime={completedOnTime}
-          overdueTasks={overdueTasks}
-          completedAheadOfSchedule={taskStats.completedAheadOfSchedule}
-        />
+        <View style={{
+          paddingHorizontal: 12,
+        }}>
+          <TaskCompletionChart
+            completedOnTime={completedOnTime}
+            overdueTasks={overdueTasks}
+            completedAheadOfSchedule={taskStats.completedAheadOfSchedule}
+          />
+        </View>
       </ScrollView>
     </View>
   );

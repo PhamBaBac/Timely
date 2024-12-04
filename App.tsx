@@ -4,6 +4,7 @@ import AppRouters from './src/routers/AppRouters';
 import {Provider, useSelector} from 'react-redux';
 import {Host} from 'react-native-portalize';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
+import Toast from 'react-native-toast-message';
 
 
 const App = () => {
@@ -16,6 +17,7 @@ const App = () => {
           <AppRouters />
         </NavigationContainer>
       </Host>
+      <Toast/>
     </GestureHandlerRootView>
   );
 };
