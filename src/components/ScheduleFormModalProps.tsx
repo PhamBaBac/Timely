@@ -17,6 +17,7 @@ import {Calendar} from 'react-native-calendars';
 import {ScheduleModel} from '../models/ScheduleModel';
 import {appColors} from '../constants';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import auth from '@react-native-firebase/auth';
 
 interface ScheduleFormModalProps {
   visible: boolean;
@@ -91,7 +92,13 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
   const handleShare = async () => {
     try {
       const periodInfo = PERIOD_OPTIONS.find(p => p.value === schedule.period);
+
+      // Lấy thông tin email từ Firebase
+      const currentUser = auth().currentUser;
+      const userEmail = currentUser ? currentUser.email : 'Không rõ email';
+
       const shareMessage = `
+      Tài khoản: ${userEmail}
 ${schedule.isExam ? 'Lịch thi' : 'Lịch học'}:
 Môn: ${schedule.course}
 Thời gian: ${schedule.startDate.toLocaleDateString()} - ${schedule.endDate.toLocaleDateString()}
@@ -103,7 +110,8 @@ ${schedule.isExam ? 'Ca thi' : 'Tiết học'}: ${
 Phòng: ${schedule.room}
 ${schedule.isExam ? 'Giám thị' : 'Giảng viên'}: ${schedule.instructor}
 ${schedule.group ? `Nhóm: ${schedule.group}` : ''}
-      `.trim();
+
+    `;
 
       const result = await Share.share({
         message: shareMessage,
