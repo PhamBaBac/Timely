@@ -346,15 +346,6 @@ const Teamwork = () => {
     [],
   );
 
-  const EmptySchedule = useCallback(
-    () => (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>Không có lịch học</Text>
-      </View>
-    ),
-    [],
-  );
-
   // Thêm useEffect này
 
   return (

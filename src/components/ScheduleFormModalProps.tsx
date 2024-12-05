@@ -17,6 +17,8 @@ import {Calendar} from 'react-native-calendars';
 import {ScheduleModel} from '../models/ScheduleModel';
 import {appColors} from '../constants';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import auth from '@react-native-firebase/auth';
+import {ShareAttributesModal} from './ShareAttributesModal';
 
 interface ScheduleFormModalProps {
   visible: boolean;
@@ -78,6 +80,19 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
   const [showStartCalendar, setShowStartCalendar] = useState(false);
   const [showEndCalendar, setShowEndCalendar] = useState(false);
 
+  const [showShareModal, setShowShareModal] = useState(false);
+
+  // Add ShareAttributesModal to the return statement
+  {
+    showShareModal && (
+      <ShareAttributesModal
+        visible={showShareModal}
+        schedule={schedule}
+        onClose={() => setShowShareModal(false)}
+      />
+    );
+  }
+
   // Update end date when start date changes
   useEffect(() => {
     if (schedule.endDate < schedule.startDate) {
@@ -87,37 +102,6 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
       });
     }
   }, [schedule.startDate]);
-
-  const handleShare = async () => {
-    try {
-      const periodInfo = PERIOD_OPTIONS.find(p => p.value === schedule.period);
-      const shareMessage = `
-${schedule.isExam ? 'Lịch thi' : 'Lịch học'}:
-Môn: ${schedule.course}
-Thời gian: ${schedule.startDate.toLocaleDateString()} - ${schedule.endDate.toLocaleDateString()}
-${schedule.isExam ? 'Ca thi' : 'Tiết học'}: ${
-        periodInfo
-          ? `${periodInfo.label} (${periodInfo.time})`
-          : schedule.period
-      }
-Phòng: ${schedule.room}
-${schedule.isExam ? 'Giám thị' : 'Giảng viên'}: ${schedule.instructor}
-${schedule.group ? `Nhóm: ${schedule.group}` : ''}
-      `.trim();
-
-      const result = await Share.share({
-        message: shareMessage,
-      });
-
-      if (result.action === Share.sharedAction) {
-        // shared successfully
-      } else if (result.action === Share.dismissedAction) {
-        // dismissed
-      }
-    } catch (error: any) {
-      Alert.alert('Lỗi chia sẻ', error.message);
-    }
-  };
 
   const validateForm = (): boolean => {
     const newErrors: ValidationErrors = {
@@ -468,7 +452,7 @@ ${schedule.group ? `Nhóm: ${schedule.group}` : ''}
 
               <TouchableOpacity
                 style={[styles.button, styles.shareButton]}
-                onPress={handleShare}>
+                onPress={() => setShowShareModal(true)}>
                 <MaterialCommunityIcons
                   name="share-variant"
                   size={20}
@@ -479,6 +463,11 @@ ${schedule.group ? `Nhóm: ${schedule.group}` : ''}
               </TouchableOpacity>
             </View>
           </ScrollView>
+          <ShareAttributesModal
+            visible={showShareModal}
+            schedule={schedule}
+            onClose={() => setShowShareModal(false)}
+          />
         </View>
       </View>
     </Modal>

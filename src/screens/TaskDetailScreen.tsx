@@ -30,6 +30,7 @@ import ModalAddSubTask from '../modal/ModalAddSubTask';
 import {SubTask, TaskModel} from '../models/taskModel';
 import {fetchTasks} from '../utils/taskUtil';
 import {CategoryModel} from '../models/categoryModel';
+import {ShareTaskAttributesModal} from '../components/ShareTaskAttributesModal';
 
 const TaskDetailScreen = ({navigation, route}: any) => {
   useCustomStatusBar('light-content', appColors.primary);
@@ -82,20 +83,6 @@ const TaskDetailScreen = ({navigation, route}: any) => {
       .onSnapshot(snapshot => {
         setTaskDetail(snapshot.data() as TaskModel);
       });
-  };
-
-  const handleUpdateTask = async () => {
-    const data = {
-      ...taskDetail,
-      updatedAt: Date.now(),
-    };
-    await firestore()
-      .doc(`tasks/${taskId}`)
-      .update(data)
-      .then(() => {
-        Alert.alert('Task updated');
-      })
-      .catch(error => console.log(error));
   };
 
   const getSubTaskById = () => {
@@ -161,30 +148,10 @@ const TaskDetailScreen = ({navigation, route}: any) => {
     navigation.navigate('EditScreen', {task: task});
   };
 
-  const onShare = async () => {
-    const {title, startTime, startDate, subTask} = getTaskTitleAndTime();
-    try {
-      const result = await Share.share({
-        message: `
-        Tên công việc: ${title}
-        Thời gian bắt đầu: ${startTime}
-        Ngày bắt đầu: ${startDate}
-        ${subTask.length > 0 ? 'Công việc phụ: ' : ''}
-        `,
-      });
+  const [isShareModalVisible, setIsShareModalVisible] = useState(false);
 
-      if (result.action === Share.sharedAction) {
-        if (result.activityType) {
-          // shared with activity type of result.activityType
-        } else {
-          // shared
-        }
-      } else if (result.action === Share.dismissedAction) {
-        // dismissed
-      }
-    } catch (error: any) {
-      Alert.alert(error.message);
-    }
+  const onShare = () => {
+    setIsShareModalVisible(true);
   };
 
   const formatTime = (date: Date) => {
@@ -257,6 +224,23 @@ const TaskDetailScreen = ({navigation, route}: any) => {
                   />
                 </RowComponent>
               )}
+              {taskDetail.endDate && (
+                <RowComponent
+                  styles={{
+                    flex: 1,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}>
+                  <CalendarEdit size={20} color={appColors.white} />
+                  <SpaceComponent width={4} />
+
+                  <TextComponent
+                    flex={0}
+                    text={fomatDate(new Date(taskDetail.endDate || '')) ?? ''}
+                    styles={{color: appColors.white}}
+                  />
+                </RowComponent>
+              )}
               <MaterialCommunityIcons
                 name="share-variant"
                 size={24}
@@ -264,6 +248,12 @@ const TaskDetailScreen = ({navigation, route}: any) => {
                 onPress={onShare}
               />
             </RowComponent>
+
+            <ShareTaskAttributesModal
+              visible={isShareModalVisible}
+              task={taskDetail}
+              onClose={() => setIsShareModalVisible(false)}
+            />
           </View>
         </SectionComponent>
 

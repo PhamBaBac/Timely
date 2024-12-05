@@ -397,9 +397,10 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
           Thống kê trạng thái công việc
         </Text>
 
-        <View style={{
-          paddingHorizontal: 12,
-        }}>
+        <View
+          style={{
+            paddingHorizontal: 4,
+          }}>
           <TaskCompletionChart
             completedOnTime={completedOnTime}
             overdueTasks={overdueTasks}
