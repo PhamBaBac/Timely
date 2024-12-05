@@ -103,44 +103,6 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
     }
   }, [schedule.startDate]);
 
-  //   const handleShare = async () => {
-  //     try {
-  //       const periodInfo = PERIOD_OPTIONS.find(p => p.value === schedule.period);
-
-  //       // Lấy thông tin email từ Firebase
-  //       const currentUser = auth().currentUser;
-  //       const userEmail = currentUser ? currentUser.email : 'Không rõ email';
-
-  //       const shareMessage = `
-  //       Tài khoản: ${userEmail}
-  // ${schedule.isExam ? 'Lịch thi' : 'Lịch học'}:
-  // Môn: ${schedule.course}
-  // Thời gian: ${schedule.startDate.toLocaleDateString()} - ${schedule.endDate.toLocaleDateString()}
-  // ${schedule.isExam ? 'Ca thi' : 'Tiết học'}: ${
-  //         periodInfo
-  //           ? `${periodInfo.label} (${periodInfo.time})`
-  //           : schedule.period
-  //       }
-  // Phòng: ${schedule.room}
-  // ${schedule.isExam ? 'Giám thị' : 'Giảng viên'}: ${schedule.instructor}
-  // ${schedule.group ? `Nhóm: ${schedule.group}` : ''}
-
-  //     `;
-
-  //       const result = await Share.share({
-  //         message: shareMessage,
-  //       });
-
-  //       if (result.action === Share.sharedAction) {
-  //         Alert.alert('Chia sẻ thành công', 'Thông tin lịch đã được chia sẻ');
-  //       } else if (result.action === Share.dismissedAction) {
-  //         // dismissed
-  //       }
-  //     } catch (error: any) {
-  //       Alert.alert('Lỗi chia sẻ', error.message);
-  //     }
-  //   };
-
   const validateForm = (): boolean => {
     const newErrors: ValidationErrors = {
       course: '',
