@@ -257,6 +257,23 @@ const TaskDetailScreen = ({navigation, route}: any) => {
                   />
                 </RowComponent>
               )}
+              {taskDetail.endDate && (
+                <RowComponent
+                  styles={{
+                    flex: 1,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}>
+                  <CalendarEdit size={20} color={appColors.white} />
+                  <SpaceComponent width={4} />
+
+                  <TextComponent
+                    flex={0}
+                    text={fomatDate(new Date(taskDetail.endDate || '')) ?? ''}
+                    styles={{color: appColors.white}}
+                  />
+                </RowComponent>
+              )}
               <MaterialCommunityIcons
                 name="share-variant"
                 size={24}

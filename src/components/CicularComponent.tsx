@@ -37,6 +37,11 @@ const CircularComponent = ({tasks = []}: Props) => {
     '#9966FF', // Purple
     '#FF9F40', // Orange
     '#E7E9ED', // Gray
+    '#36A2EB', // Blue
+    '#FFCE56', // Yellow
+    '#4BC0C0', // Green
+    '#9966FF', // Purple
+    '#FF9F40', // Orange
   ];
 
   const sliceColor = series.map(

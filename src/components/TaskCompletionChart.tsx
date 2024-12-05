@@ -53,12 +53,11 @@ const TaskCompletionChart: React.FC<TaskCompletionChartProps> = ({
         alignItems: 'center',
         backgroundColor: '#fff',
         borderRadius: 16,
-        paddingLeft: 20,
+        paddingLeft: 0,
       }}>
-      
       <PieChart
         data={data}
-        width={screenWidth - 32}
+        width={screenWidth - 72}
         height={150}
         chartConfig={chartConfig}
         accessor="population"
@@ -67,13 +66,6 @@ const TaskCompletionChart: React.FC<TaskCompletionChartProps> = ({
         center={[10, 0]}
         absolute
       />
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-around',
-          width: '100%',
-          marginTop: 10,
-        }}></View>
     </View>
   );
 };

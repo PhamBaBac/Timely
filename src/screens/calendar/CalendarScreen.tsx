@@ -26,8 +26,7 @@ import {
   handleToggleCompleteTask,
   handleUpdateRepeatTask,
 } from '../../utils/taskUtil';
-import { CategoryModel } from '../../models/categoryModel';
-
+import {CategoryModel} from '../../models/categoryModel';
 
 // Set Vietnamese locale for the calendar
 LocaleConfig.locales['vi'] = {
@@ -68,7 +67,7 @@ LocaleConfig.locales['vi'] = {
     'Thứ bảy',
     'Chủ nhật',
   ],
-  dayNamesShort: [, 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
+  dayNamesShort: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
   today: 'Hôm nay',
 };
 LocaleConfig.defaultLocale = 'vi';
@@ -119,7 +118,6 @@ const CalendarScreen = ({navigation}: any) => {
     new Date().toISOString().split('T')[0],
   );
 
-  
   useEffect(() => {
     const unsubscribe = firestore()
       .collection('categories')
@@ -132,7 +130,6 @@ const CalendarScreen = ({navigation}: any) => {
       });
     return () => unsubscribe();
   }, [user]);
-
 
   const [filteredTasks, setFilteredTasks] = useState<TaskModel[]>([]);
   const [markedDates, setMarkedDates] = useState<{[key: string]: any}>({});
@@ -251,7 +248,7 @@ const CalendarScreen = ({navigation}: any) => {
     );
     const categoryColor = category?.color || appColors.gray2;
     const categoryIcon = category?.icon;
-     
+
     return (
       <Swipeable
         renderRightActions={() => renderRightActions(item)}
