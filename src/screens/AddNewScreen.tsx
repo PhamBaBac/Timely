@@ -113,13 +113,15 @@ const AddNewScreen = ({navigation}: any) => {
   const [isNewCategoryModalVisible, setNewCategoryModalVisible] =
     useState(false);
   const [selectedTime, setSelectedTime] = useState(new Date());
+  console.log('selectedTime', selectedTime.getTime());
+  console.log('selectedDate', new Date().getTime());
   const [selectedRepeat, setSelectedRepeat] = useState('');
   //mac dinh la 5 phut
   const [selectedRemind, setSelectedRemind] = useState('5 phút');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [taskDetail, setTaskDetail] = useState<TaskModel>(initValue);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  console.log('selectedDate', selectedDate);
   const [isLoading, setIsLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
   const [selectedIcon, setSelectedIcon] = useState(availableIcons[0]);
@@ -143,9 +145,10 @@ const AddNewScreen = ({navigation}: any) => {
 
     //rang buoc gio bat dau phai lon hon gio hien tai
     if (
+      
       selectedDate &&
       selectedDate.toDateString() === new Date().toDateString() &&
-      selectedTime < new Date()
+      selectedTime.getTime() < new Date().getTime()
     ) {
       setErrorText('Giờ bắt đầu không thể là giờ trong quá khứ');
       return;
@@ -215,6 +218,15 @@ const AddNewScreen = ({navigation}: any) => {
       setErrorText('Ngày đến hạn không thể là ngày trong quá khứ');
       return;
     }
+    //EndDate phai lon hon  ngay bat dau neu co repeat khac no
+    if (
+      taskDetail.endDate &&
+      new Date(taskDetail.endDate) <= startDate
+      && taskDetail.repeat !== 'no'
+    ) {
+      setErrorText('Ngày kết thúc phải lớn hơn ngày bắt đầu');
+      return;
+    }
 
     const data = {
       ...taskDetail,
@@ -256,7 +268,7 @@ const AddNewScreen = ({navigation}: any) => {
         setIsLoading(false);
         setTaskDetail(initValue);
         setSelectedRepeat('');
-        setSelectedDate(null);
+        setSelectedDate(new Date());
         setSelectedRemind('5 phút');
         setErrorText('');
         navigation.navigate('Trang chủ', {
