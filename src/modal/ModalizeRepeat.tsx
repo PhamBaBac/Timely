@@ -108,6 +108,8 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
                 const newRepeatValue = val ? 'day' : 'no';
                 handleChangeValue('repeat', newRepeatValue);
                 setSelectedRepeat(val ? 'Ngày' : 'Không');
+                //ngay ket thuc se la ngay bat dau
+                handleChangeValue('endDate', startDate);
               }}
             />
           </RowComponent>
@@ -199,7 +201,7 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
                     text={
                       taskDetail.endDate
                         ? fomatDate(new Date(taskDetail.endDate))
-                        : ''
+                        : 'dd/MM/yyyy'
                     }
                     styles={{
                       fontSize: 16,

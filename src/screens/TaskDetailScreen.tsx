@@ -38,7 +38,6 @@ const TaskDetailScreen = ({navigation, route}: any) => {
   const id = route.params;
 
   const taskId = id.id;
-  console.log('id', id);
 
   const [taskDetail, setTaskDetail] = useState<TaskModel>();
   console.log('taskDetail', taskDetail);
@@ -121,27 +120,6 @@ const TaskDetailScreen = ({navigation, route}: any) => {
     } catch (error) {
       console.log(error);
     }
-  };
-
-  const getTaskTitleAndTime = () => {
-    if (taskDetail) {
-      const title = taskDetail.title;
-      const startTime = taskDetail.startTime
-        ? formatTime(new Date(taskDetail.startTime))
-        : 'N/A';
-      const startDate = taskDetail.startDate
-        ? fomatDate(new Date(taskDetail.startDate))
-        : 'N/A';
-      //cong viec phu
-      const subTask =
-        subTasks.map((item, index) => {
-          return {
-            description: item.description,
-          };
-        }) || [];
-      return {title, startTime, startDate, subTask};
-    }
-    return {title: 'N/A', startTime: 'N/A', startDate: 'N/A', subTask: []};
   };
 
   const handleTaskPress = (task: TaskModel) => {
