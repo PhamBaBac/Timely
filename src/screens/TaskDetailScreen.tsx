@@ -13,6 +13,9 @@ import {
   StarSlash,
   TickCircle,
   MoreCircle,
+  Flag,
+  Repeat,
+  Edit,
 } from 'iconsax-react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useSelector} from 'react-redux';
@@ -31,6 +34,7 @@ import {SubTask, TaskModel} from '../models/taskModel';
 import {fetchTasks} from '../utils/taskUtil';
 import {CategoryModel} from '../models/categoryModel';
 import {ShareTaskAttributesModal} from '../components/ShareTaskAttributesModal';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 const TaskDetailScreen = ({navigation, route}: any) => {
   useCustomStatusBar('light-content', appColors.primary);
@@ -104,6 +108,8 @@ const TaskDetailScreen = ({navigation, route}: any) => {
       });
   };
 
+
+
   const handleUpdateSubTask = async (id: string, isCompleted: boolean) => {
     try {
       await firestore()
@@ -139,6 +145,12 @@ const TaskDetailScreen = ({navigation, route}: any) => {
     return format(date, 'dd/MM/yyyy');
   };
 
+     const category = categories.find(
+       category => category.name === taskDetail?.category,
+     );
+     const categoryColor = category?.color || appColors.gray2;
+     const categoryIcon = category?.icon;
+
   return taskDetail ? (
     <>
       <ScrollView style={{flex: 1, backgroundColor: appColors.white}}>
@@ -166,7 +178,7 @@ const TaskDetailScreen = ({navigation, route}: any) => {
               color={appColors.white}
             />
             <TouchableOpacity onPress={() => handleTaskPress(taskDetail)}>
-              <MoreCircle size={28} color={appColors.white} variant="Bold" />
+              <Edit size={28} color={appColors.white}/>
             </TouchableOpacity>
           </RowComponent>
           <View style={{marginTop: 20, marginHorizontal: 12}}>
@@ -247,7 +259,11 @@ const TaskDetailScreen = ({navigation, route}: any) => {
                 marginTop: 12,
               }}>
               <TextComponent
-                text={taskDetail.description}
+                text={
+                  taskDetail.description
+                    ? taskDetail.description
+                    : 'Không có mô tả'
+                }
                 styles={{textAlign: 'justify'}}
               />
             </CardComponent>
@@ -282,8 +298,6 @@ const TaskDetailScreen = ({navigation, route}: any) => {
               borderBottomColor: appColors.gray2,
             }}>
             <TitleComponent text="Mức độ ưu tiên" size={22} />
-            <SpaceComponent width={8} />
-
             <TextComponent
               text={
                 taskDetail.priority === 'high'
@@ -297,6 +311,18 @@ const TaskDetailScreen = ({navigation, route}: any) => {
                 color: appColors.black,
               }}
             />
+            <SpaceComponent width={8} />
+            <View>
+              {taskDetail.priority === 'low' && (
+                <Flag size="24" color={appColors.green} variant="Bold" />
+              )}
+              {taskDetail.priority === 'medium' && (
+                <Flag size="24" color={appColors.yellow} variant="Bold" />
+              )}
+              {taskDetail.priority === 'high' && (
+                <Flag size="24" color={appColors.red} variant="Bold" />
+              )}
+            </View>
           </RowComponent>
           <SpaceComponent height={12} />
           <RowComponent
@@ -306,7 +332,6 @@ const TaskDetailScreen = ({navigation, route}: any) => {
               borderBottomColor: appColors.gray2,
             }}>
             <TitleComponent text="Loại công việc" size={22} />
-            <SpaceComponent width={8} />
 
             <TouchableOpacity>
               <TextComponent
@@ -317,6 +342,14 @@ const TaskDetailScreen = ({navigation, route}: any) => {
                 }}
               />
             </TouchableOpacity>
+            <SpaceComponent width={8} />
+            <View>
+              <MaterialIcons
+                name={categoryIcon || 'more'}
+                size={24}
+                color={categoryColor ? categoryColor : appColors.primary}
+              />
+            </View>
           </RowComponent>
 
           <SpaceComponent height={12} />
@@ -328,7 +361,6 @@ const TaskDetailScreen = ({navigation, route}: any) => {
             }}>
             <TitleComponent text="Lặp lại" size={22} />
             <SpaceComponent width={8} />
-
             <TouchableOpacity>
               <TextComponent
                 text={
@@ -346,6 +378,16 @@ const TaskDetailScreen = ({navigation, route}: any) => {
                 }}
               />
             </TouchableOpacity>
+            <SpaceComponent width={8} />
+            {taskDetail.repeat !== 'no' ? (
+              <Repeat size="22" color={appColors.blue} />
+            ) : (
+              <MaterialCommunityIcons
+                name="repeat-off"
+                size={22}
+                color={appColors.blue}
+              />
+            )}
           </RowComponent>
 
           <SpaceComponent height={12} />

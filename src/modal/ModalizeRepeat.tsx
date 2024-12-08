@@ -13,6 +13,7 @@ import {
 } from '../components';
 import {appColors} from '../constants';
 import ModalizeDate from './modalizaDate';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 interface ModalizeRepeatProps {
   visible: boolean;
@@ -20,7 +21,8 @@ interface ModalizeRepeatProps {
   taskDetail: any;
   handleChangeValue: (key: string, value: any) => void;
   setSelectedRepeat: (value: string) => void;
-  startDate: Date; // Thêm startDate vào các props
+  startDate: Date;
+  closeOnOverlayTap?: boolean;
 }
 
 const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
@@ -29,7 +31,8 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
   taskDetail,
   handleChangeValue,
   setSelectedRepeat,
-  startDate, // Lấy startDate từ props
+  startDate, 
+  closeOnOverlayTap = false,
 }) => {
   const modalizeRef = useRef<Modalize>(null);
 
@@ -83,16 +86,43 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
 
   return (
     <Portal>
-      <Modalize ref={modalizeRef} adjustToContentHeight onClosed={onClose}>
+      <Modalize
+        ref={modalizeRef}
+        adjustToContentHeight
+        onClosed={onClose}
+        closeOnOverlayTap={closeOnOverlayTap}>
+        <RowComponent
+          styles={{
+            margin: 10,
+            justifyContent: 'flex-end',
+          }}>
+          <TouchableOpacity onPress={onClose}>
+            <TextComponent
+              text="Cancel"
+              color={appColors.primary}
+              styles={{
+                fontSize: 16,
+                fontWeight: 'bold',
+                color: appColors.primary,
+              }}
+            />
+          </TouchableOpacity>
+          <SpaceComponent width={10} />
+          <MaterialIcons
+            name="cancel"
+            size={30}
+            color={appColors.primary}
+            onPress={onClose}
+          />
+        </RowComponent>
         <View style={styles.repeatModalContent}>
           <RowComponent>
             <TextComponent
               text="Chọn lặp lại"
-              color={appColors.text}
+              color={appColors.black}
               styles={{
                 fontSize: 16,
                 fontWeight: 'bold',
-                color: appColors.text,
                 flex: 1,
                 textAlign: 'left',
                 paddingLeft: 10,
@@ -340,7 +370,7 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
 
 const styles = StyleSheet.create({
   repeatModalContent: {
-    padding: 20,
+    padding: 10,
     paddingBottom: 80,
   },
   repeatOptionsContainer: {

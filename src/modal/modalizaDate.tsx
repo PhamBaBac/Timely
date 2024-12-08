@@ -1,10 +1,11 @@
 import React, {useRef} from 'react';
-import {View, StyleSheet} from 'react-native';
+import {View, StyleSheet, Text} from 'react-native';
 import {Portal} from 'react-native-portalize';
 import {Modalize} from 'react-native-modalize';
 import {Calendar as RNCalendar} from 'react-native-calendars';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {appColors} from '../constants';
+import { RowComponent } from '../components';
 
 interface ModalizeDateProps {
   visible?: boolean;
@@ -12,6 +13,7 @@ interface ModalizeDateProps {
   selectedDate: Date | null;
   onDateChange: (date: Date) => void;
   taskDetail: any;
+  closeOnOverlayTap?: boolean;
 }
 
 const ModalizeDate: React.FC<ModalizeDateProps> = ({
@@ -20,6 +22,7 @@ const ModalizeDate: React.FC<ModalizeDateProps> = ({
   selectedDate,
   onDateChange,
   taskDetail,
+  closeOnOverlayTap = true,
 }) => {
   const modalizeDateRef = useRef<Modalize>(null);
 
@@ -48,8 +51,36 @@ const ModalizeDate: React.FC<ModalizeDateProps> = ({
 
   return (
     <Portal>
-      <Modalize ref={modalizeDateRef} adjustToContentHeight onClosed={onClose}>
+      <Modalize
+        ref={modalizeDateRef}
+        adjustToContentHeight
+        onClosed={onClose}
+        closeOnOverlayTap={closeOnOverlayTap}>
         <View style={styles.modalContent}>
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              marginBottom: 10,
+            }}>
+            <Text
+              style={{
+                fontSize: 20,
+                fontWeight: 'bold',
+                color: appColors.text,
+                textAlign: 'center',
+                flex: 1,
+              }}>
+              Chọn ngày
+            </Text>
+            <MaterialIcons
+              name="done"
+              size={30}
+              color={appColors.primary}
+              onPress={onClose}
+            />
+          </View>
           <RNCalendar
             style={styles.calendar}
             markingType={'custom'}

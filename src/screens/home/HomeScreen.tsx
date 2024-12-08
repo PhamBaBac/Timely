@@ -15,8 +15,10 @@ import {
 import React, {useEffect, useState} from 'react';
 import {
   Alert,
+  Platform,
   Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   View,
@@ -52,6 +54,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
   const [categories, setCategories] = useState<CategoryModel[]>([]);
 
   const [tasks, setTasks] = useState<TaskModel[]>([]);
+  console.log('tasks', tasks);
   
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -60,6 +63,27 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
   };
   const fomatDate = (date: Date) => {
     return format(date, 'dd/MM/yyyy');
+  };
+  const formtDaysofWeek = (date: Date) => {
+    const vietnameseDays: {
+      [key in
+        | 'Monday'
+        | 'Tuesday'
+        | 'Wednesday'
+        | 'Thursday'
+        | 'Friday'
+        | 'Saturday'
+        | 'Sunday']: string;
+    } = {
+      Monday: 'Thứ hai',
+      Tuesday: 'Thứ ba',
+      Wednesday: 'Thứ tư',
+      Thursday: 'Thứ năm',
+      Friday: 'Thứ sáu',
+      Saturday: 'Thứ bảy',
+      Sunday: 'Chủ nhật',
+    };
+    return vietnameseDays[format(date, 'eeee') as keyof typeof vietnameseDays];
   };
 
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
@@ -328,6 +352,11 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
                     alignItems: 'center',
                   }}>
                   <Text style={styles.taskDate}>
+                    {' '}
+                    {item.dueDate
+                      ? formtDaysofWeek(new Date(item.startDate || ''))
+                      : 'No due date'}
+                    ,{' '}
                     {item.dueDate
                       ? fomatDate(new Date(item.startDate || ''))
                       : 'No due date'}{' '}
@@ -388,7 +417,14 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop:
+              Platform.OS === 'android' ? 20 : 40,
+          },
+        ]}>
         <Pressable
           style={styles.iconButton}
           onPress={() => navigation.openDrawer()}>
@@ -595,7 +631,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
               tasks: tasks.filter(task => task.isCompleted),
             })
           }>
-          <Text style={{textDecorationLine: 'underline', textAlign: 'center'}}>
+          <Text style={{textDecorationLine: 'underline', textAlign: 'center', color: appColors.black} }>
             Xem tất cả các nhiệm vụ đã hoàn thành
           </Text>
         </Pressable>
@@ -620,6 +656,8 @@ const styles = StyleSheet.create({
     backgroundColor: appColors.primary,
     borderBottomWidth: 1,
     borderBottomColor: appColors.lightGray,
+    //ios co chieu cao la 100 con android la 80
+    
   },
   headerTitle: {
     fontSize: 18,

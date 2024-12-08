@@ -6,75 +6,82 @@ import {
   Platform,
   StatusBar,
   Text,
+  Image,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {appColors} from '../constants';
-import {RowComponent, TextComponent} from '.';
+import {appColors, appInfo} from '../constants';
+import {RowComponent, SpaceComponent, TextComponent} from '.';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth, {firebase} from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import { TaskModel } from '../models/taskModel';
-
+import {TaskModel} from '../models/taskModel';
+import AntDesign from 'react-native-vector-icons/AntDesign';
+import {TickSquare} from 'iconsax-react-native';
 
 const DrawerCustom = ({navigation}: any) => {
   const size = 24;
-  const color = appColors.gray;
-   const user = auth().currentUser;
-   const [tasks, setTasks] = useState<TaskModel[]>([]);
-   useEffect(() => {
-     const unsubscribe = firestore()
-       .collection('tasks')
-       .where('uid', '==', user?.uid)
-       .onSnapshot(snapshot => {
-         const tasksList = snapshot.docs.map(doc => {
-           const taskData = doc.data() as TaskModel;
+  const color = appColors.black;
+  const user = auth().currentUser;
+  const [tasks, setTasks] = useState<TaskModel[]>([]);
+  useEffect(() => {
+    const unsubscribe = firestore()
+      .collection('tasks')
+      .where('uid', '==', user?.uid)
+      .onSnapshot(snapshot => {
+        const tasksList = snapshot.docs.map(doc => {
+          const taskData = doc.data() as TaskModel;
 
-           // Chuyển đổi dueDate và startTime (nếu có) thành Date hoặc chuỗi ISO
-           const dueDate =
-             taskData.dueDate instanceof firebase.firestore.Timestamp
-               ? taskData.dueDate.toDate().toISOString()
-               : taskData.dueDate;
+          // Chuyển đổi dueDate và startTime (nếu có) thành Date hoặc chuỗi ISO
+          const dueDate =
+            taskData.dueDate instanceof firebase.firestore.Timestamp
+              ? taskData.dueDate.toDate().toISOString()
+              : taskData.dueDate;
 
-           const startTime =
-             taskData.startTime instanceof firebase.firestore.Timestamp
-               ? taskData.startTime.toDate().toISOString()
-               : taskData.startTime;
+          const startTime =
+            taskData.startTime instanceof firebase.firestore.Timestamp
+              ? taskData.startTime.toDate().toISOString()
+              : taskData.startTime;
 
-           const endDate =
-             taskData.endDate instanceof firebase.firestore.Timestamp
-               ? taskData.endDate.toDate().toISOString()
-               : taskData.endDate; // Giữ nguyên nếu không phải Timestamp
+          const endDate =
+            taskData.endDate instanceof firebase.firestore.Timestamp
+              ? taskData.endDate.toDate().toISOString()
+              : taskData.endDate; // Giữ nguyên nếu không phải Timestamp
 
-           return {
-             ...taskData,
-             id: doc.id,
-             dueDate,
-             startTime,
-             endDate,
-           } as TaskModel;
-         });
+          return {
+            ...taskData,
+            id: doc.id,
+            dueDate,
+            startTime,
+            endDate,
+          } as TaskModel;
+        });
 
-         setTasks(tasksList);
-       });
+        setTasks(tasksList);
+      });
 
-     return () => unsubscribe();
-   }, [user]);
+    return () => unsubscribe();
+  }, [user]);
 
   const profileMenu = [
-
-    
     {
       key: 'StartTask',
-      title: 'Nhiệm vụ nổi bật',
-      icon: (
-        <MaterialIcons name="play-circle-outline" size={size} color={color} />
-      ),
-      action: () => navigation.navigate('StartTaskScreen'),
+      title: 'Những công việc quan trọng',
+      icon: <AntDesign name="staro" size={size} color="#FF8A65" />,
+      action: () =>
+        navigation.navigate('StartTaskScreen', {
+          tasks: tasks.filter(task => task.isImportant),
+        }),
     },
     {
       key: 'CompletedTasks',
-      title: 'Nhiệm vụ đã hoàn thành', // Added new menu item for completed tasks
-      icon: <MaterialIcons name="done" size={size} color={color} />,
+      title: 'Các công việc đã hoàn thành', // Added new menu item for completed tasks
+      icon: (
+        <MaterialIcons
+          name="check-circle"
+          size={24}
+          color={appColors.primary}
+        />
+      ),
       action: () =>
         navigation.navigate('IsCompleTaskScreen', {
           tasks: tasks.filter(task => task.isCompleted),
@@ -83,12 +90,12 @@ const DrawerCustom = ({navigation}: any) => {
     {
       key: 'Habits',
       title: 'Thói quen',
-      icon: <MaterialIcons name="auto-graph" size={size} color={color} />,
+      icon: <MaterialIcons name="auto-graph" size={size} color='green' />,
     },
     {
       key: 'Logout',
       title: 'Đăng xuất',
-      icon: <MaterialIcons name="logout" size={size} color={color} />,
+      icon: <MaterialIcons name="logout" size={size} color='red' />,
       action: () => handleSingout(),
     },
   ];
@@ -102,7 +109,14 @@ const DrawerCustom = ({navigation}: any) => {
       styles={localStyles.listItem}
       onPress={item.action ? item.action : () => navigation.closeDrawer()}>
       {item.icon}
-      <TextComponent text={item.title} styles={localStyles.listItemText} />
+      <SpaceComponent width={10} />
+      <Text
+        style={{
+          color: appColors.black,
+          fontSize: 16,
+        }}>
+        {item.title}
+      </Text>
     </RowComponent>
   );
 
@@ -146,10 +160,17 @@ const DrawerCustom = ({navigation}: any) => {
 
   return (
     <View style={localStyles.container}>
+      <Image
+        source={require('../assets/images/logoTimeLy1.png')}
+        style={{
+          resizeMode: 'contain',
+          width: appInfo.sizes.WIDTH * 0.6,
+        }}
+      />
       <FlatList
         showsVerticalScrollIndicator={false}
         data={profileMenu}
-        style={{flex: 1, marginVertical: 20}}
+        style={{flex: 1,}}
         renderItem={renderItem}
       />
     </View>

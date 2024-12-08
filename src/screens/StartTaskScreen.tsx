@@ -1,173 +1,129 @@
-import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
+  Pressable,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
-  Pressable,
+  ScrollView,
 } from 'react-native';
-import auth, {firebase} from '@react-native-firebase/auth';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import React from 'react';
+import useCustomStatusBar from '../hooks/useCustomStatusBar';
+import {appColors} from '../constants';
+import {
+  Container,
+  RowComponent,
+  SectionComponent,
+  SpaceComponent,
+  TextComponent,
+  TitleComponent,
+} from '../components';
 import {TaskModel} from '../models/taskModel';
-import firestore from '@react-native-firebase/firestore';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
-import {RowComponent} from '../components';
-import {appColors} from '../constants/appColor';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {format} from 'date-fns';
-import {useDispatch, useSelector} from 'react-redux';
-import { fetchTasks } from '../utils/taskUtil';
+import {Star1, StarSlash} from 'iconsax-react-native';
 
-interface Props {
-  navigation: any;
-}
-
-const StartTaskScreen: React.FC<Props> = ({navigation}) => {
-   const user = auth().currentUser;
-   const [tasks, setTasks] = useState<TaskModel[]>([]);
-    useEffect(() => {
-      if (user?.uid) {
-        const unsubscribe = fetchTasks(user.uid, setTasks);
-
-        // Cleanup on unmount
-        return () => unsubscribe();
-      }
-    }, [user?.uid]);
-
-  const formatTime = (date?: Date | string) => {
-    if (!date) return 'No start time';
-    return format(new Date(date), 'HH:mm');
+const StartTaskScreen = ({route, navigation}: any) => {
+  useCustomStatusBar('dark-content', appColors.lightPurple);
+  const {tasks}: {tasks: TaskModel[]} = route.params;
+  const formatTime = (date: Date) => {
+    return format(date, 'HH:mm');
+  };
+  const fomatDate1 = (date: Date) => {
+    return format(date, 'dd/MM/yyyy');
   };
 
-  const formatDate = (date?: Date | string) => {
-    if (!date) return 'No due date';
-    return format(new Date(date), 'dd/MM');
-  };
-
-  const renderRightActions = (task: TaskModel) => (
-    <View style={styles.swipeActions}>
+  const renderTask = (item: TaskModel) => (
+    <SectionComponent key={item.id}>
       <Pressable
-        style={styles.swipeActionButton}
-        >
-        <MaterialIcons name="delete" size={24} color={appColors.red} />
-        <Text style={styles.actionText}>Xóa</Text>
-      </Pressable>
-
-      {task.repeat !== 'no' && (
-        <Pressable
-          style={styles.swipeActionButton}
-          >
-          <MaterialIcons name="repeat" size={24} color={appColors.blue} />
-          <Text style={styles.actionText}>Bỏ lặp lại</Text>
-        </Pressable>
-      )}
-    </View>
-  );
-
-  const renderTask = (task: TaskModel) => {
-    if (!task) return null;
-
-    return (
-      <Swipeable renderRightActions={() => renderRightActions(task)}>
-        <Pressable
-          onPress={() =>
-            navigation.navigate('TaskDetailsScreen', {id: task.id})
-          }>
-          <View style={styles.taskItem}>
-            <Pressable
-              style={styles.roundButton}
-             >
+        onPress={() => {
+          navigation.navigate('TaskDetailsScreen', {id: item.id});
+        }}>
+        <View
+          style={[
+            styles.taskItem,
+            {
+              borderLeftWidth: 2,
+              borderLeftColor: item.isCompleted
+                ? appColors.gray
+                : appColors.primary,
+            },
+          ]}>
+          <Pressable style={styles.roundButton}>
+            {item.isCompleted ? (
               <MaterialIcons
-                name={
-                  task.isCompleted ? 'check-circle' : 'radio-button-unchecked'
-                }
+                name="check-circle"
                 size={24}
-                color={task.isCompleted ? appColors.primary : appColors.gray}
+                color={appColors.gray}
               />
+            ) : (
+              <MaterialIcons
+                name="radio-button-unchecked"
+                size={24}
+                color={appColors.primary}
+              />
+            )}
+          </Pressable>
+          <RowComponent>
+            <View style={styles.taskContent}>
+              <Text
+                style={[
+                  styles.taskTitle,
+                  item.isCompleted && styles.completedTaskTitle,
+                ]}>
+                {item.title ? item.title : item.description}
+              </Text>
+              <Text style={styles.taskDate}>
+                {item.startTime ? formatTime(item.startTime) : 'No start time'}
+              </Text>
+            </View>
+            <Pressable
+              style={{
+                paddingRight: 40,
+              }}>
+              {item.isImportant ? (
+                <Star1 size={24} color="#FF8A65" />
+              ) : (
+                <StarSlash size={24} color="#FF8A65" />
+              )}
             </Pressable>
-            <RowComponent>
-              <View style={styles.taskContent}>
-                <Text
-                  style={[
-                    styles.taskTitle,
-                    task.isCompleted && styles.completedTaskTitle,
-                  ]}>
-                  {task.title || task.description}
-                </Text>
-                <Text style={styles.taskDate}>
-                  {formatDate(task.startDate)} - {formatTime(task.startTime)}
-                </Text>
-              </View>
-              <Pressable
-                style={styles.starButton}
-                onPress={() =>{}}>
-                <MaterialIcons
-                  name="star"
-                  size={24}
-                  color={task.isImportant ? appColors.yellow : appColors.gray2}
-                />
-              </Pressable>
-            </RowComponent>
-          </View>
-        </Pressable>
-      </Swipeable>
-    );
-  };
-
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <MaterialIcons name="star-outline" size={80} color={appColors.gray2} />
-      <Text style={styles.emptyMessage}>
-        Không có nhiệm vụ nào được đánh dấu sao
-      </Text>
-    </View>
+          </RowComponent>
+        </View>
+      </Pressable>
+    </SectionComponent>
   );
-
-  const importantTasks = tasks.filter(task => task.isImportant);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}>
-          <MaterialIcons name="arrow-back" size={24} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Nhiệm vụ quan trọng</Text>
-      </View>
-      {importantTasks.length > 0 ? (
-        <FlatList
-          data={importantTasks}
-          renderItem={({item}) => renderTask(item)}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.listContent}
-        />
-      ) : (
-        renderEmptyState()
-      )}
-    </View>
+    <Container back isScroll title="Công việc quan trọng">
+      <ScrollView>
+        {Object.entries(
+          tasks
+            .sort(
+              (a, b) =>
+                new Date(b.updatedAt).getTime() -
+                new Date(a.updatedAt).getTime(),
+            )
+            .reduce((acc, task) => {
+              const date = fomatDate1(new Date(task.startDate || ''));
+              if (!acc[date]) {
+                acc[date] = [];
+              }
+              acc[date].push(task);
+              return acc;
+            }, {} as Record<string, TaskModel[]>),
+        ).map(([date, tasks]) => (
+          <SectionComponent key={date}>
+            <TitleComponent text={date} color={appColors.primary} />
+            <SpaceComponent height={8} />
+            {tasks.map(task => renderTask(task))}
+          </SectionComponent>
+        ))}
+      </ScrollView>
+    </Container>
   );
 };
 
+export default StartTaskScreen;
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: appColors.whitesmoke,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginLeft: 16,
-  },
   taskItem: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
@@ -181,14 +137,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 2,
-    borderLeftWidth: 2,
-    borderLeftColor: appColors.primary,
   },
   roundButton: {
     marginRight: 10,
-  },
-  starButton: {
-    paddingRight: 16,
   },
   taskContent: {
     flex: 1,
@@ -221,21 +172,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
   },
-  listContent: {
-    paddingBottom: 16,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: '50%',
-  },
-  emptyMessage: {
-    fontSize: 16,
-    color: appColors.gray,
-    textAlign: 'center',
-    marginTop: 16,
-  },
 });
-
-export default StartTaskScreen;
