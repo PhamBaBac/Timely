@@ -20,8 +20,9 @@ import {
 import {TaskModel} from '../models/taskModel';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {format} from 'date-fns';
+import { Star1, StarSlash } from 'iconsax-react-native';
 
-const IsCompleTaskScreen = ({route}: any) => {
+const IsCompleTaskScreen = ({route, navigation}: any) => {
   useCustomStatusBar('dark-content', appColors.lightPurple);
   const {tasks}: {tasks: TaskModel[]} = route.params;
   const formatTime = (date: Date) => {
@@ -36,7 +37,9 @@ const IsCompleTaskScreen = ({route}: any) => {
 
   const renderTask = (item: TaskModel) => (
     <SectionComponent key={item.id}>
-      <Pressable>
+      <Pressable  onPress={() => {
+          navigation.navigate('TaskDetailsScreen', {id: item.id});
+        }}>
         <View style={styles.taskItem}>
           <Pressable style={styles.roundButton}>
             <MaterialIcons
@@ -66,11 +69,11 @@ const IsCompleTaskScreen = ({route}: any) => {
               style={{
                 paddingRight: 40,
               }}>
-              <MaterialIcons
-                name="star"
-                size={24}
-                color={item.isImportant ? appColors.yellow : appColors.gray2}
-              />
+              {item.isImportant ? (
+                <Star1 size={24} color={appColors.gray} />
+              ) : (
+                <StarSlash size={24} color={appColors.gray} />
+              )}
             </Pressable>
           </RowComponent>
         </View>
@@ -79,7 +82,7 @@ const IsCompleTaskScreen = ({route}: any) => {
   );
 
   return (
-    <Container back isScroll title="Công việc đã hoàn thành">
+    <Container back isScroll title="Công việc đã hoàn thành">
       <ScrollView>
         {Object.entries(
           tasks

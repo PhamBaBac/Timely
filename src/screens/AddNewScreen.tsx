@@ -50,6 +50,7 @@ import ModalizeRepeat from '../modal/ModalizeRepeat';
 import ModalizeTime from '../modal/ModalizeTime';
 import {CategoryModel} from '../models/categoryModel';
 import {TaskModel} from '../models/taskModel';
+import { fetchTasks } from '../utils/taskUtil';
 
 const now = new Date();
 const initValue: TaskModel = {
@@ -131,11 +132,19 @@ const AddNewScreen = ({navigation}: any) => {
   const [selectedPriority, setSelectedPriority] = useState('');
   const modalizePriority = useRef<Modalize>(null);
   const modalizeRemind = useRef<Modalize>(null);
-
+ const [tasks, setTasks] = useState<TaskModel[]>([]);
   // Updated state for subtasks
   useEffect(() => {
     user && setTaskDetail({...taskDetail, uid: user.uid});
   }, [user]);
+    useEffect(() => {
+      if (user?.uid) {
+        const unsubscribe = fetchTasks(user.uid, setTasks);
+
+        // Cleanup on unmount
+        return () => unsubscribe();
+      }
+    }, [user?.uid]);
 
   const handleAddNewTask = async () => {
     if (!taskDetail.title) {
@@ -143,6 +152,10 @@ const AddNewScreen = ({navigation}: any) => {
       return;
     }
 
+    if (taskDetail.title.length > 150) {
+      setErrorText('Tên công việc không được quá 150 ký tự');
+      return;
+    }
     //rang buoc gio bat dau phai lon hon gio hien tai
     if (
       
@@ -177,6 +190,18 @@ const AddNewScreen = ({navigation}: any) => {
         startDate.getDate() +
           (nextRepeatDay - currentDay + (nextRepeatDay < currentDay ? 7 : 0)),
       );
+    }
+
+    // neu dueDate va startTime bang cua task tao ma task da co thi bao da co cong viec trong thoi gian nay roi
+    const isTaskExist = tasks.some(task => {
+      const taskDueDate = task.dueDate ? new Date(task.dueDate).setHours(0, 0, 0, 0) : null;
+      const taskStartTime = task.startTime ? new Date(task.startTime).getHours() * 60 + new Date(task.startTime).getMinutes() : 0;
+      const selectedStartTime = selectedTime.getHours() * 60 + selectedTime.getMinutes();
+      return taskDueDate === startDate.setHours(0, 0, 0, 0) && taskStartTime === selectedStartTime;
+    });
+    if (isTaskExist) {
+      setErrorText('Đã tồn tại công việc  trong thời gian này');
+      return;
     }
 
     // Monthly repeat logic
@@ -214,7 +239,7 @@ const AddNewScreen = ({navigation}: any) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    if (startDate <= today) {
+    if (startDate < today) {
       setErrorText('Ngày đến hạn không thể là ngày trong quá khứ');
       return;
     }
@@ -808,6 +833,7 @@ const AddNewScreen = ({navigation}: any) => {
             handleChangeValue('dueDate', date);
           }}
           taskDetail={taskDetail}
+          closeOnOverlayTap={false}
         />
       </View>
       <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
@@ -927,11 +953,7 @@ const AddNewScreen = ({navigation}: any) => {
       </Modal>
       <SpaceComponent height={20} />
       <SectionComponent>
-        <ButtonComponent
-          text="Lưu"
-          onPress={handleAddNewTask}
-          type="primary"
-        />
+        <ButtonComponent text="Lưu" onPress={handleAddNewTask} type="primary" />
       </SectionComponent>
       <LoadingModal visible={isLoading} />
     </Container>

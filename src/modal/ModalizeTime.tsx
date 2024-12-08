@@ -1,19 +1,21 @@
 // src/components/ModalizeTime.tsx
 import React, {useRef, useEffect} from 'react';
-import {View, StyleSheet} from 'react-native';
+import {View, StyleSheet, Text} from 'react-native';
 import {Portal} from 'react-native-portalize';
 import {Modalize} from 'react-native-modalize';
 import DatePicker from 'react-native-date-picker';
 import {RowComponent, TextComponent} from '../components';
 import {appColors} from '../constants';
 import { format } from 'date-fns';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 interface ModalizeTimeProps {
   visible: boolean;
   onClose: () => void;
   selectedTime: Date;
   onTimeChange: (time: Date) => void;
-  selectedDate: Date | null; // Pass selected date from ModalizeDate
+  selectedDate: Date | null; 
+  closeOnOverlayTap?: boolean;
 }
 
 const ModalizeTime: React.FC<ModalizeTimeProps> = ({
@@ -21,7 +23,8 @@ const ModalizeTime: React.FC<ModalizeTimeProps> = ({
   onClose,
   selectedTime,
   onTimeChange,
-  selectedDate, // Use selectedDate to combine with the selected time
+  selectedDate, 
+  closeOnOverlayTap = false,
 }) => {
   const formatTime = (date: Date) => {
     return format(date, 'HH:mm');
@@ -57,22 +60,36 @@ const ModalizeTime: React.FC<ModalizeTimeProps> = ({
 
   return (
     <Portal>
-      <Modalize ref={modalizeTimeRef} adjustToContentHeight onClosed={onClose}>
-        <View style={styles.modalContent}>  
-          <RowComponent>
-            <TextComponent
-              text="Chọn giờ bắt đầu"
-              color={appColors.text}
-              styles={{
-                fontSize: 16,
+      <Modalize
+        ref={modalizeTimeRef}
+        adjustToContentHeight
+        onClosed={onClose}
+        closeOnOverlayTap={closeOnOverlayTap}>
+        <View style={styles.modalContent}>
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              marginBottom: 10,
+            }}>
+            <Text
+              style={{
+                fontSize: 20,
                 fontWeight: 'bold',
                 color: appColors.text,
-                flex: 1,
                 textAlign: 'center',
-                paddingLeft: 10,
-              }}
+                flex: 1,
+              }}>
+              Chọn giờ bắt đầu
+            </Text>
+            <MaterialIcons
+              name="done"
+              size={30}
+              color={appColors.primary}
+              onPress={onClose}
             />
-          </RowComponent>
+          </View>
           <DatePicker
             date={selectedTime}
             mode="time"

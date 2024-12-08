@@ -6,6 +6,7 @@ import {
   Dimensions,
   FlatList,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StatusBar,
@@ -418,11 +419,13 @@ const styles = StyleSheet.create({
     backgroundColor: appColors.lightPurple,
     padding: 16,
     paddingBottom: 40,
+    //IOS thi cach top 20px
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
+    paddingTop: Platform.OS === 'ios' ? 40 : StatusBar.currentHeight,
   },
   avatar: {
     width: 80,

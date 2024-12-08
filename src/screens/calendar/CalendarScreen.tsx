@@ -138,6 +138,7 @@ const CalendarScreen = ({navigation}: any) => {
     const newMarkedDates: {[key: string]: any} = {};
 
     tasks.forEach(task => {
+      if (task.isCompleted) return; // Skip completed tasks
       const dateString = task.startDate?.split('T')[0];
       if (dateString) {
         if (!newMarkedDates[dateString]) {
@@ -212,6 +213,28 @@ const CalendarScreen = ({navigation}: any) => {
   const fomatDate = (date: Date) => {
     return format(date, 'dd/MM/yyyy');
   };
+  //hien thi ngay thang nam thanh Thu 2, 3, 4, 5, 6, 7, CN
+  const formtDaysofWeek = (date: Date) => {
+    const vietnameseDays: {
+      [key in
+        | 'Monday'
+        | 'Tuesday'
+        | 'Wednesday'
+        | 'Thursday'
+        | 'Friday'
+        | 'Saturday'
+        | 'Sunday']: string;
+    } = {
+      Monday: 'Thứ hai',
+      Tuesday: 'Thứ ba',
+      Wednesday: 'Thứ tư',
+      Thursday: 'Thứ năm',
+      Friday: 'Thứ sáu',
+      Saturday: 'Thứ bảy',
+      Sunday: 'Chủ nhật',
+    };
+    return vietnameseDays[format(date, 'eeee') as keyof typeof vietnameseDays];
+  };
 
   const handleTaskPress = (task: TaskModel) => {
     navigation.navigate('TaskDetailsScreen', {
@@ -242,7 +265,6 @@ const CalendarScreen = ({navigation}: any) => {
       </View>
     );
 
-    // Find the category with matching name and get its color
     const category = categories.find(
       category => category.name === item.category,
     );
@@ -296,6 +318,10 @@ const CalendarScreen = ({navigation}: any) => {
                 </Text>
 
                 <Text style={styles.taskDate}>
+                  {item.dueDate
+                    ? formtDaysofWeek(new Date(item.startDate || ''))
+                    : 'No due date'}
+                  ,{' '}
                   {item.dueDate
                     ? fomatDate(new Date(item.startDate || ''))
                     : 'No due date'}{' '}
@@ -355,25 +381,31 @@ const CalendarScreen = ({navigation}: any) => {
   };
 
   const groupTasksByHour = (tasks: TaskModel[], viewMode: 'month' | 'week') => {
-    // If it's week view, return tasks without grouping
-    if (viewMode === 'week') {
-      return [{tasks: tasks}];
-    }
+    const morningTasks = tasks.filter(task => {
+      if (!task.startTime || task.isCompleted) return false;
+      const taskHour = new Date(task.startTime).getHours();
+      return taskHour >= 5 && taskHour < 12;
+    });
 
-    return hourRanges
-      .map(range => {
-        const tasksInRange = tasks.filter(task => {
-          if (!task.startTime) return false;
-          const taskHour = new Date(task.startTime).getHours();
-          return taskHour >= range.start && taskHour < range.end;
-        });
+    const afternoonTasks = tasks.filter(task => {
+      if (!task.startTime || task.isCompleted) return false;
+      const taskHour = new Date(task.startTime).getHours();
+      return taskHour >= 12 && taskHour < 18;
+    });
 
-        return {
-          ...range,
-          tasks: tasksInRange,
-        };
-      })
-      .filter(group => group.tasks.length > 0);
+    const eveningTasks = tasks.filter(task => {
+      if (!task.startTime || task.isCompleted) return false;
+      const taskHour = new Date(task.startTime).getHours();
+      return taskHour >= 18 && taskHour < 24;
+    });
+
+    const groupedTasks = [
+      {label: 'Buổi sáng', tasks: morningTasks},
+      {label: 'Buổi chiều', tasks: afternoonTasks},
+      {label: 'Buổi tối', tasks: eveningTasks},
+    ];
+
+    return groupedTasks.filter(group => group.tasks.length > 0);
   };
   // Memoize the grouped tasks
   const groupedTasks = useMemo(
@@ -388,6 +420,9 @@ const CalendarScreen = ({navigation}: any) => {
         key={group.label || 'ungrouped'}
         style={viewMode === 'month' ? styles.hourGroupContainer : null}>
         {viewMode === 'month' && group.label && (
+          <Text style={styles.hourGroupLabel}>{group.label}</Text>
+        )}
+        {viewMode === 'week' && group.label && (
           <Text style={styles.hourGroupLabel}>{group.label}</Text>
         )}
         {group.tasks.map(renderTask)}
@@ -486,21 +521,6 @@ const CalendarScreen = ({navigation}: any) => {
         <TouchableOpacity
           style={[
             styles.viewModeButton,
-            viewMode === 'month' && styles.activeViewMode,
-          ]}
-          onPress={() => setViewMode('month')}>
-          <Text
-            style={
-              viewMode === 'month'
-                ? {color: appColors.black, fontWeight: '600'}
-                : {color: appColors.white, fontWeight: '600'}
-            }>
-            Tháng
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.viewModeButton,
             viewMode === 'week' && styles.activeViewMode,
           ]}
           onPress={() => setViewMode('week')}>
@@ -510,7 +530,22 @@ const CalendarScreen = ({navigation}: any) => {
                 ? {color: appColors.black, fontWeight: '600'}
                 : {color: appColors.white, fontWeight: '600'}
             }>
-            Tuần
+            Công việc trong tuần
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.viewModeButton,
+            viewMode === 'month' && styles.activeViewMode,
+          ]}
+          onPress={() => setViewMode('month')}>
+          <Text
+            style={
+              viewMode === 'month'
+                ? {color: appColors.black, fontWeight: '600'}
+                : {color: appColors.white, fontWeight: '600'}
+            }>
+            Công việc trong tháng
           </Text>
         </TouchableOpacity>
       </RowComponent>
@@ -554,14 +589,14 @@ const CalendarScreen = ({navigation}: any) => {
               groupedTasks.map(renderHourGroup)
             ) : (
               <Text style={styles.emptyTaskText}>
-                Không có nhiệm vụ nào cho{' '}
+                Không có công việc nào cho{' '}
                 {viewMode === 'month' ? 'ngày này' : 'tuần này'}.
               </Text>
             )}
           </ScrollView>
         ) : (
           <Text style={styles.emptyTaskText}>
-            Không có nhiệm vụ nào cho{' '}
+            Không có công việc nào cho{' '}
             {viewMode === 'month' ? 'ngày này' : 'tuần này'}.
           </Text>
         )}
@@ -624,7 +659,7 @@ const styles = StyleSheet.create({
   },
   // New styles for view mode toggle and week view
   viewModeToggle: {
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 10,
     backgroundColor: appColors.primary,

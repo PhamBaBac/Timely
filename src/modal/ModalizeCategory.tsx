@@ -9,8 +9,8 @@ import {
 } from 'react-native';
 import {Portal} from 'react-native-portalize';
 import {Modalize} from 'react-native-modalize';
-import { CategoryOption, TextComponent } from '../components';
-import { appColors } from '../constants';
+import {CategoryOption, RowComponent, SpaceComponent, TextComponent} from '../components';
+import {appColors} from '../constants';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 interface ModalizeCategoryProps {
@@ -24,6 +24,7 @@ interface ModalizeCategoryProps {
   setSelectedColor: (color: string) => void;
   setSelectedIcon: (icon: string) => void;
   availableIcons: string[];
+  closeOnOverlayTap?: boolean;
 }
 
 const ModalizeCategory: React.FC<ModalizeCategoryProps> = ({
@@ -37,6 +38,7 @@ const ModalizeCategory: React.FC<ModalizeCategoryProps> = ({
   setSelectedColor,
   setSelectedIcon,
   availableIcons,
+  closeOnOverlayTap = false,
 }) => {
   const modalizeRef = useRef<Modalize>(null);
 
@@ -50,43 +52,37 @@ const ModalizeCategory: React.FC<ModalizeCategoryProps> = ({
 
   return (
     <Portal>
-      <Modalize ref={modalizeRef} adjustToContentHeight onClosed={onClose}>
+      <Modalize
+        ref={modalizeRef}
+        adjustToContentHeight
+        onClosed={onClose}
+        closeOnOverlayTap={closeOnOverlayTap}>
         <View style={styles.categoryModalContent}>
-          <TextComponent
-            text="Chọn loại công việc"
-            color={appColors.text}
-            styles={{
-              fontSize: 20,
-              fontWeight: 'bold',
-              color: appColors.text,
-              textAlign: 'center',
-              paddingBottom: 10,
-            }}
-          />
-          {/* <TouchableOpacity
-            style={styles.categoryOption}
-            onPress={() => {
-              handleChangeValue('category', 'Du lịch');
-              setSelectedCategory('Du lịch');
-              modalizeRef.current?.close();
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              marginBottom: 10,
             }}>
+            <Text
+              style={{
+                fontSize: 20,
+                fontWeight: 'bold',
+                color: appColors.text,
+                textAlign: 'center',
+                flex: 1,
+              }}>
+              Chọn loại công việc
+            </Text>
             <MaterialIcons
-              name="airplanemode-active"
-              size={24}
-              color={appColors.green}
+              name="cancel"
+              size={30}
+              color={appColors.red}
+              onPress={onClose}
             />
-            <Text style={styles.categoryOptionText}>Du lịch</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.categoryOption}
-            onPress={() => {
-              handleChangeValue('category', 'Sinh nhật');
-              setSelectedCategory('Sinh nhật');
-              modalizeRef.current?.close();
-            }}>
-            <MaterialIcons name="cake" size={24} color={appColors.yellow} />
-            <Text style={styles.categoryOptionText}>Sinh nhật</Text>
-          </TouchableOpacity> */}
+          </View>
+
           <ScrollView>
             {categories.map(item => (
               <CategoryOption
@@ -97,7 +93,7 @@ const ModalizeCategory: React.FC<ModalizeCategoryProps> = ({
                 onPress={() => {
                   handleChangeValue('category', item.name);
                   setSelectedCategory(item.name);
-                  modalizeRef.current?.close();
+                  onClose();
                 }}
               />
             ))}
@@ -105,10 +101,10 @@ const ModalizeCategory: React.FC<ModalizeCategoryProps> = ({
               style={styles.categoryOption}
               onPress={() => {
                 setNewCategoryModalVisible(true);
-                modalizeRef.current?.close();
                 setTempCategory('');
                 setSelectedColor(appColors.primary);
                 setSelectedIcon(availableIcons[0]);
+                onClose();
               }}>
               <MaterialIcons
                 name="add-box"
@@ -126,8 +122,9 @@ const ModalizeCategory: React.FC<ModalizeCategoryProps> = ({
 
 const styles = StyleSheet.create({
   categoryModalContent: {
-    padding: 20,
     paddingBottom: 80,
+    paddingHorizontal: 10,
+    paddingTop: 10,
   },
   categoryOption: {
     flexDirection: 'row',

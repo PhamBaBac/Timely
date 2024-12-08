@@ -9,9 +9,11 @@ import {
   FlatList,
   StyleSheet,
   Alert,
+  Button,
 } from 'react-native';
 import React, {useEffect, useState} from 'react';
 import {
+  ButtonComponent,
   Container,
   RowComponent,
   SpaceComponent,
@@ -23,11 +25,11 @@ import {appColors} from '../../constants';
 import {Portal} from 'react-native-portalize';
 import {Modalize} from 'react-native-modalize';
 import {CardEdit, Flag, Trash} from 'iconsax-react-native';
-import { CategoryModel } from '../../models/categoryModel';
+import {CategoryModel} from '../../models/categoryModel';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
-import { TaskModel } from '../../models/taskModel';
-import { fetchTasks } from '../../utils/taskUtil';
+import {TaskModel} from '../../models/taskModel';
+import {fetchTasks} from '../../utils/taskUtil';
 
 const availableIcons = [
   'work',
@@ -54,137 +56,174 @@ const rainbowColors = [
   '#BA68C8',
 ];
 const CategoryScreen = () => {
-    const user = auth().currentUser;
+  const user = auth().currentUser;
 
   const modalizePriority = React.useRef<Modalize>(null);
-  const [selectedCategory, setSelectedCategory] = React.useState<string>(
-    '',
-  );
-    const [selectedIdCategory, setSelectedIdCategory] =
-      React.useState<string>('');
+  const [selectedCategory, setSelectedCategory] = React.useState<string>('');
+  const [selectedIdCategory, setSelectedIdCategory] =
+    React.useState<string>('');
   console.log('selectedCategory', selectedCategory);
   const [isNewCategoryModalVisible, setNewCategoryModalVisible] =
     useState(false);
   const [selectedColor, setSelectedColor] = useState(appColors.primary);
   const [selectedIcon, setSelectedIcon] = useState(availableIcons[0]);
-  
-const [categories, setCategories] = useState<CategoryModel[]>([]);
-const categoryNames = categories.map(cat => cat.name);
-useEffect(() => {
-  const unsubscribe = firestore()
-    .collection('categories')
-    .where('uid', '==', user?.uid)
-    .onSnapshot(snapshot => {
-      const categoriesList = snapshot.docs.map(doc => ({
-        id: doc.id, // Lấy docId từ tài liệu Firestore
-        ...doc.data(),
-      })) as CategoryModel[];
-      setCategories(categoriesList);
-    });
-  return () => unsubscribe();
-}, [user]);
 
+  const [categories, setCategories] = useState<CategoryModel[]>([]);
+  const categoryNames = categories.map(cat => cat.name);
+  useEffect(() => {
+    const unsubscribe = firestore()
+      .collection('categories')
+      .where('uid', '==', user?.uid)
+      .onSnapshot(snapshot => {
+        const categoriesList = snapshot.docs.map(doc => ({
+          id: doc.id, // Lấy docId từ tài liệu Firestore
+          ...doc.data(),
+        })) as CategoryModel[];
+        setCategories(categoriesList);
+      });
+    return () => unsubscribe();
+  }, [user]);
 
   //Liet ke so Task cua moi Category
-   const [tasks, setTasks] = useState<TaskModel[]>([]);
- 
-   useEffect(() => {
-     if (user?.uid) {
-       const unsubscribe = fetchTasks(user.uid, setTasks);
+  const [tasks, setTasks] = useState<TaskModel[]>([]);
 
-       // Cleanup on unmount
-       return () => unsubscribe();
-     }
-   }, [user?.uid]);
- 
-  const categoryData = tasks.reduce((acc: { [key: string]: number }, task) => {
+  useEffect(() => {
+    if (user?.uid) {
+      const unsubscribe = fetchTasks(user.uid, setTasks);
+
+      // Cleanup on unmount
+      return () => unsubscribe();
+    }
+  }, [user?.uid]);
+
+  const categoryData = tasks.reduce((acc: {[key: string]: number}, task) => {
     if (task.category) {
       acc[task.category] = (acc[task.category] || 0) + 1;
     }
     return acc;
-  }, {} as { [key: string]: number });
-const handleCategoryUpdate = async () => {
-  try {
-    const category = categories.find(cat => cat.id === selectedIdCategory);
-    if (!category || !category.id) {
-      throw new Error('Không tìm thấy danh mục');
-    }
-  
-    if (categoryNames.includes(selectedCategory)) {
-      Alert.alert('Thông báo', 'Danh mục đã tồn tại');
-      return;
-    }
+  }, {} as {[key: string]: number});
+  const handleCategoryUpdate = async () => {
+    try {
+      const category = categories.find(cat => cat.id === selectedIdCategory);
+      if (!category || !category.id) {
+        Alert.alert('Thông báo', 'Danh mục không tồn tại');
+        return;
+      }
 
-    const batch = firestore().batch();
+      if (
+        categoryNames.includes(selectedCategory) &&
+        category.icon === selectedIcon &&
+        category.color === selectedColor
+      ) {
+        Alert.alert('Thông báo', 'Danh mục đã tồn tại');
+        return;
+      }
 
-    // 1. Cập nhật danh mục trong collection `categories`
-    const categoryRef = firestore().collection('categories').doc(category.id);
-    batch.update(categoryRef, {
-      name: selectedCategory,
-      color: selectedColor,
-      icon: selectedIcon,
-    });
+      const batch = firestore().batch();
 
-    // 2. Lấy tất cả các task liên quan trong collection `tasks`
-    const tasksSnapshot = await firestore()
-      .collection('tasks')
-      .where('category', '==', category.name)
-      .get();
-
-    // 3. Cập nhật từng task với thông tin danh mục mới
-    tasksSnapshot.forEach(doc => {
-      const taskRef = firestore().collection('tasks').doc(doc.id);
-      batch.update(taskRef, {
-        category: selectedCategory, // Cập nhật tên danh mục mới
+      // 1. Cập nhật danh mục trong collection `categories`
+      const categoryRef = firestore().collection('categories').doc(category.id);
+      batch.update(categoryRef, {
+        name: selectedCategory,
+        color: selectedColor,
+        icon: selectedIcon,
       });
-    });
 
-    // 4. Thực hiện batch update
-    await batch.commit();
-    console.log('Cập nhật danh mục và các task liên quan thành công!');
-  } catch (error) {
-    console.error('Error updating category and tasks: ', error);
+      // 2. Lấy tất cả các task liên quan trong collection `tasks`
+      const tasksSnapshot = await firestore()
+        .collection('tasks')
+        .where('category', '==', category.name)
+        .get();
+
+      // 3. Cập nhật từng task với thông tin danh mục mới
+      tasksSnapshot.forEach(doc => {
+        const taskRef = firestore().collection('tasks').doc(doc.id);
+        batch.update(taskRef, {
+          category: selectedCategory, // Cập nhật tên danh mục mới
+        });
+      });
+
+      // 4. Thực hiện batch update
+      await batch.commit();
+      console.log('Cập nhật danh mục và các task liên quan thành công!');
+    } catch (error) {
+      console.error('Error updating category and tasks: ', error);
+    }
+  };
+
+  const handleAddNewCategory = async () => {
+    try {
+      if (!selectedCategory) {
+        Alert.alert('Thông báo', 'Vui lòng nhập tên danh mục');
+        return;
+      }
+
+      if (categoryNames.includes(selectedCategory)) {
+        Alert.alert('Thông báo', 'Danh mục đã tồn tại');
+        return;
+      }
+
+      await firestore().collection('categories').add({
+        uid: user?.uid,
+        name: selectedCategory,
+        color: selectedColor,
+        icon: selectedIcon,
+      });
+
+      console.log('Thêm danh mục thành công!');
+      setNewCategoryModalVisible(false);
+    } catch (error) {
+      console.error('Error adding new category: ', error);
+    }
+
   }
-};
 
-const handleDeleteCategoryAndTasks = async (categoryId: string) => {
-  try {
-    //Xac nhan truoc khi xoa
-    Alert.alert('Xác nhận xóa', 'Bạn có chắc chắn muốn xóa loại công việc này?', [
-      {text: 'Hủy', style: 'cancel'},
-      {
-        text: 'Xóa',
-        style: 'destructive',
-        onPress: async () => {
-          const batch = firestore().batch();
+  const handleDeleteCategoryAndTasks = async (categoryId: string) => {
+    try {
+      //Xac nhan truoc khi xoa
+      Alert.alert(
+        'Xác nhận xóa',
+        'Bạn có chắc chắn muốn xóa loại công việc này?',
+        [
+          {text: 'Hủy', style: 'cancel'},
+          {
+            text: 'Xóa',
+            style: 'destructive',
+            onPress: async () => {
+              const batch = firestore().batch();
 
-          // 1. Xóa danh mục trong collection `categories`
-          const categoryRef = firestore().collection('categories').doc(categoryId);
-          batch.delete(categoryRef);
+              // 1. Xóa danh mục trong collection `categories`
+              const categoryRef = firestore()
+                .collection('categories')
+                .doc(categoryId);
+              batch.delete(categoryRef);
 
-          // 2. Xóa tất cả các task liên quan trong collection `tasks`
-          const tasksSnapshot = await firestore()
-            .collection('tasks')
-            .where('category', '==', categories.find(cat => cat.id === categoryId)?.name)
-            .get();
+              // 2. Xóa tất cả các task liên quan trong collection `tasks`
+              const tasksSnapshot = await firestore()
+                .collection('tasks')
+                .where(
+                  'category',
+                  '==',
+                  categories.find(cat => cat.id === categoryId)?.name,
+                )
+                .get();
 
-          tasksSnapshot.forEach(doc => {
-            const taskRef = firestore().collection('tasks').doc(doc.id);
-            batch.delete(taskRef);
-          });
+              tasksSnapshot.forEach(doc => {
+                const taskRef = firestore().collection('tasks').doc(doc.id);
+                batch.delete(taskRef);
+              });
 
-          // 3. Thực hiện batch delete
-          await batch.commit();
-          console.log('Xóa danh mục và các task liên quan thành công!');
-        },
-      },
-    ]);
-  } catch (error) {
-    console.error('Error deleting category and tasks: ', error);
-  }
-}
-
-
+              // 3. Thực hiện batch delete
+              await batch.commit();
+              console.log('Xóa danh mục và các task liên quan thành công!');
+            },
+          },
+        ],
+      );
+    } catch (error) {
+      console.error('Error deleting category and tasks: ', error);
+    }
+  };
 
   return (
     <Container back title="Quản lý loại công việc">
@@ -247,6 +286,12 @@ const handleDeleteCategoryAndTasks = async (categoryId: string) => {
           </RowComponent>
         );
       })}
+      <SpaceComponent height={20} />
+      <ButtonComponent
+        text="Thêm loại công việc"
+        type='primary'
+        onPress={() => setNewCategoryModalVisible(true)}
+      />
       <Portal>
         <Modalize
           adjustToContentHeight
@@ -273,14 +318,13 @@ const handleDeleteCategoryAndTasks = async (categoryId: string) => {
                 borderBottomColor: '#eee',
               }}
               onPress={() => {
-                  console.log('selectedIdCategory', selectedIdCategory);
+                console.log('selectedIdCategory', selectedIdCategory);
                 if (selectedIdCategory) {
                   const category = categories.find(
                     cat => cat.id === selectedIdCategory,
                   );
                   console.log('category', category);
                   if (category) {
-                    
                     setSelectedCategory(category.name); // Lưu tên danh mục
                     setSelectedColor(category.color); // Lưu màu của danh mục
                     setSelectedIcon(category.icon); // Lưu icon của danh mục
@@ -317,8 +361,7 @@ const handleDeleteCategoryAndTasks = async (categoryId: string) => {
                   handleDeleteCategoryAndTasks(selectedIdCategory);
                 }
                 modalizePriority.current?.close();
-              }}
-            >
+              }}>
               <RowComponent
                 styles={{
                   justifyContent: 'flex-start',
@@ -358,7 +401,12 @@ const handleDeleteCategoryAndTasks = async (categoryId: string) => {
                     style={styles.newCategoryAddButton}
                     onPress={() => {
                       setNewCategoryModalVisible(false);
-                      handleCategoryUpdate();
+                      if (selectedIdCategory) {
+                        handleCategoryUpdate();
+                        setSelectedIdCategory('');
+                      } else {
+                        handleAddNewCategory();
+                      }
                     }}>
                     <MaterialIcons name="check" size={24} color="#ffffff" />
                   </TouchableOpacity>
@@ -419,6 +467,7 @@ const handleDeleteCategoryAndTasks = async (categoryId: string) => {
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
+        {/* Button Tao cong viec */}
       </Modal>
     </Container>
   );

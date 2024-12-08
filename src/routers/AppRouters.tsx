@@ -18,6 +18,7 @@ const AppRouters = () => {
     auth().onAuthStateChanged(user => {
       user ? setIsLogin(true) : setIsLogin(false);
     });
+    HandleNotification.checkNotificationPersion();
 
     messaging().onNotificationOpenedApp((mess: any) => {
       console.log('Notification opened from background', mess);
@@ -30,6 +31,7 @@ const AppRouters = () => {
     const timeout = setTimeout(() => {
       setIsShowSplash(false);
     }, 1000);
+
 
     return () => clearTimeout(timeout);
   }, []);
