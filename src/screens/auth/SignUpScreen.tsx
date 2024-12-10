@@ -32,11 +32,17 @@ const SignUpScreen = ({navigation}: any) => {
 
   const handleSigninWithEmail = async () => {
     if (!email || !password || !confirmPassword) {
-      setErrorText(
-        'Please enter your email, password, and confirm password!!!',
-      );
+      setErrorText('Vui lòng nhập email, mật khẩu và xác nhận mật khẩu!!!');
+    } else if (
+      !email.match(/^([a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6})*$/g)
+    ) {
+      setErrorText('Email không hợp lệ!!!');
     } else if (password !== confirmPassword) {
-      setErrorText('Passwords do not match!!!');
+      setErrorText('Mật khẩu không khớp!!!');
+    } //Mat khau phai co it nhat 6 ki tu, it nhat 1 chu hoa, 1 chu thuong, 1 so
+    
+    else if (password.length < 6) {
+      setErrorText('Mật khẩu phải có ít nhất 6 kí tự!!!');
     } else {
       const api = `/send-OTP`;
       setIsLoading(true);
@@ -82,7 +88,7 @@ const SignUpScreen = ({navigation}: any) => {
           flex: 1,
         }}>
         <TitleComponent
-          text="Sign up"
+          text="Đăng ký"
           font={fontFamilies.medium}
           size={22}
           flex={0}
@@ -101,7 +107,7 @@ const SignUpScreen = ({navigation}: any) => {
             value={password}
             onChange={val => setPassword(val)}
             prefix={<Lock size={20} color={appColors.gray} />}
-            placeholder="Password"
+            placeholder="Mật khẩu"
             title=""
             isPassword
           />
@@ -109,7 +115,7 @@ const SignUpScreen = ({navigation}: any) => {
             value={confirmPassword}
             onChange={val => setConfirmPassword(val)}
             prefix={<Lock size={20} color={appColors.gray} />}
-            placeholder="Confirm Password"
+            placeholder="Nhập lại mật khẩu"
             title=""
             isPassword
           />
@@ -124,17 +130,17 @@ const SignUpScreen = ({navigation}: any) => {
 
         <ButtonComponent
           type="primary"
-          text="Sign in"
+          text="Đăng ký"
           onPress={handleSigninWithEmail}
         />
 
         <SpaceComponent height={20} />
         <Text style={[globalStyles.text, {textAlign: 'center'}]}>
-          You have an already account?{' '}
+          Bạn đã có tài khoản?{' '}
           <Text
             style={{color: appColors.primary}}
             onPress={() => navigation.navigate('LoginScreen')}>
-            Login
+            Đăng nhập ngay
           </Text>
         </Text>
       </SectionComponent>

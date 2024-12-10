@@ -15,6 +15,11 @@ export const handleToggleCompleteTask = async (taskId: string) => {
         isCompleted: !taskData.isCompleted,
         updatedAt:new Date().toISOString()
       });
+    if (taskData.isCompleted) {
+      await taskRef.update({
+        updatedAt: taskData.createdAt,
+      });
+    }
     }
   } catch (error) {
     console.error('Error toggling complete task: ', error);

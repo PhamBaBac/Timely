@@ -120,21 +120,12 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
     };
   };
 
-  const [taskStats, setTaskStats] = useState({
-    totalTasks: 0,
-    completedTasks: 0,
-    completedAheadOfSchedule: 0,
-    incompleteTasks: 0,
-  });
-
   useEffect(() => {
     const {completedTasks: completed, incompleteTasks: incomplete} =
       calculateTaskStats(tasks);
     setCompletedTasks(completed);
     setIncompleteTasks(incomplete);
 
-    const stats = calculateTaskCompletionStats(tasks);
-    setTaskStats(stats);
   }, [tasks]);
 
   const filterTasksByPeriod = (tasks: TaskModel[], period: string) => {
@@ -165,30 +156,57 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
   const handleViewTasks = (isCompleted: boolean) => {
     navigation.navigate('TaskListScreen', {isCompleted});
   };
-
+  const startTask = tasks.filter(task => {
+    const startDate = task.startDate ? new Date(task.startDate) : null;
+    const completedAt = task.updatedAt ? new Date(task.updatedAt) : null;
+    if (
+      task.isCompleted &&
+      completedAt &&
+      startDate &&
+      completedAt.getDate() < startDate.getDate()
+    ) {
+      return true;
+    }
+  }).length;
   const completedOnTime = tasks.filter(task => {
     const startDate = task.startDate ? new Date(task.startDate) : null;
-    const endDate = task.endDate ? new Date(task.endDate) : null;
-    const completedAt = new Date(task.updatedAt);
-    return (
-      task.isCompleted &&
-      ((startDate && completedAt <= startDate) ||
-        (endDate && completedAt <= endDate))
-    );
+    const startTime = task.startTime ? new Date(task.startTime) : null;
+    const completedAt = task.updatedAt ? new Date(task.updatedAt) : null;
+    if (task.isCompleted && completedAt?.getDate() === startDate?.getDate()) {
+      if (
+        startTime &&
+        completedAt &&
+        completedAt.getTime() < startTime.getTime()
+      ) {
+        return true;
+      }
+    }
   }).length;
 
   const overdueTasks = tasks.filter(task => {
     const startDate = task.startDate ? new Date(task.startDate) : null;
-    const endDate = task.endDate ? new Date(task.endDate) : null;
-    const completedAt = new Date(task.updatedAt);
-    return (
+    const startTime = task.startTime ? new Date(task.startTime) : null;
+    const completedAt = task.updatedAt ? new Date(task.updatedAt) : null;
+    if (
       task.isCompleted &&
-      ((startDate && completedAt > startDate) ||
-        (endDate && completedAt > endDate) ||
-        (!startDate && !endDate))
-    );
+      completedAt &&
+      startDate &&
+      completedAt.getDate() > startDate.getDate()
+    ) {
+      return true;
+    } else if (
+      task.isCompleted &&
+      completedAt?.getDate() === startDate?.getDate()
+    ) {
+      if (
+        startTime &&
+        completedAt &&
+        completedAt.getTime() > startTime.getTime()
+      ) {
+        return true;
+      }
+    }
   }).length;
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -405,7 +423,7 @@ const ProfileScreen = ({navigation}: {navigation: any}) => {
           <TaskCompletionChart
             completedOnTime={completedOnTime}
             overdueTasks={overdueTasks}
-            completedAheadOfSchedule={taskStats.completedAheadOfSchedule}
+            completedAheadOfSchedule={startTask}
           />
         </View>
       </ScrollView>

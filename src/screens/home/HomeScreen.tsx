@@ -54,7 +54,6 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
   const [categories, setCategories] = useState<CategoryModel[]>([]);
 
   const [tasks, setTasks] = useState<TaskModel[]>([]);
-  console.log('tasks', tasks);
   
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -75,13 +74,13 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
         | 'Saturday'
         | 'Sunday']: string;
     } = {
-      Monday: 'Thứ hai',
-      Tuesday: 'Thứ ba',
-      Wednesday: 'Thứ tư',
-      Thursday: 'Thứ năm',
-      Friday: 'Thứ sáu',
-      Saturday: 'Thứ bảy',
-      Sunday: 'Chủ nhật',
+      Monday: 'Thứ 2',
+      Tuesday: 'Thứ 3',
+      Wednesday: 'Thứ 4',
+      Thursday: 'Thứ 5',
+      Friday: 'Thứ 6',
+      Saturday: 'Thứ 7',
+      Sunday: 'CN',
     };
     return vietnameseDays[format(date, 'eeee') as keyof typeof vietnameseDays];
   };

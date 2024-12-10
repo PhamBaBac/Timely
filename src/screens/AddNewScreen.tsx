@@ -122,7 +122,6 @@ const AddNewScreen = ({navigation}: any) => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [taskDetail, setTaskDetail] = useState<TaskModel>(initValue);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  console.log('selectedDate', selectedDate);
   const [isLoading, setIsLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
   const [selectedIcon, setSelectedIcon] = useState(availableIcons[0]);
@@ -249,7 +248,7 @@ const AddNewScreen = ({navigation}: any) => {
       new Date(taskDetail.endDate) <= startDate
       && taskDetail.repeat !== 'no'
     ) {
-      setErrorText('Ngày kết thúc phải lớn hơn ngày bắt đầu');
+      setErrorText('Ngày kết thúc không thể hợp lệ');
       return;
     }
 
@@ -258,7 +257,7 @@ const AddNewScreen = ({navigation}: any) => {
       uid: user?.uid,
       repeat: selectedRepeat === 'Không' ? 'no' : taskDetail.repeat,
     };
-
+    setIsLoading(true);
     const taskRef = firestore().collection('tasks').doc();
     const task = {
       ...data,
@@ -289,7 +288,6 @@ const AddNewScreen = ({navigation}: any) => {
     await taskRef
       .set(task)
       .then(() => {
-        console.log('New task added with repeat information!!');
         setIsLoading(false);
         setTaskDetail(initValue);
         setSelectedRepeat('');
