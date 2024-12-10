@@ -23,8 +23,11 @@ const LoginScreen = ({navigation}: any) => {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      setErrorText('Please enter your email and password!!!');
-    } else {
+      setErrorText('Vui lòng nhập email và mật khẩu!!!');
+    }else if (!email.match(/^([a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6})*$/g)) {
+      setErrorText('Email không hợp lệ!!!');
+    }
+     else {
       setErrorText('');
       setIsLoading(true);
       await auth()
@@ -37,7 +40,7 @@ const LoginScreen = ({navigation}: any) => {
           }
         })
         .catch(error => {
-          setErrorText(error.message);
+          setErrorText('Email hoặc mật khẩu không chính xác!!!');
           setIsLoading(false);
         });
     }
