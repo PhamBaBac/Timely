@@ -7,10 +7,12 @@ import {
   ScrollView,
   FlatList,
   TouchableOpacity,
+  Pressable,
 } from 'react-native';
-import {addDays, startOfWeek, endOfWeek, format} from 'date-fns';
+import {addDays, startOfWeek, endOfWeek, format, isSameDay} from 'date-fns';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {Flag, Repeat, Star1, StarSlash} from 'iconsax-react-native';
+import {Flag, Repeat, Star1, StarSlash, Trash} from 'iconsax-react-native';
+import {Swipeable} from 'react-native-gesture-handler';
 import {appColors} from '../constants';
 import {TaskModel} from '../models/taskModel';
 import {CategoryModel} from '../models/categoryModel';
@@ -20,6 +22,7 @@ import {
   handleToggleCompleteTask,
   handleUpdateRepeatTask,
 } from '../utils/taskUtil';
+import {RowComponent, SpaceComponent} from '../components';
 
 const {width, height} = Dimensions.get('window');
 const PERIODS = ['Sáng', 'Chiều', 'Tối'];
@@ -52,12 +55,18 @@ const formatDaysOfWeek = (date: Date) => {
   return vietnameseDays[format(date, 'eeee') as keyof typeof vietnameseDays];
 };
 
+const formatTime = (date: Date | string) => {
+  return format(new Date(date), 'HH:mm');
+};
+
 const TaskTimetableView: React.FC<TaskTimetableViewProps> = ({
   tasks,
   categories,
   onTaskPress,
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedWeekDay, setSelectedWeekDay] = useState<Date | null>(null);
+  const [showAllWeekTasks, setShowAllWeekTasks] = useState(true);
 
   // Generate week days based on the current date
   const weekDays = useMemo(() => {
@@ -77,99 +86,155 @@ const TaskTimetableView: React.FC<TaskTimetableViewProps> = ({
     return days;
   }, [currentDate]);
 
+  // Filter tasks for the selected period and day
   const filterTasksForPeriodAndDay = (period: string, dayDate: Date) => {
     return tasks.filter(task => {
-      if (!task.startDate || task.isCompleted) return false;
+      if (!task.startDate) return false; // Chỉ giữ lại điều kiện kiểm tra startDate
+
       const taskDate = new Date(task.startDate);
       const taskHour = new Date(task.startTime || '').getHours();
 
-      const isCorrectDate =
-        taskDate.getFullYear() === dayDate.getFullYear() &&
-        taskDate.getMonth() === dayDate.getMonth() &&
-        taskDate.getDate() === dayDate.getDate();
+      const isCorrectDate = isSameDay(taskDate, dayDate);
 
       const isCorrectPeriod =
         (period === 'Sáng' && taskHour >= 5 && taskHour < 12) ||
         (period === 'Chiều' && taskHour >= 12 && taskHour < 18) ||
         (period === 'Tối' && taskHour >= 18 && taskHour < 24);
 
-      return isCorrectDate && isCorrectPeriod;
+      const weekStart = startOfWeek(currentDate, {weekStartsOn: 1});
+      const weekEnd = endOfWeek(currentDate, {weekStartsOn: 1});
+      const isInCurrentWeek = taskDate >= weekStart && taskDate <= weekEnd;
+
+      if (showAllWeekTasks) {
+        return isInCurrentWeek && isCorrectDate && isCorrectPeriod;
+      }
+
+      return (
+        isInCurrentWeek &&
+        isCorrectDate &&
+        isCorrectPeriod &&
+        (selectedWeekDay === null || isSameDay(taskDate, selectedWeekDay))
+      );
     });
   };
 
   const renderTaskDetails = (task: TaskModel) => {
-    // Find the category for this task
     const category = categories.find(
       category => category.name === task.category,
     );
-    // Use the category color or default to gray
     const categoryColor = category?.color || appColors.gray2;
+    const categoryIcon = category?.icon;
+
+    const renderRightActions = () => (
+      <View style={styles.swipeActions}>
+        <Pressable
+          style={styles.swipeActionButton}
+          onPress={() => handleDelete(task.id)}>
+          <Trash size={24} color={appColors.red} variant="Bold" />
+          <Text style={styles.actionText}>Xóa</Text>
+        </Pressable>
+
+        {task.repeat !== 'no' && (
+          <Pressable
+            style={styles.swipeActionButton}
+            onPress={() => handleUpdateRepeatTask(task.id, task.title)}>
+            <Repeat size={24} color={appColors.blue} />
+            <Text style={styles.actionText}>Bỏ lặp lại</Text>
+          </Pressable>
+        )}
+      </View>
+    );
 
     return (
-      <TouchableOpacity
-        onPress={() => onTaskPress(task)}
-        style={[
-          styles.taskContainer,
-          {
-            // Change background based on completion status
-            backgroundColor: task.isCompleted
-              ? appColors.gray2
-              : appColors.white,
-            // Border color based on completion and category
-            borderColor: task.isCompleted ? appColors.gray : categoryColor,
-            borderWidth: 2,
-          },
-        ]}>
-        <View style={styles.taskContent}>
-          {/* Task Title */}
-          <Text
-            style={[
-              styles.taskTitle,
-              task.isCompleted && styles.completedTaskTitle,
-            ]}>
-            {task.title || task.description}
-          </Text>
-
-          {/* Task Metadata */}
-          <View style={styles.taskMetadata}>
-            {/* Start Time */}
-            <Text style={styles.taskMetadataText}>
-              {task.startTime
-                ? format(new Date(task.startTime), 'HH:mm')
-                : 'No time'}
-            </Text>
-
-            {/* Priority Flag */}
-            {task.priority && (
-              <Flag
-                size="16"
-                color={
-                  task.priority === 'low'
-                    ? appColors.green
-                    : task.priority === 'medium'
-                    ? appColors.yellow
-                    : appColors.red
-                }
-                variant="Bold"
+      <Swipeable renderRightActions={() => renderRightActions()} key={task.id}>
+        <TouchableOpacity
+          onPress={() => onTaskPress(task)}
+          style={[
+            styles.taskContainer,
+            {
+              backgroundColor: task.isCompleted
+                ? appColors.gray2
+                : appColors.white,
+              borderColor: task.isCompleted ? appColors.gray : categoryColor,
+              borderWidth: 2,
+            },
+          ]}>
+          <Pressable
+            style={styles.roundButton}
+            onPress={() => handleToggleCompleteTask(task.id)}>
+            {task.isCompleted ? (
+              <MaterialIcons
+                name="check-circle"
+                size={24}
+                color={appColors.gray}
+              />
+            ) : (
+              <MaterialIcons
+                name="radio-button-unchecked"
+                size={24}
+                color={appColors.primary}
               />
             )}
+          </Pressable>
+          <View style={styles.taskContentWrapper}>
+            <RowComponent styles={styles.taskTitleRow}>
+              <View style={styles.taskContent}>
+                <Text
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                  style={[
+                    styles.taskTitle,
+                    task.isCompleted && styles.completedTaskTitle,
+                  ]}>
+                  {task.title || task.description}
+                </Text>
+              </View>
+              <View style={styles.taskIconsContainer}>
+                {task.priority === 'low' && (
+                  <Flag size="20" color={appColors.green} variant="Bold" />
+                )}
+                {task.priority === 'medium' && (
+                  <Flag size="20" color={appColors.yellow} variant="Bold" />
+                )}
+                {task.priority === 'high' && (
+                  <Flag size="20" color={appColors.red} variant="Bold" />
+                )}
+                <Pressable
+                  style={styles.starButton}
+                  onPress={() => handleHighlight(task.id)}>
+                  {task.isImportant ? (
+                    <Star1 size={20} color="#FF8A65" />
+                  ) : (
+                    <StarSlash size={20} color="#FF8A65" />
+                  )}
+                </Pressable>
+              </View>
+            </RowComponent>
 
-            {/* Repeat Icon */}
-            {task.repeat !== 'no' && <Repeat size="16" color={appColors.red} />}
+            <View style={styles.taskDetailsRow}>
+              <Text style={styles.taskDate}>
+                {formatDaysOfWeek(new Date(task.startDate || ''))}
+                {', '}
+                {format(new Date(task.startDate || ''), 'dd/MM/yyyy')}
+                {' - '}
+                {task.startTime ? formatTime(task.startTime) : 'No start time'}
+              </Text>
+              <View style={styles.taskMetadata}>
+                {categoryIcon && (
+                  <MaterialIcons
+                    name={categoryIcon}
+                    size={16}
+                    color={categoryColor}
+                  />
+                )}
+                {task.repeat !== 'no' && (
+                  <Repeat size="16" color={appColors.red} />
+                )}
+              </View>
+            </View>
           </View>
-        </View>
-
-        {/* Star/Important Button */}
-        <TouchableOpacity
-          onPress={() => handleHighlight(task.id)}
-          style={styles.starButton}>
-          {task.isImportant ? (
-            <Star1 size={24} color="#FF8A65" />
-          ) : (
-            <StarSlash size={24} color="#FF8A65" />
-          )}
         </TouchableOpacity>
-      </TouchableOpacity>
+      </Swipeable>
     );
   };
 
@@ -205,7 +270,7 @@ const TaskTimetableView: React.FC<TaskTimetableViewProps> = ({
                 typeof cell === 'string'
                   ? appColors.primary
                   : cell.color || '#ffffff',
-              width: index === 0 ? 80 : 350, // Adjust width for "Buổi" column
+              width: index === 0 ? 80 : 350,
             },
           ]}>
           {index === 0 ? (
@@ -213,7 +278,7 @@ const TaskTimetableView: React.FC<TaskTimetableViewProps> = ({
           ) : typeof cell === 'object' &&
             cell.tasks &&
             cell.tasks.length > 0 ? (
-            cell.tasks.map((task: TaskModel) => renderTaskDetails(task))
+            cell.tasks.map(renderTaskDetails)
           ) : (
             <Text style={styles.emptyCellText}>Không có công việc</Text>
           )}
@@ -250,6 +315,7 @@ const TaskTimetableView: React.FC<TaskTimetableViewProps> = ({
           />
         </TouchableOpacity>
       </View>
+
       <ScrollView horizontal>
         <View>
           <View style={[styles.row, styles.headerRow]}>
@@ -260,7 +326,7 @@ const TaskTimetableView: React.FC<TaskTimetableViewProps> = ({
                   styles.cell,
                   styles.headerCell,
                   index === 0 ? styles.periodCell : {},
-                  {width: index === 0 ? 80 : 350}, // Adjust width for "Buổi" column
+                  {width: index === 0 ? 80 : 350},
                 ]}>
                 <Text style={styles.headerText}>{cell}</Text>
               </View>
@@ -295,9 +361,79 @@ const styles = StyleSheet.create({
   navButton: {
     padding: 10,
   },
+  taskContentWrapper: {
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  taskTitleRow: {
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  taskIconsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  taskDetailsRow: {
+    flexDirection: 'column',
+    marginTop: 8,
+  },
+  taskContent: {
+    flex: 1,
+    marginRight: 10,
+  },
+  taskDate: {
+    fontSize: 12,
+    color: appColors.gray,
+    marginBottom: 4,
+  },
+  taskMetadata: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
   dateRangeText: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 10,
+    backgroundColor: appColors.white,
+  },
+  filterButton: {
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    marginHorizontal: 5,
+    borderRadius: 20,
+    backgroundColor: appColors.lightPurple,
+  },
+  activeFilterButton: {
+    backgroundColor: appColors.primary,
+  },
+  filterText: {
+    color: appColors.gray,
+  },
+  activeFilterText: {
+    color: appColors.white,
+    fontWeight: '600',
+  },
+  swipeActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  swipeActionButton: {
+    padding: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionText: {
+    color: appColors.black,
+    fontSize: 14,
+    marginTop: 4,
   },
   flatlistContainer: {
     maxHeight: height * 0.7,
@@ -316,12 +452,13 @@ const styles = StyleSheet.create({
     borderBottomColor: appColors.gray2,
   },
   cell: {
-    minHeight: 100,
-    padding: 5,
+    minHeight: 150, // Increased height
+    padding: 10,
     justifyContent: 'flex-start',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: appColors.gray2,
+    width: width * 0.4, // Use 40% of screen width
   },
   periodCell: {
     backgroundColor: appColors.primary,
@@ -351,27 +488,22 @@ const styles = StyleSheet.create({
     elevation: 3, // For Android shadow
   },
   taskTitle: {
-    fontSize: 16, // Increased font size
+    fontSize: 18, // Increased font size
     fontWeight: 'bold',
+    flexWrap: 'wrap', // Allow wrapping for longer titles
+    maxWidth: width * 0.25, // Limit width to prevent overflow
   },
   taskMetadataText: {
     marginRight: 10,
     fontSize: 14, // Slightly larger font
     color: appColors.gray,
   },
-  taskContent: {
-    flex: 1,
-    marginRight: 10,
-  },
+
   completedTaskTitle: {
     color: appColors.gray,
     textDecorationLine: 'line-through',
   },
-  taskMetadata: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 5,
-  },
+
   starButton: {
     padding: 5,
   },
@@ -388,6 +520,10 @@ const styles = StyleSheet.create({
     width: 80, // Adjust width for "Buổi" column
     height: 100, // Add a fixed height
     textAlignVertical: 'center', // Helps center the text vertically when rotated
+  },
+
+  roundButton: {
+    marginRight: 10,
   },
 });
 
