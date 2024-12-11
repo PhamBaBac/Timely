@@ -28,6 +28,7 @@ import {
 } from '../../utils/taskUtil';
 import {CategoryModel} from '../../models/categoryModel';
 import moment from 'moment';
+import TaskTimetableView from '../../components/TaskTimetableView';
 
 // Set Vietnamese locale for the calendar
 LocaleConfig.locales['vi'] = {
@@ -72,28 +73,6 @@ LocaleConfig.locales['vi'] = {
   today: 'Hôm nay',
 };
 LocaleConfig.defaultLocale = 'vi';
-
-const hourRanges = [
-  {start: 5, end: 6, label: '5h - 6h'},
-  {start: 6, end: 7, label: '6h - 7h'},
-  {start: 7, end: 8, label: '7h - 8h'},
-  {start: 8, end: 9, label: '8h - 9h'},
-  {start: 9, end: 10, label: '9h - 10h'},
-  {start: 10, end: 11, label: '10h - 11h'},
-  {start: 11, end: 12, label: '11h - 12h'},
-  {start: 12, end: 13, label: '12h - 13h'},
-  {start: 13, end: 14, label: '13h - 14h'},
-  {start: 14, end: 15, label: '14h - 15h'},
-  {start: 15, end: 16, label: '15h - 16h'},
-  {start: 16, end: 17, label: '16h - 17h'},
-  {start: 17, end: 18, label: '17h - 18h'},
-  {start: 18, end: 19, label: '18h - 19h'},
-  {start: 19, end: 20, label: '19h - 20h'},
-  {start: 20, end: 21, label: '20h - 21h'},
-  {start: 21, end: 22, label: '21h - 22h'},
-  {start: 22, end: 23, label: '22h - 23h'},
-  {start: 23, end: 24, label: '23h - 0h'},
-];
 
 const CalendarScreen = ({navigation}: any) => {
   useCustomStatusBar('light-content', appColors.primary);
@@ -417,7 +396,7 @@ const CalendarScreen = ({navigation}: any) => {
   );
 
   // Modify the task rendering to support hour grouping
-  const renderHourGroup = (group: {label?: string; tasks: TaskModel[]}) => {
+  const renderMonthTasks = (group: {label?: string; tasks: TaskModel[]}) => {
     return (
       <View
         key={group.label || 'ungrouped'}
@@ -425,94 +404,8 @@ const CalendarScreen = ({navigation}: any) => {
         {viewMode === 'month' && group.label && (
           <Text style={styles.hourGroupLabel}>{group.label}</Text>
         )}
-        {viewMode === 'week' && group.label && (
-          <Text style={styles.hourGroupLabel}>{group.label}</Text>
-        )}
+
         {group.tasks.map(renderTask)}
-      </View>
-    );
-  };
-  const renderWeekView = () => {
-    const weekStart = startOfWeek(currentWeek, {weekStartsOn: 1}); // Starts on Monday
-    const weekDates = Array.from({length: 7}, (_, i) => addDays(weekStart, i));
-    const today = new Date();
-
-    const vietnameseDays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-
-    return (
-      <View style={styles.weekViewContainer}>
-        <RowComponent styles={styles.weekNavigation}>
-          <TouchableOpacity
-            onPress={() => setCurrentWeek(prevWeek => addDays(prevWeek, -7))}>
-            <MaterialIcons
-              name="chevron-left"
-              size={24}
-              color={appColors.black}
-            />
-          </TouchableOpacity>
-          <Text style={styles.weekTitle}>
-            {format(weekStart, 'dd/MM/yyyy')} -{' '}
-            {format(addDays(weekStart, 6), 'dd/MM/yyyy')}
-          </Text>
-          <TouchableOpacity
-            onPress={() => setCurrentWeek(prevWeek => addDays(prevWeek, 7))}>
-            <MaterialIcons
-              name="chevron-right"
-              size={24}
-              color={appColors.black}
-            />
-          </TouchableOpacity>
-        </RowComponent>
-
-        <View style={styles.weekDaysContainer}>
-          {weekDates.map((date, index) => {
-            const vietnameseDayShort = vietnameseDays[index];
-            const isToday = isSameDay(date, today);
-            const isSelected = selectedWeekDay
-              ? isSameDay(date, selectedWeekDay)
-              : false;
-
-            return (
-              <TouchableOpacity
-                key={date.toISOString()}
-                style={[
-                  styles.weekDayItem,
-                  selectedWeekDay &&
-                    isSameDay(date, selectedWeekDay) &&
-                    styles.selectedWeekDay,
-                ]}
-                onPress={() => {
-                  if (
-                    showAllWeekTasks ||
-                    (selectedWeekDay && !isSameDay(date, selectedWeekDay))
-                  ) {
-                    setSelectedWeekDay(date);
-                    setSelected(format(date, 'yyyy-MM-dd'));
-                    setShowAllWeekTasks(false);
-                  } else {
-                    setShowAllWeekTasks(true);
-                    setSelectedWeekDay(null);
-                  }
-                }}>
-                <Text
-                  style={[styles.weekDayLabel, isToday && styles.todayLabel]}>
-                  {vietnameseDayShort}
-                </Text>
-                <Text
-                  style={[
-                    styles.weekDayNumber,
-                    isToday && styles.todayNumber,
-                    isSelected && styles.selectedDayNumber,
-                  ]}>
-                  {format(date, 'dd')}
-                </Text>
-                {markedDates[format(date, 'yyyy-MM-dd')] && (
-                  <View style={styles.taskDot} />
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
       </View>
     );
   };
@@ -589,31 +482,19 @@ const CalendarScreen = ({navigation}: any) => {
           }}
         />
       ) : (
-        renderWeekView()
+        <TaskTimetableView
+          tasks={tasks}
+          categories={categories}
+          onTaskPress={handleTaskPress}
+        />
       )}
 
       {/* Task list */}
-      <View style={{flex: 1, paddingTop: 10}}>
-        {filteredTasks.length > 0 ? (
-          <ScrollView
-            contentContainerStyle={styles.taskGroupScrollView}
-            showsVerticalScrollIndicator={false}>
-            {groupedTasks.length > 0 ? (
-              groupedTasks.map(renderHourGroup)
-            ) : (
-              <Text style={styles.emptyTaskText}>
-                Không có công việc nào cho{' '}
-                {viewMode === 'month' ? 'ngày này' : 'tuần này'}.
-              </Text>
-            )}
-          </ScrollView>
-        ) : (
-          <Text style={styles.emptyTaskText}>
-            Không có công việc nào cho{' '}
-            {viewMode === 'month' ? 'ngày này' : 'tuần này'}.
-          </Text>
-        )}
-      </View>
+      {viewMode === 'month' && (
+        <View style={{flex: 1, paddingTop: 10}}>
+          {groupedTasks.map(renderMonthTasks)}
+        </View>
+      )}
     </View>
   );
 };

@@ -39,7 +39,7 @@ interface TimetableViewProps {
 }
 
 const TimetableView = ({
-  schedules, 
+  schedules,
   weekDays,
   onSchedulePress,
 }: TimetableViewProps) => {
