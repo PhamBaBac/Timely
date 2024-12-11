@@ -70,10 +70,13 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
       );
       return daysDifference + 1; // Add 1 to include the start day
     } else if (intervalType === 'week') {
-      const weeksDifference = Math.floor(
-        differenceInDays(normalizedEndDate, normalizedStartDate) / 7,
+      const daysDifference = differenceInDays(
+        normalizedEndDate,
+        normalizedStartDate,
       );
-      return weeksDifference + 1; // Include the first week
+      return Math.floor(daysDifference / 7) + 1;
+      
+      
     } else if (intervalType === 'month') {
       const monthsDifference = differenceInMonths(
         normalizedEndDate,

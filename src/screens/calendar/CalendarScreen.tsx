@@ -27,6 +27,7 @@ import {
   handleUpdateRepeatTask,
 } from '../../utils/taskUtil';
 import {CategoryModel} from '../../models/categoryModel';
+import moment from 'moment';
 import TaskTimetableView from '../../components/TaskTimetableView';
 
 // Set Vietnamese locale for the calendar
@@ -68,7 +69,7 @@ LocaleConfig.locales['vi'] = {
     'Thứ bảy',
     'Chủ nhật',
   ],
-  dayNamesShort: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
+  dayNamesShort: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'],
   today: 'Hôm nay',
 };
 LocaleConfig.defaultLocale = 'vi';
@@ -77,11 +78,10 @@ const CalendarScreen = ({navigation}: any) => {
   useCustomStatusBar('light-content', appColors.primary);
   const user = auth().currentUser;
   const [tasks, setTasks] = useState<TaskModel[]>([]);
+  console.log('tasks', tasks.length);
   useEffect(() => {
     if (user?.uid) {
       const unsubscribe = fetchTasks(user.uid, setTasks);
-
-      // Cleanup on unmount
       return () => unsubscribe();
     }
   }, [user?.uid]);
@@ -117,9 +117,12 @@ const CalendarScreen = ({navigation}: any) => {
     const newMarkedDates: {[key: string]: any} = {};
 
     tasks.forEach(task => {
-      if (task.isCompleted) return; // Skip completed tasks
-      const dateString = task.startDate?.split('T')[0];
-      if (dateString) {
+      if (task.isCompleted) return;
+      if (task.startDate) {
+        const localDate = new Date(task.startDate); // UTC
+        const vietnamDate = new Date(localDate.getTime() + 7 * 60 * 60 * 1000); // +7h
+        const dateString = vietnamDate.toISOString().split('T')[0];
+
         if (!newMarkedDates[dateString]) {
           newMarkedDates[dateString] = {
             marked: true,
@@ -409,38 +412,48 @@ const CalendarScreen = ({navigation}: any) => {
 
   return (
     <View style={{flex: 1, backgroundColor: appColors.lightPurple}}>
-      {/* View mode toggle */}
       <RowComponent styles={styles.viewModeToggle}>
-        <TouchableOpacity
-          style={[
-            styles.viewModeButton,
-            viewMode === 'week' && styles.activeViewMode,
-          ]}
-          onPress={() => setViewMode('week')}>
-          <Text
-            style={
-              viewMode === 'week'
-                ? {color: appColors.black, fontWeight: '600'}
-                : {color: appColors.white, fontWeight: '600'}
-            }>
-            Công việc trong tuần
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.viewModeButton,
-            viewMode === 'month' && styles.activeViewMode,
-          ]}
-          onPress={() => setViewMode('month')}>
-          <Text
-            style={
-              viewMode === 'month'
-                ? {color: appColors.black, fontWeight: '600'}
-                : {color: appColors.white, fontWeight: '600'}
-            }>
-            Công việc trong tháng
-          </Text>
-        </TouchableOpacity>
+        <Text
+          style={{
+            color: appColors.white,
+            fontSize: 24,
+            fontWeight: '600',
+            marginLeft: 10,
+          }}>
+          Công việc theo
+        </Text>
+        <RowComponent>
+          <TouchableOpacity
+            style={[
+              styles.viewModeButton,
+              viewMode === 'week' && styles.activeViewMode,
+            ]}
+            onPress={() => setViewMode('week')}>
+            <Text
+              style={
+                viewMode === 'week'
+                  ? {color: appColors.black, fontWeight: '600'}
+                  : {color: appColors.white, fontWeight: '600'}
+              }>
+              Tuần
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.viewModeButton,
+              viewMode === 'month' && styles.activeViewMode,
+            ]}
+            onPress={() => setViewMode('month')}>
+            <Text
+              style={
+                viewMode === 'month'
+                  ? {color: appColors.black, fontWeight: '600'}
+                  : {color: appColors.white, fontWeight: '600'}
+              }>
+              Tháng
+            </Text>
+          </TouchableOpacity>
+        </RowComponent>
       </RowComponent>
 
       {/* Conditional rendering of calendar or week view */}
@@ -450,7 +463,7 @@ const CalendarScreen = ({navigation}: any) => {
             setSelected(day.dateString);
           }}
           markedDates={{
-            [new Date().toISOString().split('T')[0]]: {
+            [moment().format('YYYY-MM-DD')]: {
               customStyles: {
                 text: {
                   color: appColors.primary,
@@ -540,7 +553,7 @@ const styles = StyleSheet.create({
   },
   // New styles for view mode toggle and week view
   viewModeToggle: {
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 10,
     backgroundColor: appColors.primary,

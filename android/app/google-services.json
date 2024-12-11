@@ -2,9 +2,28 @@
   "project_info": {
     "project_number": "357457690764",
     "project_id": "timely-d206d",
-    "storage_bucket": "timely-d206d.appspot.com"
+    "storage_bucket": "timely-d206d.firebasestorage.app"
   },
   "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:357457690764:android:76fddcf684b5b87e8d3ba9",
+        "android_client_info": {
+          "package_name": "com.bacpham.timely"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA_Ul7uzrjDa6iAhAW9IOQ7X1OCqHILsTA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
     {
       "client_info": {
         "mobilesdk_app_id": "1:357457690764:android:f9f768c987d419eb8d3ba9",

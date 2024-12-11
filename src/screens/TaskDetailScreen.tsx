@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {Alert, ScrollView, Share, TouchableOpacity, View} from 'react-native';
+import {Alert, Platform, ScrollView, Share, TouchableOpacity, View} from 'react-native';
 import auth, {firebase} from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import {format} from 'date-fns';
@@ -160,6 +160,7 @@ const TaskDetailScreen = ({navigation, route}: any) => {
             borderBottomLeftRadius: 20,
             borderBottomRightRadius: 20,
             backgroundColor: appColors.primary,
+            paddingTop: Platform.OS === 'android' ? 20 : 40,
           }}>
           <RowComponent
             styles={{alignItems: 'center', justifyContent: 'center'}}>
@@ -178,7 +179,7 @@ const TaskDetailScreen = ({navigation, route}: any) => {
               color={appColors.white}
             />
             <TouchableOpacity onPress={() => handleTaskPress(taskDetail)}>
-              <Edit size={28} color={appColors.white}/>
+              <Edit size={28} color={appColors.white} />
             </TouchableOpacity>
           </RowComponent>
           <View style={{marginTop: 20, marginHorizontal: 12}}>
