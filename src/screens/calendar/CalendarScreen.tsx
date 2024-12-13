@@ -117,16 +117,16 @@ const CalendarScreen = ({navigation}: any) => {
     const newMarkedDates: {[key: string]: any} = {};
 
     tasks.forEach(task => {
-      if (task.isCompleted) return;
+      // Loại bỏ điều kiện task.isCompleted
       if (task.startDate) {
-        const localDate = new Date(task.startDate); // UTC
-        const vietnamDate = new Date(localDate.getTime() + 7 * 60 * 60 * 1000); // +7h
+        const localDate = new Date(task.startDate);
+        const vietnamDate = new Date(localDate.getTime() + 7 * 60 * 60 * 1000);
         const dateString = vietnamDate.toISOString().split('T')[0];
 
         if (!newMarkedDates[dateString]) {
           newMarkedDates[dateString] = {
             marked: true,
-            dotColor: appColors.primary,
+            dotColor: task.isCompleted ? appColors.gray : appColors.primary,
           };
         }
       }
@@ -364,19 +364,19 @@ const CalendarScreen = ({navigation}: any) => {
 
   const groupTasksByHour = (tasks: TaskModel[], viewMode: 'month' | 'week') => {
     const morningTasks = tasks.filter(task => {
-      if (!task.startTime || task.isCompleted) return false;
+      if (!task.startTime) return false;
       const taskHour = new Date(task.startTime).getHours();
       return taskHour >= 5 && taskHour < 12;
     });
 
     const afternoonTasks = tasks.filter(task => {
-      if (!task.startTime || task.isCompleted) return false;
+      if (!task.startTime) return false;
       const taskHour = new Date(task.startTime).getHours();
       return taskHour >= 12 && taskHour < 18;
     });
 
     const eveningTasks = tasks.filter(task => {
-      if (!task.startTime || task.isCompleted) return false;
+      if (!task.startTime) return false;
       const taskHour = new Date(task.startTime).getHours();
       return taskHour >= 18 && taskHour < 24;
     });

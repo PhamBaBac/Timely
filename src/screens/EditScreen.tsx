@@ -323,9 +323,7 @@ const EditScreen = ({route, navigation}: any) => {
       await batch.commit();
 
       setIsLoading(false);
-      navigation.navigate('Trang chủ', {
-        screen: 'HomeScreen',
-      });
+      navigation.goBack();
     } catch (error) {
       console.error('Error updating task:', error);
       setIsLoading(false);
