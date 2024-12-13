@@ -390,6 +390,40 @@ const TaskDetailScreen = ({navigation, route}: any) => {
               />
             )}
           </RowComponent>
+          <SpaceComponent height={12} />
+          <RowComponent
+            styles={{
+              marginHorizontal: 16,
+              borderBottomWidth: 1,
+              borderBottomColor: appColors.gray2,
+            }}>
+            <TitleComponent text="Nhắc nhở trước" size={22} />
+            <TouchableOpacity>
+              <TextComponent
+                text={
+                  taskDetail.remind === '5'
+                    ? '5 phút'
+                    : taskDetail.remind === '15'
+                    ? '15 phút'
+                    : taskDetail.remind === '30'
+                    ? '30 phút'
+                    : taskDetail.remind === '60'
+                    ? '1 giờ'
+                    : 'Không'
+                }
+                size={18}
+                styles={{
+                  color: appColors.black,
+                }}
+              />
+            </TouchableOpacity>
+            <SpaceComponent width={8} />
+            <MaterialCommunityIcons
+              name="alarm"
+              size={24}
+              color={appColors.red}
+            />
+          </RowComponent>
 
           <SpaceComponent height={12} />
           <SectionComponent>

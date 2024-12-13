@@ -61,7 +61,7 @@ const initValue: TaskModel = {
   dueDate: new Date(),
   startTime: new Date(),
   remind: '',
-  repeat: 'no' as 'no' | 'day' | 'week' | 'month',
+  repeat: 'no' as 'no' | 'day' | 'week' | 'month' | 'weekday' | 'year',
   repeatDays: [],
   repeatCount: 0,
   category: '',
@@ -304,11 +304,11 @@ const AddNewScreen = ({navigation}: any) => {
       });
   };
   const calculateRepeatedDates = (
-    startDate: string,
-    repeat: 'day' | 'week' | 'month',
-    count: number,
-    repeatDays: number[],
-  ) => {
+      startDate: string,
+      repeat: 'day' | 'week' | 'month' | 'year',
+      count: number,
+      repeatDays: number[],
+    ) => {
     const dates = [];
     let currentDate = new Date(startDate);
 
@@ -323,6 +323,8 @@ const AddNewScreen = ({navigation}: any) => {
         currentDate = addWeeks(currentDate, 1);
       } else if (repeat === 'month' && repeatDays.length === 0) {
         currentDate = addMonths(currentDate, 1);
+      } else if (repeat === 'year') {
+        currentDate = set(currentDate, {year: currentDate.getFullYear() + 1});
       } else if (repeat === 'week' && repeatDays.length > 0) {
         repeatDays.forEach(day => {
           let tempDate = new Date(currentDate);
@@ -343,7 +345,7 @@ const AddNewScreen = ({navigation}: any) => {
           }
         });
         currentDate = addMonths(currentDate, 1);
-      }
+      } 
     }
 
     return dates;
@@ -733,7 +735,7 @@ const AddNewScreen = ({navigation}: any) => {
                   textAlign: 'center',
                   paddingBottom: 10,
                 }}>
-                Nhắc nhở trước khi hết hạn
+                Nhắc nhở trước khi công việc bắt đầu
               </Text>
               <TouchableOpacity
                 style={{

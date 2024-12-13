@@ -487,54 +487,6 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
           <Category2 size="24" color={appColors.primary} />
         </Pressable>
       </View>
-      {tasks.length > 0 && (
-        <RowComponent
-          styles={{
-            justifyContent: 'flex-start',
-            marginLeft: 10,
-          }}>
-          {!isDeleteAll ? (
-            <Pressable
-              style={{flexDirection: 'row', alignItems: 'center'}}
-              onPress={() => {
-                const allTaskIds = tasks.map(task => task.id);
-                setSelectedTaskIds(allTaskIds);
-                setIsDeleteAll(true);
-              }}>
-              <TickSquare size={24} color={appColors.primary} />
-              <SpaceComponent width={5} />
-              <Text style={{color: appColors.black}}>Nhấn để xoá tất cả</Text>
-            </Pressable>
-          ) : (
-            <Pressable
-              onPress={() => {
-                setSelectedTaskIds([]);
-                setIsDeleteAll(false);
-              }}
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'flex-start',
-                alignItems: 'center',
-              }}>
-              <TickSquare size={24} color={appColors.primary} variant="Bold" />
-              <SpaceComponent width={5} />
-              <Pressable
-                onPress={() => {
-                  handleDeleteSelectedTasks();
-                }}
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'flex-start',
-                  alignItems: 'center',
-                }}>
-                <Text style={{color: appColors.black}}>
-                  Xác nhận xóa tất cả
-                </Text>
-              </Pressable>
-            </Pressable>
-          )}
-        </RowComponent>
-      )}
       <ScrollView style={styles.tasksContainer}>
         {tasksBeforeToday.length > 0 && (
           <View style={styles.section}>

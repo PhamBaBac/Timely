@@ -69,7 +69,7 @@ const DrawerCustom = ({navigation}: any) => {
       icon: <AntDesign name="staro" size={size} color="#FF8A65" />,
       action: () =>
         navigation.navigate('StartTaskScreen', {
-          tasks: tasks.filter(task => task.isImportant),
+          tasks: tasks.filter(task => task.isImportant && !task.isCompleted),
         }),
     },
     {

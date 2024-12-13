@@ -98,9 +98,9 @@ const StartTaskScreen = ({route, navigation}: any) => {
         {Object.entries(
           tasks
             .sort(
-              (a, b) =>
-                new Date(b.updatedAt).getTime() -
-                new Date(a.updatedAt).getTime(),
+              (b, a) =>
+                new Date(a.startDate || '').getTime() -
+                new Date(b.startDate || '').getTime(),
             )
             .reduce((acc, task) => {
               const date = fomatDate1(new Date(task.startDate || ''));
