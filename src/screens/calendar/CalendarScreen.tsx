@@ -300,10 +300,10 @@ const CalendarScreen = ({navigation}: any) => {
                 </Text>
 
                 <Text style={styles.taskDate}>
-                  {item.dueDate
+                    {item.dueDate
                     ? formtDaysofWeek(new Date(item.startDate || ''))
                     : 'No due date'}
-                  ,{' '}
+                    ,{' '}
                   {item.dueDate
                     ? fomatDate(new Date(item.startDate || ''))
                     : 'No due date'}{' '}

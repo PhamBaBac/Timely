@@ -20,30 +20,35 @@ import {
 import {TaskModel} from '../models/taskModel';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {format} from 'date-fns';
-import { Star1, StarSlash } from 'iconsax-react-native';
+import {Star1, StarSlash} from 'iconsax-react-native';
 
-const IsCompleTaskScreen = ({route, navigation}: any) => {
+const  TaskCompletedLate = ({route, navigation}: any) => {
   useCustomStatusBar('dark-content', appColors.lightPurple);
   const {tasks}: {tasks: TaskModel[]} = route.params;
-    const completedOnTime = tasks.filter(task => {
-      const startDate = task.startDate ? new Date(task.startDate) : null;
-      const startTime = task.startTime ? new Date(task.startTime) : null;
-      const completedAt = task.updatedAt ? new Date(task.updatedAt) : null;
-
-      if (task.isCompleted && completedAt) {
-        // Kiểm tra nếu completedAt trước ngày startDate
-        if (startDate && completedAt.getDate() < startDate.getDate()) {
-          return true;
-        }
-        // Kiểm tra nếu completedAt cùng ngày startDate và trước thời gian startTime
-        if (startDate && completedAt.getDate() === startDate.getDate()) {
-          if (startTime && completedAt.getTime() < startTime.getTime()) {
-            return true;
-          }
-        }
+  const overdueTasks = tasks.filter(task => {
+    const startDate = task.startDate ? new Date(task.startDate) : null;
+    const startTime = task.startTime ? new Date(task.startTime) : null;
+    const completedAt = task.updatedAt ? new Date(task.updatedAt) : null;
+    if (
+      task.isCompleted &&
+      completedAt &&
+      startDate &&
+      completedAt.getDate() > startDate.getDate()
+    ) {
+      return true;
+    } else if (
+      task.isCompleted &&
+      completedAt?.getDate() === startDate?.getDate()
+    ) {
+      if (
+        startTime &&
+        completedAt &&
+        completedAt.getTime() > startTime.getTime()
+      ) {
+        return true;
       }
-      return false;
-    })
+    }
+  })
   const formatTime = (date: Date) => {
     return format(date, 'HH:mm');
   };
@@ -56,7 +61,8 @@ const IsCompleTaskScreen = ({route, navigation}: any) => {
 
   const renderTask = (item: TaskModel) => (
     <SectionComponent key={item.id}>
-      <Pressable  onPress={() => {
+      <Pressable
+        onPress={() => {
           navigation.navigate('TaskDetailsScreen', {id: item.id});
         }}>
         <View style={styles.taskItem}>
@@ -101,10 +107,10 @@ const IsCompleTaskScreen = ({route, navigation}: any) => {
   );
 
   return (
-    <Container back isScroll title="CV hoàn thành đúng hạn">
+    <Container  back isScroll title="Công việc hoàn thành trễ" >
       <ScrollView>
         {Object.entries(
-          completedOnTime
+          overdueTasks
             .sort(
               (a, b) =>
                 new Date(b.updatedAt).getTime() -
@@ -130,7 +136,7 @@ const IsCompleTaskScreen = ({route, navigation}: any) => {
   );
 };
 
-export default IsCompleTaskScreen;
+export default  TaskCompletedLate;
 const styles = StyleSheet.create({
   taskItem: {
     flexDirection: 'row',

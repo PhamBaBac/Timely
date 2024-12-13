@@ -118,7 +118,7 @@ const AddNewScreen = ({navigation}: any) => {
   console.log('selectedDate', new Date().getTime());
   const [selectedRepeat, setSelectedRepeat] = useState('');
   //mac dinh la 5 phut
-  const [selectedRemind, setSelectedRemind] = useState('5 phút');
+  const [selectedRemind, setSelectedRemind] = useState('15 phút');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [taskDetail, setTaskDetail] = useState<TaskModel>(initValue);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -292,7 +292,7 @@ const AddNewScreen = ({navigation}: any) => {
         setTaskDetail(initValue);
         setSelectedRepeat('');
         setSelectedDate(new Date());
-        setSelectedRemind('5 phút');
+        setSelectedRemind('15 phút');
         setErrorText('');
         navigation.navigate('Trang chủ', {
           screen: 'HomeScreen',
@@ -399,7 +399,7 @@ const AddNewScreen = ({navigation}: any) => {
     setTaskDetail(prevState => ({
       ...prevState,
       [id]: value,
-      remind: '5',
+      remind: '15',
     }));
   };
 
@@ -744,8 +744,8 @@ const AddNewScreen = ({navigation}: any) => {
                   borderBottomColor: '#eee',
                 }}
                 onPress={() => {
-                  setSelectedRemind('5 phút');
-                  handleChangeValue('remind', '5');
+                  setSelectedRemind('15 phút');
+                  handleChangeValue('remind', '15');
                   modalizeRemind.current?.close();
                 }}>
                 <RowComponent
@@ -761,7 +761,7 @@ const AddNewScreen = ({navigation}: any) => {
                       color: '#666',
                       paddingLeft: 10,
                     }}>
-                    5 phút
+                    15 phút
                   </Text>
                 </RowComponent>
 
@@ -774,8 +774,8 @@ const AddNewScreen = ({navigation}: any) => {
                   borderBottomColor: '#eee',
                 }}
                 onPress={() => {
-                  setSelectedRemind('15 phút');
-                  handleChangeValue('remind', '15');
+                  setSelectedRemind('30 phút');
+                  handleChangeValue('remind', '30');
                   modalizeRemind.current?.close();
                 }}>
                 <RowComponent
@@ -790,7 +790,7 @@ const AddNewScreen = ({navigation}: any) => {
                       color: '#666',
                       paddingLeft: 10,
                     }}>
-                    15 phút
+                    30 phút
                   </Text>
                 </RowComponent>
               </TouchableOpacity>
@@ -799,8 +799,8 @@ const AddNewScreen = ({navigation}: any) => {
                   paddingVertical: 15,
                 }}
                 onPress={() => {
-                  setSelectedRemind('30 phút');
-                  handleChangeValue('remind', '30');
+                  setSelectedRemind('1 giờ');
+                  handleChangeValue('remind', '60');
                   modalizeRemind.current?.close();
                 }}>
                 <RowComponent
@@ -815,7 +815,7 @@ const AddNewScreen = ({navigation}: any) => {
                       color: '#666',
                       paddingLeft: 10,
                     }}>
-                    30 phút
+                    1 giờ
                   </Text>
                 </RowComponent>
               </TouchableOpacity>

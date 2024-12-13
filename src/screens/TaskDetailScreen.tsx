@@ -44,13 +44,11 @@ const TaskDetailScreen = ({navigation, route}: any) => {
   const taskId = id.id;
 
   const [taskDetail, setTaskDetail] = useState<TaskModel>();
-  console.log('taskDetail', taskDetail);
   const [progress, setProgress] = useState(0);
   const [subTasks, setSubTasks] = useState<SubTask[]>([]);
   const [categories, setCategories] = useState<CategoryModel[]>([]);
   const [isVisibleModalSubTask, setIsVisibleModalSubTask] = useState(false);
   const user = auth().currentUser;
-  const [tasks, setTasks] = useState<TaskModel[]>([]);
 
   useEffect(() => {
     const unsubscribe = firestore()

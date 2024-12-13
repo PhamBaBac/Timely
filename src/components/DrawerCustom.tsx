@@ -16,7 +16,7 @@ import auth, {firebase} from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import {TaskModel} from '../models/taskModel';
 import AntDesign from 'react-native-vector-icons/AntDesign';
-import {TickSquare} from 'iconsax-react-native';
+import {Clock, TickSquare} from 'iconsax-react-native';
 
 const DrawerCustom = ({navigation}: any) => {
   const size = 24;
@@ -65,7 +65,7 @@ const DrawerCustom = ({navigation}: any) => {
   const profileMenu = [
     {
       key: 'StartTask',
-      title: 'Những công việc quan trọng',
+      title: 'Công việc quan trọng',
       icon: <AntDesign name="staro" size={size} color="#FF8A65" />,
       action: () =>
         navigation.navigate('StartTaskScreen', {
@@ -74,7 +74,7 @@ const DrawerCustom = ({navigation}: any) => {
     },
     {
       key: 'CompletedTasks',
-      title: 'Các công việc đã hoàn thành', // Added new menu item for completed tasks
+      title: 'Công việc hoàn thành sớm', // Added new menu item for completed tasks
       icon: (
         <MaterialIcons
           name="check-circle"
@@ -87,15 +87,25 @@ const DrawerCustom = ({navigation}: any) => {
           tasks: tasks.filter(task => task.isCompleted),
         }),
     },
+    //Cac cong viec hoan thanh tre han
+    {
+      key: 'LateTasks',
+      title: 'Công việc hoàn thành trễ',
+      icon: <Clock size={24} color="#FF8A65" />,
+      action: () =>
+        navigation.navigate('TaskCompletedLate', {
+          tasks: tasks.filter(task => task.isCompleted),
+        }),
+    },
     {
       key: 'Habits',
       title: 'Thói quen',
-      icon: <MaterialIcons name="auto-graph" size={size} color='green' />,
+      icon: <MaterialIcons name="auto-graph" size={size} color="green" />,
     },
     {
       key: 'Logout',
       title: 'Đăng xuất',
-      icon: <MaterialIcons name="logout" size={size} color='red' />,
+      icon: <MaterialIcons name="logout" size={size} color="red" />,
       action: () => handleSingout(),
     },
   ];
@@ -170,7 +180,7 @@ const DrawerCustom = ({navigation}: any) => {
       <FlatList
         showsVerticalScrollIndicator={false}
         data={profileMenu}
-        style={{flex: 1,}}
+        style={{flex: 1}}
         renderItem={renderItem}
       />
     </View>
