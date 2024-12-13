@@ -1,6 +1,8 @@
 import auth, {firebase} from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import messaging, { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
+import messaging, {
+  FirebaseMessagingTypes,
+} from '@react-native-firebase/messaging';
 import {format, set} from 'date-fns';
 import {
   Category2,
@@ -41,6 +43,7 @@ import {
 } from '../../utils/taskUtil';
 import LoadingModal from '../../modal/LoadingModal';
 import Toast from 'react-native-toast-message';
+import {useLinkTo} from '@react-navigation/native';
 
 const HomeScreen = ({navigation}: {navigation: any}) => {
   const user = auth().currentUser;
@@ -54,7 +57,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
   const [categories, setCategories] = useState<CategoryModel[]>([]);
 
   const [tasks, setTasks] = useState<TaskModel[]>([]);
-  
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const formatTime = (date: Date) => {
@@ -84,18 +87,35 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     };
     return vietnameseDays[format(date, 'eeee') as keyof typeof vietnameseDays];
   };
+  const linkTo = useLinkTo();
 
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   useEffect(() => {
     HandleNotification.checkNotificationPersion();
     messaging().onMessage(
       async (mess: FirebaseMessagingTypes.RemoteMessage) => {
+        console.log('A new FCM message arrived!', mess);
         Toast.show({
           text1: mess.notification?.title,
           text2: mess.notification?.body,
-        })
-      }
+          // onPress: () => {
+          //   navigation.navigate('TaskDetailsScreen', {id: mess.data?.taskId});
+          // },
+        });
+      },
     );
+    messaging()
+      .getInitialNotification()
+      .then((mess: any) => {
+        if (mess && mess.data) {
+          const data = mess.data;
+          const taskId = data.taskId;
+          linkTo(`/task-detail/${taskId}`);
+        }
+      })
+      .catch(error => {
+        console.error('Error getting initial notification:', error);
+      });
   }, []);
 
   useEffect(() => {
@@ -142,36 +162,6 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
     if (activeFilter === 'Tất cả') return true;
     return task.category === activeFilter;
   });
-
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleDeleteSelectedTasks = () => {
-    Alert.alert('Xác nhận', 'Bạn có chắc chắn muốn xóa các công việc này?', [
-      {
-        text: 'Hủy',
-        style: 'cancel',
-      },
-      {
-        text: 'Xóa',
-        onPress: async () => {
-          setIsLoading(true);
-          try {
-            await Promise.all(
-              selectedTaskIds.map(async id => {
-                await firestore().collection('tasks').doc(id).delete();
-              })
-            );
-            setSelectedTaskIds([]);
-            setIsDeleteAll(false);
-          } catch (error) {
-            console.error('Error deleting tasks: ', error);
-          } finally {
-            setIsLoading(false);
-          }
-        },
-      },
-    ]);
-  };
 
   const tasksBeforeToday = filteredTasks.filter(task => {
     const taskStartDate = new Date(task.startDate || '');
@@ -420,8 +410,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
         style={[
           styles.header,
           {
-            paddingTop:
-              Platform.OS === 'android' ? 20 : 40,
+            paddingTop: Platform.OS === 'android' ? 20 : 40,
           },
         ]}>
         <Pressable
@@ -487,61 +476,13 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
           <Category2 size="24" color={appColors.primary} />
         </Pressable>
       </View>
-      {tasks.length > 0 && (
-        <RowComponent
-          styles={{
-            justifyContent: 'flex-start',
-            marginLeft: 10,
-          }}>
-          {!isDeleteAll ? (
-            <Pressable
-              style={{flexDirection: 'row', alignItems: 'center'}}
-              onPress={() => {
-                const allTaskIds = tasks.map(task => task.id);
-                setSelectedTaskIds(allTaskIds);
-                setIsDeleteAll(true);
-              }}>
-              <TickSquare size={24} color={appColors.primary} />
-              <SpaceComponent width={5} />
-              <Text style={{color: appColors.black}}>Nhấn để xoá tất cả</Text>
-            </Pressable>
-          ) : (
-            <Pressable
-              onPress={() => {
-                setSelectedTaskIds([]);
-                setIsDeleteAll(false);
-              }}
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'flex-start',
-                alignItems: 'center',
-              }}>
-              <TickSquare size={24} color={appColors.primary} variant="Bold" />
-              <SpaceComponent width={5} />
-              <Pressable
-                onPress={() => {
-                  handleDeleteSelectedTasks();
-                }}
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'flex-start',
-                  alignItems: 'center',
-                }}>
-                <Text style={{color: appColors.black}}>
-                  Xác nhận xóa tất cả
-                </Text>
-              </Pressable>
-            </Pressable>
-          )}
-        </RowComponent>
-      )}
       <ScrollView style={styles.tasksContainer}>
         {tasksBeforeToday.length > 0 && (
           <View style={styles.section}>
             <Pressable
               onPress={() => setShowBeforeToday(!showBeforeToday)}
               style={styles.sectionHeaderContainer}>
-              <Text style={styles.sectionHeader}>Trước</Text>
+              <Text style={styles.sectionHeader}>Công việc quá hạn</Text>
               <MaterialIcons
                 name={showBeforeToday ? 'expand-less' : 'expand-more'}
                 size={24}
@@ -555,7 +496,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
           <Pressable
             onPress={() => setShowToday(!showToday)}
             style={styles.sectionHeaderContainer}>
-            <Text style={styles.sectionHeader}>Hôm nay </Text>
+            <Text style={styles.sectionHeader}>Công việc hôm nay</Text>
             <MaterialIcons
               name={showToday ? 'expand-less' : 'expand-more'}
               size={24}
@@ -585,7 +526,7 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
             <Pressable
               onPress={() => setShowBeforeToday(!showBeforeToday)}
               style={styles.sectionHeaderContainer}>
-              <Text style={styles.sectionHeader}>Tương lai</Text>
+              <Text style={styles.sectionHeader}>Công việc hôm sau</Text>
               <MaterialIcons
                 name={showBeforeToday ? 'expand-less' : 'expand-more'}
                 size={24}
@@ -605,7 +546,9 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
             <Pressable
               onPress={() => setShowBeforeToday(!showBeforeToday)}
               style={styles.sectionHeaderContainer}>
-              <Text style={styles.sectionHeader}>Đã hoàn thành hôm nay</Text>
+              <Text style={styles.sectionHeader}>
+                Công việc đã hoàn thành hôm nay
+              </Text>
               <MaterialIcons
                 name={showBeforeToday ? 'expand-less' : 'expand-more'}
                 size={24}
@@ -630,13 +573,17 @@ const HomeScreen = ({navigation}: {navigation: any}) => {
               tasks: tasks.filter(task => task.isCompleted),
             })
           }>
-          <Text style={{textDecorationLine: 'underline', textAlign: 'center', color: appColors.black} }>
+          <Text
+            style={{
+              textDecorationLine: 'underline',
+              textAlign: 'center',
+              color: appColors.black,
+            }}>
             Xem tất cả các nhiệm vụ đã hoàn thành
           </Text>
         </Pressable>
       </ScrollView>
       <SpaceComponent height={28} />
-      <LoadingModal visible={isLoading} />
     </View>
   );
 };
@@ -656,7 +603,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: appColors.lightGray,
     //ios co chieu cao la 100 con android la 80
-    
   },
   headerTitle: {
     fontSize: 18,

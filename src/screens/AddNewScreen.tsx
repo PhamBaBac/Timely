@@ -61,7 +61,7 @@ const initValue: TaskModel = {
   dueDate: new Date(),
   startTime: new Date(),
   remind: '',
-  repeat: 'no' as 'no' | 'day' | 'week' | 'month',
+  repeat: 'no' as 'no' | 'day' | 'week' | 'month' | 'weekday' | 'year',
   repeatDays: [],
   repeatCount: 0,
   category: '',
@@ -118,7 +118,7 @@ const AddNewScreen = ({navigation}: any) => {
   console.log('selectedDate', new Date().getTime());
   const [selectedRepeat, setSelectedRepeat] = useState('');
   //mac dinh la 5 phut
-  const [selectedRemind, setSelectedRemind] = useState('5 phút');
+  const [selectedRemind, setSelectedRemind] = useState('15 phút');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [taskDetail, setTaskDetail] = useState<TaskModel>(initValue);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -292,7 +292,7 @@ const AddNewScreen = ({navigation}: any) => {
         setTaskDetail(initValue);
         setSelectedRepeat('');
         setSelectedDate(new Date());
-        setSelectedRemind('5 phút');
+        setSelectedRemind('15 phút');
         setErrorText('');
         navigation.navigate('Trang chủ', {
           screen: 'HomeScreen',
@@ -304,11 +304,11 @@ const AddNewScreen = ({navigation}: any) => {
       });
   };
   const calculateRepeatedDates = (
-    startDate: string,
-    repeat: 'day' | 'week' | 'month',
-    count: number,
-    repeatDays: number[],
-  ) => {
+      startDate: string,
+      repeat: 'day' | 'week' | 'month' | 'year',
+      count: number,
+      repeatDays: number[],
+    ) => {
     const dates = [];
     let currentDate = new Date(startDate);
 
@@ -323,6 +323,8 @@ const AddNewScreen = ({navigation}: any) => {
         currentDate = addWeeks(currentDate, 1);
       } else if (repeat === 'month' && repeatDays.length === 0) {
         currentDate = addMonths(currentDate, 1);
+      } else if (repeat === 'year') {
+        currentDate = set(currentDate, {year: currentDate.getFullYear() + 1});
       } else if (repeat === 'week' && repeatDays.length > 0) {
         repeatDays.forEach(day => {
           let tempDate = new Date(currentDate);
@@ -343,7 +345,7 @@ const AddNewScreen = ({navigation}: any) => {
           }
         });
         currentDate = addMonths(currentDate, 1);
-      }
+      } 
     }
 
     return dates;
@@ -397,7 +399,7 @@ const AddNewScreen = ({navigation}: any) => {
     setTaskDetail(prevState => ({
       ...prevState,
       [id]: value,
-      remind: '5',
+      remind: '15',
     }));
   };
 
@@ -733,38 +735,8 @@ const AddNewScreen = ({navigation}: any) => {
                   textAlign: 'center',
                   paddingBottom: 10,
                 }}>
-                Nhắc nhở trước khi hết hạn
+                Nhắc nhở trước khi công việc bắt đầu
               </Text>
-              <TouchableOpacity
-                style={{
-                  paddingVertical: 15,
-                  borderBottomWidth: 1,
-                  borderBottomColor: '#eee',
-                }}
-                onPress={() => {
-                  setSelectedRemind('5 phút');
-                  handleChangeValue('remind', '5');
-                  modalizeRemind.current?.close();
-                }}>
-                <RowComponent
-                  styles={{
-                    justifyContent: 'flex-start',
-                    alignContent: 'center',
-                  }}>
-                  <Clock size="24" color={appColors.green} variant="Bold" />
-
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      color: '#666',
-                      paddingLeft: 10,
-                    }}>
-                    5 phút
-                  </Text>
-                </RowComponent>
-
-                <SpaceComponent width={10} />
-              </TouchableOpacity>
               <TouchableOpacity
                 style={{
                   paddingVertical: 15,
@@ -781,7 +753,8 @@ const AddNewScreen = ({navigation}: any) => {
                     justifyContent: 'flex-start',
                     alignContent: 'center',
                   }}>
-                  <Clock size="24" color={appColors.yellow} variant="Bold" />
+                  <Clock size="24" color={appColors.green} variant="Bold" />
+
                   <Text
                     style={{
                       fontSize: 16,
@@ -791,14 +764,43 @@ const AddNewScreen = ({navigation}: any) => {
                     15 phút
                   </Text>
                 </RowComponent>
+
+                <SpaceComponent width={10} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  paddingVertical: 15,
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#eee',
+                }}
+                onPress={() => {
+                  setSelectedRemind('30 phút');
+                  handleChangeValue('remind', '30');
+                  modalizeRemind.current?.close();
+                }}>
+                <RowComponent
+                  styles={{
+                    justifyContent: 'flex-start',
+                    alignContent: 'center',
+                  }}>
+                  <Clock size="24" color={appColors.yellow} variant="Bold" />
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      color: '#666',
+                      paddingLeft: 10,
+                    }}>
+                    30 phút
+                  </Text>
+                </RowComponent>
               </TouchableOpacity>
               <TouchableOpacity
                 style={{
                   paddingVertical: 15,
                 }}
                 onPress={() => {
-                  setSelectedRemind('30 phút');
-                  handleChangeValue('remind', '30');
+                  setSelectedRemind('1 giờ');
+                  handleChangeValue('remind', '60');
                   modalizeRemind.current?.close();
                 }}>
                 <RowComponent
@@ -813,7 +815,7 @@ const AddNewScreen = ({navigation}: any) => {
                       color: '#666',
                       paddingLeft: 10,
                     }}>
-                    30 phút
+                    1 giờ
                   </Text>
                 </RowComponent>
               </TouchableOpacity>

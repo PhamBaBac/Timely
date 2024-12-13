@@ -8,12 +8,13 @@ import messaging from '@react-native-firebase/messaging';
 import {useSelector} from 'react-redux';
 import BackgroundActions from 'react-native-background-actions';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLinkTo } from '@react-navigation/native';
 
 const AppRouters = () => {
   const [isShowSplash, setIsShowSplash] = useState(true);
   const [isLogin, setIsLogin] = useState(false);
 
-
+ const linkTo = useLinkTo();
   useEffect(() => {
     auth().onAuthStateChanged(user => {
       user ? setIsLogin(true) : setIsLogin(false);
@@ -27,7 +28,6 @@ const AppRouters = () => {
     messaging().setBackgroundMessageHandler(async remoteMessage => {
       console.log('Received background message:', remoteMessage);
     });
-
     const timeout = setTimeout(() => {
       setIsShowSplash(false);
     }, 1000);

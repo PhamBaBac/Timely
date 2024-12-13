@@ -1,4 +1,4 @@
-import {differenceInDays, differenceInMonths, format} from 'date-fns';
+import {differenceInDays, differenceInMonths, differenceInYears, format} from 'date-fns';
 import {Calendar1, Calendar as CalendarIcon} from 'iconsax-react-native';
 import React, {useEffect, useRef, useState} from 'react';
 import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
@@ -55,7 +55,7 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
 
   const calculateRepeatCount = (
     endDate: Date,
-    intervalType: 'day' | 'week' | 'month',
+    intervalType: 'day' | 'week' | 'month' | 'year',
   ) => {
     const normalizedStartDate = new Date(startDate);
     normalizedStartDate.setHours(0, 0, 0, 0);
@@ -83,6 +83,13 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
         normalizedStartDate,
       );
       return monthsDifference + 1; // Include the first month
+    } //Lay ngay bat dau va lap qua cac nam, lap tan 10 nam la dung
+    else if (intervalType === 'year') {
+      const yearsDifference = differenceInYears(
+        normalizedEndDate,
+        normalizedStartDate,
+      );
+      return yearsDifference + 1; // Include the first year
     }
     return 0;
   };
@@ -208,9 +215,31 @@ const ModalizeRepeat: React.FC<ModalizeRepeatProps> = ({
               }}>
               Hằng tháng
             </Text>
+          {/* them  Hang nam */}
+            <TextComponent
+              text="|"
+              color={appColors.text}
+              styles={{fontSize: 22}}
+            />
+            <Text
+              style={[
+                styles.repeatOptionText,
+                {
+                  color:
+                    taskDetail.repeat === 'year'
+                      ? appColors.primary
+                      : appColors.text,
+                },
+              ]}
+              onPress={() => {
+                handleChangeValue('repeat', 'year');
+                setSelectedRepeat('Năm');
+              }}>
+              Hằng năm
+            </Text>
           </View>
           <SpaceComponent height={20} />
-          {taskDetail.repeat !== 'no' && (
+          {taskDetail.repeat !== 'no' &&(
             <>
               <TouchableOpacity
                 onPress={() => {

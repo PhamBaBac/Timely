@@ -25,6 +25,25 @@ import { Star1, StarSlash } from 'iconsax-react-native';
 const IsCompleTaskScreen = ({route, navigation}: any) => {
   useCustomStatusBar('dark-content', appColors.lightPurple);
   const {tasks}: {tasks: TaskModel[]} = route.params;
+    const completedOnTime = tasks.filter(task => {
+      const startDate = task.startDate ? new Date(task.startDate) : null;
+      const startTime = task.startTime ? new Date(task.startTime) : null;
+      const completedAt = task.updatedAt ? new Date(task.updatedAt) : null;
+
+      if (task.isCompleted && completedAt) {
+        // Kiểm tra nếu completedAt trước ngày startDate
+        if (startDate && completedAt.getDate() < startDate.getDate()) {
+          return true;
+        }
+        // Kiểm tra nếu completedAt cùng ngày startDate và trước thời gian startTime
+        if (startDate && completedAt.getDate() === startDate.getDate()) {
+          if (startTime && completedAt.getTime() < startTime.getTime()) {
+            return true;
+          }
+        }
+      }
+      return false;
+    })
   const formatTime = (date: Date) => {
     return format(date, 'HH:mm');
   };
@@ -82,10 +101,10 @@ const IsCompleTaskScreen = ({route, navigation}: any) => {
   );
 
   return (
-    <Container back isScroll title="Công việc đã hoàn thành">
+    <Container back isScroll title="CV hoàn thành đúng hạn">
       <ScrollView>
         {Object.entries(
-          tasks
+          completedOnTime
             .sort(
               (a, b) =>
                 new Date(b.updatedAt).getTime() -

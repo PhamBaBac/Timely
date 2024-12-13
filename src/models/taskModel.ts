@@ -8,7 +8,7 @@ export interface TaskModel {
   startTime?: Date;
   endDate?: Date;
   remind: string;
-  repeat: 'no' | 'day' | 'week' | 'month' | 'weekday';
+  repeat: 'no' | 'day' | 'week' | 'month' | 'weekday' | 'year';
   repeatDays: number[];
   repeatCount: number;
   category: string;
